@@ -1,0 +1,198 @@
+Performing C SOURCE FILE Test MULTIPASS_TEST_3_petsc_works_alllibraries succeeded with the following output:
+Change Dir: /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_d0304/fast"
+/Library/Developer/CommandLineTools/usr/bin/make -f CMakeFiles/cmTC_d0304.dir/build.make CMakeFiles/cmTC_d0304.dir/build
+Building C object CMakeFiles/cmTC_d0304.dir/src.c.o
+/Library/Developer/CommandLineTools/usr/bin/cc  -I/usr/local/petsc-3.8.3/include  -DMULTIPASS_TEST_3_petsc_works_alllibraries   -o CMakeFiles/cmTC_d0304.dir/src.c.o   -c /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_d0304
+/Applications/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d0304.dir/link.txt --verbose=1
+/Library/Developer/CommandLineTools/usr/bin/cc  -DMULTIPASS_TEST_3_petsc_works_alllibraries -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -lgfortran -lm   CMakeFiles/cmTC_d0304.dir/src.c.o  -o cmTC_d0304 /usr/local/petsc-3.8.3/lib/libpetsc.dylib /usr/local/lib/liblapack.dylib /usr/local/lib/libblas.dylib /usr/local/lib/libmpi_usempif08.dylib /usr/local/lib/libmpi_usempi_ignore_tkr.a /usr/local/lib/libmpi_mpifh.dylib /usr/local/lib/libgfortran.dylib /usr/local/lib/libquadmath.dylib /usr/lib/libm.dylib /usr/local/lib/libstdc++.dylib /usr/local/lib/libmpi.dylib -framework System /usr/local/lib/libgcc_ext.10.5.dylib /usr/lib/libdl.dylib /usr/local/lib/libgcc_s.1.dylib 
+
+Return value: 1
+Source file was:
+
+static const char help[] = "PETSc test program.";
+#include <petscts.h>
+int main(int argc,char *argv[]) {
+  PetscErrorCode ierr;
+  TS ts;
+
+  ierr = PetscInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  ierr = TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
+  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+  ierr = TSDestroy(&ts);CHKERRQ(ierr);
+  ierr = PetscFinalize();CHKERRQ(ierr);
+  return 0;
+}
+
+Performing C SOURCE FILE Test MULTIPASS_TEST_3_petsc_works_alllibraries succeeded with the following output:
+Change Dir: /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/local/bin/gmake" "cmTC_98d1b/fast"
+/usr/local/bin/gmake -f CMakeFiles/cmTC_98d1b.dir/build.make CMakeFiles/cmTC_98d1b.dir/build
+gmake[1]: Entering directory '/Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_98d1b.dir/src.c.o
+/Library/Developer/CommandLineTools/usr/bin/cc  -I/usr/local/petsc-3.3-p2/include  -DMULTIPASS_TEST_3_petsc_works_alllibraries   -o CMakeFiles/cmTC_98d1b.dir/src.c.o   -c /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_98d1b
+/Applications/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_98d1b.dir/link.txt --verbose=1
+/Library/Developer/CommandLineTools/usr/bin/cc  -DMULTIPASS_TEST_3_petsc_works_alllibraries -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -lgfortran -lm   CMakeFiles/cmTC_98d1b.dir/src.c.o  -o cmTC_98d1b /usr/local/petsc-3.3-p2/lib/libpetsc.dylib /usr/local/lib/liblapack.dylib /usr/local/lib/libblas.dylib /usr/local/lib/libmpi_usempif08.dylib /usr/local/lib/libmpi_usempi_ignore_tkr.a /usr/local/lib/libmpi_mpifh.dylib /usr/local/lib/libmpi.dylib /usr/local/lib/libgfortran.dylib /usr/local/lib/libgcc_ext.10.5.dylib /usr/local/lib/libquadmath.dylib /usr/lib/libm.dylib /usr/lib/libc++.dylib -framework System /Library/Developer/CommandLineTools/usr/lib/clang/9.0.0/lib/darwin/libclang_rt.osx.a /usr/lib/libdl.dylib 
+gmake[1]: Leaving directory '/Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp'
+
+Return value: 1
+Source file was:
+
+static const char help[] = "PETSc test program.";
+#include <petscts.h>
+int main(int argc,char *argv[]) {
+  PetscErrorCode ierr;
+  TS ts;
+
+  ierr = PetscInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  ierr = TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
+  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+  ierr = TSDestroy(&ts);CHKERRQ(ierr);
+  ierr = PetscFinalize();CHKERRQ(ierr);
+  return 0;
+}
+
+Performing C SOURCE FILE Test MULTIPASS_TEST_3_petsc_works_alllibraries succeeded with the following output:
+Change Dir: /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_f5527/fast"
+/Library/Developer/CommandLineTools/usr/bin/make -f CMakeFiles/cmTC_f5527.dir/build.make CMakeFiles/cmTC_f5527.dir/build
+Building C object CMakeFiles/cmTC_f5527.dir/src.c.o
+/Library/Developer/CommandLineTools/usr/bin/cc  -I/usr/local/petsc-3.8.3/include  -DMULTIPASS_TEST_3_petsc_works_alllibraries   -o CMakeFiles/cmTC_f5527.dir/src.c.o   -c /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_f5527
+/Applications/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f5527.dir/link.txt --verbose=1
+/Library/Developer/CommandLineTools/usr/bin/cc  -DMULTIPASS_TEST_3_petsc_works_alllibraries -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -lgfortran -lm   CMakeFiles/cmTC_f5527.dir/src.c.o  -o cmTC_f5527 /usr/local/petsc-3.8.3/lib/libpetsc.dylib /usr/lib/liblapack.dylib /usr/lib/libblas.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempif08.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempi_ignore_tkr.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_mpifh.dylib /usr/local/opt/gcc/lib/gcc/7/libgfortran.dylib /usr/local/opt/gcc/lib/gcc/7/libgcc_ext.10.5.dylib /usr/local/opt/gcc/lib/gcc/7/libquadmath.dylib /usr/lib/libm.dylib /usr/lib/libc++.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi.dylib -framework System /Library/Developer/CommandLineTools/usr/lib/clang/9.0.0/lib/darwin/libclang_rt.osx.a /usr/lib/libdl.dylib 
+
+Return value: 1
+Source file was:
+
+static const char help[] = "PETSc test program.";
+#include <petscts.h>
+int main(int argc,char *argv[]) {
+  PetscErrorCode ierr;
+  TS ts;
+
+  ierr = PetscInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  ierr = TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
+  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+  ierr = TSDestroy(&ts);CHKERRQ(ierr);
+  ierr = PetscFinalize();CHKERRQ(ierr);
+  return 0;
+}
+
+Performing C SOURCE FILE Test MULTIPASS_TEST_3_petsc_works_alllibraries succeeded with the following output:
+Change Dir: /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_2e904/fast"
+/Library/Developer/CommandLineTools/usr/bin/make -f CMakeFiles/cmTC_2e904.dir/build.make CMakeFiles/cmTC_2e904.dir/build
+Building C object CMakeFiles/cmTC_2e904.dir/src.c.o
+/Library/Developer/CommandLineTools/usr/bin/cc  -I/usr/local/petsc-3.8.3/include  -DMULTIPASS_TEST_3_petsc_works_alllibraries   -o CMakeFiles/cmTC_2e904.dir/src.c.o   -c /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_2e904
+/Applications/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_2e904.dir/link.txt --verbose=1
+/Library/Developer/CommandLineTools/usr/bin/cc  -DMULTIPASS_TEST_3_petsc_works_alllibraries -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -lgfortran -lm   CMakeFiles/cmTC_2e904.dir/src.c.o  -o cmTC_2e904 /usr/local/petsc-3.8.3/lib/libpetsc.dylib /usr/lib/liblapack.dylib /usr/lib/libblas.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempif08.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempi_ignore_tkr.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_mpifh.dylib /usr/local/opt/gcc/lib/gcc/7/libgfortran.dylib /usr/local/opt/gcc/lib/gcc/7/libgcc_ext.10.5.dylib /usr/local/opt/gcc/lib/gcc/7/libquadmath.dylib /usr/lib/libm.dylib /usr/lib/libc++.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi.dylib -framework System /Library/Developer/CommandLineTools/usr/lib/clang/9.0.0/lib/darwin/libclang_rt.osx.a /usr/lib/libdl.dylib 
+
+Return value: 1
+Source file was:
+
+static const char help[] = "PETSc test program.";
+#include <petscts.h>
+int main(int argc,char *argv[]) {
+  PetscErrorCode ierr;
+  TS ts;
+
+  ierr = PetscInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  ierr = TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
+  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+  ierr = TSDestroy(&ts);CHKERRQ(ierr);
+  ierr = PetscFinalize();CHKERRQ(ierr);
+  return 0;
+}
+
+Performing C SOURCE FILE Test MULTIPASS_TEST_3_petsc_works_alllibraries succeeded with the following output:
+Change Dir: /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_deaed/fast"
+/Library/Developer/CommandLineTools/usr/bin/make -f CMakeFiles/cmTC_deaed.dir/build.make CMakeFiles/cmTC_deaed.dir/build
+Building C object CMakeFiles/cmTC_deaed.dir/src.c.o
+/Library/Developer/CommandLineTools/usr/bin/cc  -I/usr/local/petsc-3.8.3/include  -DMULTIPASS_TEST_3_petsc_works_alllibraries   -o CMakeFiles/cmTC_deaed.dir/src.c.o   -c /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_deaed
+/Applications/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_deaed.dir/link.txt --verbose=1
+/Library/Developer/CommandLineTools/usr/bin/cc  -DMULTIPASS_TEST_3_petsc_works_alllibraries -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -lgfortran -lm   CMakeFiles/cmTC_deaed.dir/src.c.o  -o cmTC_deaed /usr/local/petsc-3.8.3/lib/libpetsc.dylib /usr/lib/liblapack.dylib /usr/lib/libblas.dylib /usr/local/petsc-3.8.3/lib/libparmetis.dylib /usr/local/petsc-3.8.3/lib/libmetis.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempif08.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempi_ignore_tkr.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_mpifh.dylib /usr/local/opt/gcc/lib/gcc/7/libgfortran.dylib /usr/local/opt/gcc/lib/gcc/7/libgcc_ext.10.5.dylib /usr/local/opt/gcc/lib/gcc/7/libquadmath.dylib /usr/lib/libm.dylib /usr/lib/libc++.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi.dylib -framework System /Library/Developer/CommandLineTools/usr/lib/clang/9.0.0/lib/darwin/libclang_rt.osx.a /usr/lib/libdl.dylib 
+
+Return value: 1
+Source file was:
+
+static const char help[] = "PETSc test program.";
+#include <petscts.h>
+int main(int argc,char *argv[]) {
+  PetscErrorCode ierr;
+  TS ts;
+
+  ierr = PetscInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  ierr = TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
+  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+  ierr = TSDestroy(&ts);CHKERRQ(ierr);
+  ierr = PetscFinalize();CHKERRQ(ierr);
+  return 0;
+}
+
+Performing C SOURCE FILE Test MULTIPASS_TEST_3_petsc_works_alllibraries succeeded with the following output:
+Change Dir: /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_c84e4/fast"
+/Library/Developer/CommandLineTools/usr/bin/make -f CMakeFiles/cmTC_c84e4.dir/build.make CMakeFiles/cmTC_c84e4.dir/build
+Building C object CMakeFiles/cmTC_c84e4.dir/src.c.o
+/Library/Developer/CommandLineTools/usr/bin/cc  -I/usr/local/petsc-3.8.3/include  -DMULTIPASS_TEST_3_petsc_works_alllibraries   -o CMakeFiles/cmTC_c84e4.dir/src.c.o   -c /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_c84e4
+/Applications/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c84e4.dir/link.txt --verbose=1
+/Library/Developer/CommandLineTools/usr/bin/cc  -DMULTIPASS_TEST_3_petsc_works_alllibraries -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -lgfortran -lm   CMakeFiles/cmTC_c84e4.dir/src.c.o  -o cmTC_c84e4 /usr/local/petsc-3.8.3/lib/libpetsc.dylib /usr/lib/liblapack.dylib /usr/lib/libblas.dylib /usr/local/lib/libparmetis.dylib /usr/local/lib/libmetis.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempif08.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempi_ignore_tkr.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_mpifh.dylib /usr/local/opt/gcc/lib/gcc/7/libgfortran.dylib /usr/local/opt/gcc/lib/gcc/7/libgcc_ext.10.5.dylib /usr/local/opt/gcc/lib/gcc/7/libquadmath.dylib /usr/lib/libm.dylib /usr/lib/libc++.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi.dylib -framework System /Library/Developer/CommandLineTools/usr/lib/clang/9.0.0/lib/darwin/libclang_rt.osx.a /usr/lib/libdl.dylib 
+
+Return value: 1
+Source file was:
+
+static const char help[] = "PETSc test program.";
+#include <petscts.h>
+int main(int argc,char *argv[]) {
+  PetscErrorCode ierr;
+  TS ts;
+
+  ierr = PetscInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  ierr = TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
+  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+  ierr = TSDestroy(&ts);CHKERRQ(ierr);
+  ierr = PetscFinalize();CHKERRQ(ierr);
+  return 0;
+}
+
+Performing C SOURCE FILE Test MULTIPASS_TEST_3_petsc_works_alllibraries succeeded with the following output:
+Change Dir: /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_39160/fast"
+/Library/Developer/CommandLineTools/usr/bin/make -f CMakeFiles/cmTC_39160.dir/build.make CMakeFiles/cmTC_39160.dir/build
+Building C object CMakeFiles/cmTC_39160.dir/src.c.o
+/Library/Developer/CommandLineTools/usr/bin/cc  -I/usr/local/petsc-3.8.3/include  -DMULTIPASS_TEST_3_petsc_works_alllibraries   -o CMakeFiles/cmTC_39160.dir/src.c.o   -c /Users/huyvo/Codes/C++/PETScFSP/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_39160
+/Applications/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_39160.dir/link.txt --verbose=1
+/Library/Developer/CommandLineTools/usr/bin/cc  -DMULTIPASS_TEST_3_petsc_works_alllibraries -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -lgfortran -lm   CMakeFiles/cmTC_39160.dir/src.c.o  -o cmTC_39160 /usr/local/petsc-3.8.3/lib/libpetsc.dylib /usr/lib/liblapack.dylib /usr/lib/libblas.dylib /usr/local/lib/libparmetis.dylib /usr/local/lib/libmetis.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempif08.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_usempi_ignore_tkr.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi_mpifh.dylib /usr/local/opt/gcc/lib/gcc/7/libgfortran.dylib /usr/local/opt/gcc/lib/gcc/7/libgcc_ext.10.5.dylib /usr/local/opt/gcc/lib/gcc/7/libquadmath.dylib /usr/lib/libm.dylib /usr/lib/libc++.dylib /usr/local/Cellar/open-mpi/3.0.0_2/lib/libmpi.dylib -framework System /Library/Developer/CommandLineTools/usr/lib/clang/9.0.0/lib/darwin/libclang_rt.osx.a /usr/lib/libdl.dylib 
+
+Return value: 1
+Source file was:
+
+static const char help[] = "PETSc test program.";
+#include <petscts.h>
+int main(int argc,char *argv[]) {
+  PetscErrorCode ierr;
+  TS ts;
+
+  ierr = PetscInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  ierr = TSCreate(PETSC_COMM_WORLD,&ts);CHKERRQ(ierr);
+  ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+  ierr = TSDestroy(&ts);CHKERRQ(ierr);
+  ierr = PetscFinalize();CHKERRQ(ierr);
+  return 0;
+}
+
