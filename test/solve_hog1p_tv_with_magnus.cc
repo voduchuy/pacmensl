@@ -21,7 +21,6 @@ void petscvec_to_file(MPI_Comm comm, Vec x, const char* filename);
 void petscmat_to_file(MPI_Comm comm, Mat A, const char* filename);
 
 typedef struct {
-  PetscInt m = 30;
   cme::petsc::HyperRecOp* A = nullptr;
 } Appctx;
 
@@ -68,79 +67,42 @@ int main(int argc, char *argv[]) {
         VecAssemblyEnd(P0);
 
         VecDuplicate(P0, &P); VecCopy(P0, P);
-        VecDuplicate(P0, &P_rk); VecCopy(P0, P_rk);
 
         auto tmatvec = [&A] (PetscReal t, Vec x, Vec y) {
                                A(t).action(x, y);
                        };
-        cme::petsc::Magnus4 my_magnus(comm, t_final, tmatvec, P, 1.0e-8, 30, true, 2, 1.0e-8);
-        // my_magnus.tol = 1.0e-8;
-
-        // tic = MPI_Wtime();
-        // my_magnus.solve();
-        // solver_time = MPI_Wtime() - tic;
-
-        /* Create and set the time-stepping object */
-        Appctx appctx;
-        appctx.A = &A;
-
-        Mat A1;
-        MatCreate(comm, &A1);
-        A.duplicate_structure(A1);
-
-        TS ts;
-        ierr = TSCreate(comm, &ts); CHKERRQ(ierr);
-        ierr = TSSetSolution(ts, P_rk); CHKERRQ(ierr);
-        //ierr = TSSetType(ts, TSRK); CHKERRQ(ierr);
-        ierr = TSSetTime(ts, 0.0); CHKERRQ(ierr);
-        ierr = TSSetMaxSteps(ts, 10000); CHKERRQ(ierr);
-        ierr = TSSetMaxTime(ts, t_final); CHKERRQ(ierr);
-        ierr = TSSetExactFinalTime(ts, TS_EXACTFINALTIME_MATCHSTEP); CHKERRQ(ierr);
-        TSAdapt tsadapt;
-        ierr = TSGetAdapt(ts, &tsadapt);
-        TSAdaptSetType(tsadapt, TSADAPTBASIC);
-        TSSetTolerances(ts, 1.0e-5, NULL, 1.0e-2, NULL);
-        TSSetFromOptions(ts);
-        /* Set the linear ODE problem */
-        ierr = TSSetProblemType(ts, TS_LINEAR);
-        TSSetRHSFunction(ts, NULL, TSComputeRHSFunctionLinear, &appctx);
-        TSSetRHSJacobian(ts, A1, A1, &my_jacobian, &appctx);
+        cme::petsc::Magnus4 my_magnus(comm, t_final, tmatvec, P, 1.0e-8, 10, true, 2, 1.0e-8);
+        my_magnus.tol = 1.0e-8;
 
         tic = MPI_Wtime();
-        ierr = TSSolve(ts, P_rk);
-        tic = MPI_Wtime() - tic;
-        std::cout << "Solver time " << tic << std::endl;
-        //
-        // petscvec_to_file(comm, P, "hog1p_tv.out");
-        // petscvec_to_file(comm, P_rk, "hog1p_tv_rk.out");
+        my_magnus.solve();
+        solver_time = MPI_Wtime() - tic;
 
         /* Compute the marginal distributions */
         std::vector<arma::Col<PetscReal>> marginals(FSPSize.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i )
         {
-          marginals[i] = cme::petsc::marginal(P_rk, FSPSize, i);
+          marginals[i] = cme::petsc::marginal(P, FSPSize, i);
         }
 
         MPI_Comm_rank(comm, &myRank);
         if (myRank == 0)
         {
-          // {
-          //   std::string filename = model_name + "_time_" + std::to_string(num_procs) + ".dat";
-          //   std::ofstream file;
-          //   file.open(filename);
-          //   file << solver_time;
-          //   file.close();
-          // }
+          {
+            std::string filename = model_name + "_time_magnus_" + std::to_string(num_procs) + ".dat";
+            std::ofstream file;
+            file.open(filename);
+            file << solver_time;
+            file.close();
+          }
           for (PetscInt i{0}; i < marginals.size(); ++i )
           {
-            std::string filename = model_name + "_marginal_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
+            std::string filename = model_name + "_marginal_magnus_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
             marginals[i].save(filename, arma::raw_ascii);
           }
         }
 
-        MatDestroy(&A1);
         my_magnus.destroy();
-        ierr = VecDestroy(&P_rk); CHKERRQ(ierr);
         ierr = VecDestroy(&P); CHKERRQ(ierr);
         ierr = VecDestroy(&P0); CHKERRQ(ierr);
         A.destroy();

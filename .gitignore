@@ -1,0 +1,11 @@
+*.DS_Store
+.DS_Store
+*.gch
+*.info
+*.in
+*.out
+*.mat
+*.d
+*.o
+*.a
+*.dat

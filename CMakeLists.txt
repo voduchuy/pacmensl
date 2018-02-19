@@ -14,7 +14,7 @@ set(CMAKE_EXE_LINKER_FLAGS " -lgfortran -lm ")
 
 
 # Set the directory to put our compiled files
-set(CMAKE_BINARY_DIR $ENV{MYDIR}/C++/PETScFSP)
+set(CMAKE_BINARY_DIR $ENV{MYDIR}/PETScFSP)
 
 # Where to put .a files (archive for static libraries)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -26,7 +26,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Where to find CMakelists.txt
-set(CMAKE_SOURCE_DIR $ENV{MYDIR}/C++/PETScFSP)
+#set(CMAKE_SOURCE_DIR $ENV{MYDIR}/C++/PETScFSP)
 
 # Set the folders to include
 include_directories(${CMAKE_SOURCE_DIR}/src)
@@ -38,7 +38,7 @@ INCLUDE_DIRECTORIES(${PETSC_INCLUDES})
 ADD_DEFINITIONS(${PETSC_DEFINITIONS})
 
 set(MY_LIBRARIES fsp_matrix HyperRecOp KExpv Magnus4 cme_util)
-set(TEST_PROGRAMS form_toggle_matrix solve_toggle form_partition_toggle_matrix form_toggle_operator solve_toggle_tv solve_hog1p_tv)
+set(TEST_PROGRAMS diagonal_matvec form_toggle_matrix solve_toggle form_partition_toggle_matrix form_partition_hog1p_matrix form_toggle_operator solve_toggle_tv solve_hog1p_tv_with_ts solve_hog1p_tv_with_magnus)
 
 foreach ( LIB ${MY_LIBRARIES} )
   add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cc ${CMAKE_SOURCE_DIR}/include/${LIB}.hpp )
