@@ -132,7 +132,7 @@ void KExpv::step()
         s = pow( 10.0, floor(log10(t_new) ) - 1.0);
         t_new = ceil( t_new/s )*s;
 
-        //PetscPrintf(comm, "t_now = %2.2f \n", t_now);
+        PetscPrintf(comm, "t_now = %2.2e \n", t_now);
 
         i_step++;
 

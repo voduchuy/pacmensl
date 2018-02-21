@@ -8,7 +8,7 @@ static char help[] = "Solve the 5-species spatial hog1p model with time-varying 
 #include <cmath>
 #include "HyperRecOp.hpp"
 #include "Magnus4.hpp"
-#include "hog1p_tv_model.hpp"
+#include "hog1p_tv_damped_model.hpp"
 
 using arma::dvec;
 using arma::Col;
@@ -35,13 +35,13 @@ int main(int argc, char *argv[]) {
         int ierr, myRank, num_procs;
         double solver_time;
 
-        std::string model_name = "hog1p";
+        std::string model_name = "hog1p_damped";
 
         using namespace hog1p_cme;
 
         /* CME problem sizes */
-        Row<PetscInt> FSPSize({ 3, 10, 10, 5, 5}); // Size of the FSP
-        PetscReal t_final = 1;
+        Row<PetscInt> FSPSize({ 3, 20, 20, 20, 20}); // Size of the FSP
+        PetscReal t_final = 120;
         double tic;
 
         ierr = PetscInitialize(&argc,&argv,(char*)0,help); CHKERRQ(ierr);
@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
         Vec P0, P, P_rk;
         VecCreate(comm, &P0);
         VecCreate(comm, &P);
+        VecCreate(comm, &P_rk);
 
         VecSetSizes(P0, PETSC_DECIDE, arma::prod(FSPSize+1));
         VecSetType(P0, VECMPI);
@@ -67,33 +68,15 @@ int main(int argc, char *argv[]) {
 
         VecDuplicate(P0, &P); VecCopy(P0, P);
 
-        /* Create and set the time-stepping object */
-        Appctx appctx;
-        appctx.A = &A;
-
-        Mat A1;
-        MatCreate(comm, &A1);
-        A.duplicate_structure(A1);
-
-        TS ts;
-        ierr = TSCreate(comm, &ts); CHKERRQ(ierr);
-        ierr = TSSetFromOptions(ts); CHKERRQ(ierr);
-        ierr = TSSetSolution(ts, P); CHKERRQ(ierr);
-        ierr = TSSetTimeStep(ts, 1.0e-6); CHKERRQ(ierr);
-        ierr = TSSetTime(ts, 0.0); CHKERRQ(ierr);
-        ierr = TSSetMaxSteps(ts, 10000); CHKERRQ(ierr);
-        ierr = TSSetMaxTime(ts, t_final); CHKERRQ(ierr);
-        ierr = TSSetExactFinalTime(ts, TS_EXACTFINALTIME_INTERPOLATE); CHKERRQ(ierr);
-
-        /* Set the linear ODE problem */
-        ierr = TSSetProblemType(ts, TS_LINEAR);
-        TSSetRHSFunction(ts, NULL, TSComputeRHSFunctionLinear, &appctx);
-        TSSetRHSJacobian(ts, A1, A1, &my_jacobian, &appctx);
+        auto tmatvec = [&A] (PetscReal t, Vec x, Vec y) {
+                               A(t).action(x, y);
+                       };
+        cme::petsc::Magnus4 my_magnus(comm, t_final, tmatvec, P, 1.0e-8, 30, false, 2, 1.0e-8);
+        my_magnus.tol = 1.0e-8;
 
         tic = MPI_Wtime();
-        ierr = TSSolve(ts, P);
+        my_magnus.solve();
         solver_time = MPI_Wtime() - tic;
-        PetscPrintf(comm, "Solver time %4.2f \n", solver_time);
 
         /* Compute the marginal distributions */
         std::vector<arma::Col<PetscReal>> marginals(FSPSize.n_elem);
@@ -106,7 +89,7 @@ int main(int argc, char *argv[]) {
         if (myRank == 0)
         {
           {
-            std::string filename = model_name + "_time_" + std::to_string(num_procs) + ".dat";
+            std::string filename = model_name + "_time_magnus_" + std::to_string(num_procs) + ".dat";
             std::ofstream file;
             file.open(filename);
             file << solver_time;
@@ -114,12 +97,12 @@ int main(int argc, char *argv[]) {
           }
           for (PetscInt i{0}; i < marginals.size(); ++i )
           {
-            std::string filename = model_name + "_marginal_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
+            std::string filename = model_name + "_marginal_magnus_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
             marginals[i].save(filename, arma::raw_ascii);
           }
         }
 
-        MatDestroy(&A1);
+        my_magnus.destroy();
         ierr = VecDestroy(&P); CHKERRQ(ierr);
         ierr = VecDestroy(&P0); CHKERRQ(ierr);
         A.destroy();

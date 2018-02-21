@@ -30,7 +30,7 @@ void Magnus4::magnus_mv(Vec x, Vec y, Magnus4* magnus_ts)
 
 void Magnus4::step()
 {
-        if ( i_step == 0 ) t_step = 1.0;
+        if ( i_step == 0 ) t_step = 1.0e-4;
 
         Real local_error;
         do {
@@ -67,13 +67,16 @@ void Magnus4::step()
                 local_error = (t_step)*(t_step)*(t_step)*(t_step)*xtmp/720.0;
 
                 if (local_error >= 1.2e0*t_step*tol) {
-                        t_step = 0.9e0*pow( t_step*tol/local_error, 0.25e0)*t_step;
+                        PetscReal t_step_old = t_step;
+                        t_step = pow( 0.9e0*t_step*tol/local_error, 0.25e0)*t_step;
+                        t_step = std::min(5*t_step_old, std::max(t_step, 0.5*t_step_old));
                 }
 
         } while (local_error >= 1.2e0*t_step*tol);
 
         t_step = std::min(t_step, t_final - t_now);
 
+        PetscPrintf(comm, "%d t = %2.4e dt = %2.4e \n", i_step, t_now, t_step);
         /* Advance to the next step with matrix exponential */
         expv.reset_time(t_step);
         expv.solve();
@@ -81,6 +84,7 @@ void Magnus4::step()
         /* Update time */
         t_now += t_step;
         i_step++;
+
 
         /* Compute the stepsize */
         // First vector
@@ -114,9 +118,9 @@ void Magnus4::step()
 
         local_error = (t_step)*(t_step)*(t_step)*(t_step)*xtmp/720.0;
 
-        t_step = 0.9e0*pow( t_step*tol/local_error, 0.25e0)*t_step;
-
-        PetscPrintf(comm, "%d t = %2.4e dt = %2.4e \n", i_step, t_now, t_step);
+        {PetscReal t_step_old = t_step;
+        t_step = pow( 0.9e0*t_step*tol/local_error, 0.25e0)*t_step;
+        t_step = std::min(5*t_step_old, std::max(t_step, 0.5*t_step_old));}
 }
 
 void Magnus4::solve()
