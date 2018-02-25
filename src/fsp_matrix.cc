@@ -58,7 +58,6 @@ void FSPMatSetValues(MPI_Comm comm, Mat &A, arma::Row<PetscInt> &FSPSize, arma::
                         }
                 }
 
-                // cout << " Process " << myRank << " done enter values for reaction " << ir << endl;
         }
 
         MatAssemblyBegin( A, MAT_FINAL_ASSEMBLY );

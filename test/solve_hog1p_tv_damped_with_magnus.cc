@@ -21,7 +21,7 @@ void petscvec_to_file(MPI_Comm comm, Vec x, const char* filename);
 void petscmat_to_file(MPI_Comm comm, Mat A, const char* filename);
 
 typedef struct {
-  cme::petsc::HyperRecOp* A = nullptr;
+        cme::petsc::HyperRecOp* A = nullptr;
 } Appctx;
 
 PetscErrorCode my_jacobian(TS ts, PetscReal t, Vec u, Mat A1, Mat B1, void *appctx) {
@@ -40,10 +40,15 @@ int main(int argc, char *argv[]) {
         using namespace hog1p_cme;
 
         /* CME problem sizes */
-        Row<PetscInt> FSPSize({ 3, 20, 20, 20, 20}); // Size of the FSP
+#ifdef TEST_LARGE_PROBLEM
+        Row<PetscInt> FSPSize({ 3, 40, 40, 60, 60}); // Size of the FSP
         PetscReal t_final = 120;
-        double tic;
+#else
+        Row<PetscInt> FSPSize({ 3, 20, 20, 10, 10}); // Size of the FSP
+        PetscReal t_final = 30;
+#endif
 
+        double tic;
         ierr = PetscInitialize(&argc,&argv,(char*)0,help); CHKERRQ(ierr);
 
         MPI_Comm comm{PETSC_COMM_WORLD};
@@ -79,27 +84,27 @@ int main(int argc, char *argv[]) {
         solver_time = MPI_Wtime() - tic;
 
         /* Compute the marginal distributions */
-        std::vector<arma::Col<PetscReal>> marginals(FSPSize.n_elem);
+        std::vector<arma::Col<PetscReal> > marginals(FSPSize.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i )
         {
-          marginals[i] = cme::petsc::marginal(P, FSPSize, i);
+                marginals[i] = cme::petsc::marginal(P, FSPSize, i);
         }
 
         MPI_Comm_rank(comm, &myRank);
         if (myRank == 0)
         {
-          {
-            std::string filename = model_name + "_time_magnus_" + std::to_string(num_procs) + ".dat";
-            std::ofstream file;
-            file.open(filename);
-            file << solver_time;
-            file.close();
-          }
-          for (PetscInt i{0}; i < marginals.size(); ++i )
-          {
-            std::string filename = model_name + "_marginal_magnus_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
-            marginals[i].save(filename, arma::raw_ascii);
-          }
+                {
+                        std::string filename = model_name + "_time_magnus_" + std::to_string(num_procs) + ".dat";
+                        std::ofstream file;
+                        file.open(filename);
+                        file << solver_time;
+                        file.close();
+                }
+                for (PetscInt i{0}; i < marginals.size(); ++i )
+                {
+                        std::string filename = model_name + "_marginal_magnus_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
+                        marginals[i].save(filename, arma::raw_ascii);
+                }
         }
 
         my_magnus.destroy();

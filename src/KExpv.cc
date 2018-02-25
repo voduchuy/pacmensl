@@ -132,8 +132,9 @@ void KExpv::step()
         s = pow( 10.0, floor(log10(t_new) ) - 1.0);
         t_new = ceil( t_new/s )*s;
 
+#ifdef KEXPV_VERBOSE
         PetscPrintf(comm, "t_now = %2.2e \n", t_now);
-
+#endif
         i_step++;
 
 }

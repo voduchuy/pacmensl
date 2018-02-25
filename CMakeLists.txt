@@ -8,7 +8,7 @@ set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_Fortran_COMPILER mpif90)
 set(CMAKE_Fortran_FLAGS " -m64 -O3")
 set(CMAKE_CXX_COMPILER mpicxx )
-set(CMAKE_CXX_FLAGS " -std=c++11 -O3 -DNDEBUG -g")
+set(CMAKE_CXX_FLAGS " -std=c++11 -O3 -DNDEBUG -DMAGNUS4_VERBOSE -DTEST_LARGE_PROBLEM -DHYPER_REC_OP_VERBOSE")
 set(CMAKE_EXE_LINKER_FLAGS " -lgfortran -lm ")
 
 

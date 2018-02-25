@@ -19,14 +19,42 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
 
         terms.resize(n_reactions+1);
 
+        MatType mat_type;
+        Int comm_size;
+        MPI_Comm_size(comm, &comm_size);
+        if (comm_size == 1)
+        {
+          mat_type = MATSEQAIJ;
+        }
+        else
+        {
+          mat_type = MATMPIAIJ;
+        }
+
         VecCreate(comm, &work);
+        VecSetFromOptions(work);
         VecSetSizes(work, PETSC_DECIDE, n_rows_global);
-        VecSetType(work, VECMPI);
         VecSetUp(work);
 
         MatCreate(comm, &terms[n_reactions]);
-        MatSetSizes(terms[n_reactions], PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global);
-        MatSetType(terms[n_reactions], MATMPIAIJ);
+        //MatSetSizes(terms[n_reactions], PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global);
+        //MatSetFromOptions(terms[n_reactions]);
+        /* Preallocate memory for matrix */
+        if ( strcmp(mat_type, MATSEQAIJ) == 0)
+        {
+#ifdef HYPER_REC_OP_VERBOSE
+          PetscPrintf(comm, "Allocating memory for SEQAIJ.\n");
+#endif
+          MatCreateSeqAIJ(comm, n_rows_global, n_rows_global, n_reactions+1, NULL, &terms[n_reactions]);
+        }
+        else if (strcmp(mat_type, MATMPIAIJ) == 0)
+        {
+#ifdef HYPER_REC_OP_VERBOSE
+          PetscPrintf(comm, "Allocating memory for MPIAIJ.\n");
+#endif
+          MatCreateAIJ(comm, PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global, n_reactions+1, NULL, n_reactions+1, NULL, &terms[n_reactions]);
+        }
+
         MatSetUp(terms[n_reactions]);
         // Get the indices of rows the current process owns, which will range from Istart to Iend-1
         PetscInt Istart, Iend;
@@ -49,8 +77,23 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
         for ( Int ir{0}; ir < n_reactions; ++ir )
         {
                 ierr = MatCreate(comm, &terms[ir]); CHKERRABORT(comm, ierr);
-                ierr = MatSetSizes(terms[ir], PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global); CHKERRABORT(comm, ierr);
-                ierr = MatSetType(terms[ir], MATMPIAIJ); CHKERRABORT(comm, ierr);
+                //ierr = MatSetSizes(terms[ir], PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global); CHKERRABORT(comm, ierr);
+                //ierr = MatSetFromOptions(terms[ir]); CHKERRABORT(comm, ierr);
+                /* Preallocate memory for matrix */
+                if ( strcmp(mat_type, MATSEQAIJ) == 0)
+                {
+#ifdef HYPER_REC_OP_VERBOSE
+                  PetscPrintf(comm, "Allocating memory for SEQAIJ.\n");
+#endif
+                  MatCreateSeqAIJ(comm, n_rows_global, n_rows_global, 2, NULL, &terms[ir]);
+                }
+                else if (strcmp(mat_type, MATMPIAIJ) == 0)
+                {
+#ifdef HYPER_REC_OP_VERBOSE
+                  PetscPrintf(comm, "Allocating memory for MPIAIJ.\n");
+#endif                  
+                  MatCreateAIJ(comm, PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global, 2, NULL, 2, NULL, &terms[ir]);
+                }
                 ierr = MatSetUp(terms[ir]); CHKERRABORT(comm, ierr);
 
                 /* Set values for diagonal entries */

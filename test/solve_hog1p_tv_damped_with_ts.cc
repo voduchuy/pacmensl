@@ -21,7 +21,7 @@ void petscvec_to_file(MPI_Comm comm, Vec x, const char* filename);
 void petscmat_to_file(MPI_Comm comm, Mat A, const char* filename);
 
 typedef struct {
-  cme::petsc::HyperRecOp* A = nullptr;
+        cme::petsc::HyperRecOp* A = nullptr;
 } Appctx;
 
 PetscErrorCode my_jacobian(TS ts, PetscReal t, Vec u, Mat A1, Mat B1, void *appctx) {
@@ -40,8 +40,14 @@ int main(int argc, char *argv[]) {
         using namespace hog1p_cme;
 
         /* CME problem sizes */
-        Row<PetscInt> FSPSize({ 3, 20, 20, 20, 20}); // Size of the FSP
+#ifdef TEST_LARGE_PROBLEM
+        Row<PetscInt> FSPSize({ 3, 40, 40, 60, 60});         // Size of the FSP
         PetscReal t_final = 120;
+#else
+        Row<PetscInt> FSPSize({ 3, 20, 20, 10, 10});         // Size of the FSP
+        PetscReal t_final = 30;
+#endif
+
         double tic;
 
         ierr = PetscInitialize(&argc,&argv,(char*)0,help); CHKERRQ(ierr);
@@ -53,7 +59,7 @@ int main(int argc, char *argv[]) {
         cme::petsc::HyperRecOp A( comm, FSPSize, SM, propensity, t_fun);
 
         /* Test the action of the operator */
-        Vec P0, P, P_rk;
+        Vec P0, P;
         VecCreate(comm, &P0);
         VecCreate(comm, &P);
 
@@ -96,10 +102,10 @@ int main(int argc, char *argv[]) {
         PetscPrintf(comm, "Solver time %4.2f \n", solver_time);
 
         /* Compute the marginal distributions */
-        std::vector<arma::Col<PetscReal>> marginals(FSPSize.n_elem);
+        std::vector<arma::Col<PetscReal> > marginals(FSPSize.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i )
         {
-          marginals[i] = cme::petsc::marginal(P, FSPSize, i);
+                marginals[i] = cme::petsc::marginal(P, FSPSize, i);
         }
 
         TSType time_scheme;
@@ -108,18 +114,18 @@ int main(int argc, char *argv[]) {
         MPI_Comm_rank(comm, &myRank);
         if (myRank == 0)
         {
-          {
-            std::string filename = model_name + "_" + std::string(time_scheme) + "_time_" + std::to_string(num_procs) + ".dat";
-            std::ofstream file;
-            file.open(filename);
-            file << solver_time;
-            file.close();
-          }
-          for (PetscInt i{0}; i < marginals.size(); ++i )
-          {
-            std::string filename = model_name + "_" + std::string(time_scheme) + "_marginal_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
-            marginals[i].save(filename, arma::raw_ascii);
-          }
+                {
+                        std::string filename = model_name + "_" + std::string(time_scheme) + "_time_" + std::to_string(num_procs) + ".dat";
+                        std::ofstream file;
+                        file.open(filename);
+                        file << solver_time;
+                        file.close();
+                }
+                for (PetscInt i{0}; i < marginals.size(); ++i )
+                {
+                        std::string filename = model_name + "_" + std::string(time_scheme) + "_marginal_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
+                        marginals[i].save(filename, arma::raw_ascii);
+                }
         }
 
         MatDestroy(&A1);

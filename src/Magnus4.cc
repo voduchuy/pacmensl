@@ -76,7 +76,9 @@ void Magnus4::step()
 
         t_step = std::min(t_step, t_final - t_now);
 
+#ifdef MAGNUS4_VERBOSE
         PetscPrintf(comm, "%d t = %2.4e dt = %2.4e \n", i_step, t_now, t_step);
+#endif
         /* Advance to the next step with matrix exponential */
         expv.reset_time(t_step);
         expv.solve();
@@ -119,8 +121,8 @@ void Magnus4::step()
         local_error = (t_step)*(t_step)*(t_step)*(t_step)*xtmp/720.0;
 
         {PetscReal t_step_old = t_step;
-        t_step = pow( 0.9e0*t_step*tol/local_error, 0.25e0)*t_step;
-        t_step = std::min(5*t_step_old, std::max(t_step, 0.5*t_step_old));}
+         t_step = pow( 0.9e0*t_step*tol/local_error, 0.25e0)*t_step;
+         t_step = std::min(5*t_step_old, std::max(t_step, 0.5*t_step_old));}
 }
 
 void Magnus4::solve()

@@ -67,8 +67,11 @@ int main(int argc, char *argv[]) {
 
         auto tmatvec = [&A] (PetscReal t, Vec x, Vec y) {A(t).action(x, y); };
         cme::petsc::Magnus4 my_magnus(comm, t_final, tmatvec, P);
-        my_magnus.solve();
 
+        double t1 = MPI_Wtime();
+        my_magnus.solve();
+        double t2 = MPI_Wtime() - t1;
+        PetscPrintf(comm, "Solver time %2.4f \n", t2);
 
         petscvec_to_file(comm, P, "toggle_tv.out");
 
