@@ -6,6 +6,7 @@ static char help[] = "Formation of the two-species toggle-switch matrix.\n\n";
 #include <armadillo>
 #include <cmath>
 #include "HyperRecOp.hpp"
+#include "HyperRecOpDD.hpp"
 #include "Magnus4.hpp"
 
 using arma::dvec;
@@ -47,10 +48,12 @@ int main(int argc, char *argv[]) {
         ierr = PetscInitialize(&argc,&argv,(char*)0,help); CHKERRQ(ierr);
 
         MPI_Comm comm{PETSC_COMM_WORLD};
+        int comm_size;
+        MPI_Comm_size(comm, &comm_size);
 
-        cme::petsc::HyperRecOp A( comm, FSPSize, SM, propensity, t_fun);
 
         /* Test the action of the operator */
+        cme::petsc::HyperRecOp A( comm, FSPSize, SM, propensity, t_fun);
         Vec P0, P;
         VecCreate(comm, &P0);
         VecCreate(comm, &P);
@@ -73,12 +76,51 @@ int main(int argc, char *argv[]) {
         double t2 = MPI_Wtime() - t1;
         PetscPrintf(comm, "Solver time %2.4f \n", t2);
 
-        petscvec_to_file(comm, P, "toggle_tv.out");
+        // petscvec_to_file(comm, P, "toggle_tv.out");
 
         my_magnus.destroy();
+        A.destroy();
         ierr = VecDestroy(&P); CHKERRQ(ierr);
         ierr = VecDestroy(&P0); CHKERRQ(ierr);
-        A.destroy();
+
+        /* Now do the same thing with domain-decomp ordering */
+        arma::Row<PetscInt> processor_grid(2);
+        MPI_Dims_create(comm_size, 2, processor_grid.memptr());
+
+        std::vector<arma::Row<PetscInt>> sub_domain_dims(2);
+        for (size_t i{0}; i < 2; ++i)
+        {
+          sub_domain_dims[i] = cme::distribute_tasks(FSPSize(i)+1, processor_grid(i));
+        }
+
+        cme::petsc::HyperRecOpDD A_dd(comm, FSPSize, processor_grid, sub_domain_dims, SM, propensity, t_fun);
+
+        VecCreate(comm, &P0);
+        VecCreate(comm, &P);
+        VecSetSizes(P0, A_dd.n_rows_here, A_dd.n_rows_global);
+        VecSetFromOptions(P0);
+
+        PetscInt i0 {0};
+        AOApplicationToPetsc(A_dd.ao, 1, &i0);
+
+        VecSetValue(P0, i0, 1.0, INSERT_VALUES);
+        VecAssemblyBegin(P0);
+        VecAssemblyEnd(P0);
+        VecDuplicate(P0, &P);
+        VecCopy(P0, P);
+
+        auto tmatvec2 = [&A_dd] (PetscReal t, Vec x, Vec y) {A_dd(t).action(x, y); };
+        cme::petsc::Magnus4 my_magnus2(comm, t_final, tmatvec2, P);
+
+        t1 = MPI_Wtime();
+        my_magnus2.solve();
+        t2 = MPI_Wtime() - t1;
+        PetscPrintf(comm, "Solver time %2.4f \n", t2);
+
+        my_magnus2.destroy();
+        A_dd.destroy();
+        ierr = VecDestroy(&P); CHKERRQ(ierr);
+        ierr = VecDestroy(&P0); CHKERRQ(ierr);
         ierr = PetscFinalize();
         return ierr;
 }

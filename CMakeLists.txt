@@ -8,8 +8,8 @@ set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_Fortran_COMPILER mpif90)
 set(CMAKE_Fortran_FLAGS " -m64 -O3")
 set(CMAKE_CXX_COMPILER mpicxx )
-set(CMAKE_CXX_FLAGS " -std=c++11 -O3 -DNDEBUG -DMAGNUS4_VERBOSE -DTEST_LARGE_PROBLEM -DHYPER_REC_OP_VERBOSE")
-set(CMAKE_EXE_LINKER_FLAGS " -lgfortran -lm ")
+set(CMAKE_CXX_FLAGS " -std=c++11 -O3 -DNDEBUG -DMAGNUS4_VERBOSE  -DHYPER_REC_OP_VERBOSE -g")
+set(CMAKE_EXE_LINKER_FLAGS " -lgfortran -lm -g")
 
 
 
@@ -37,8 +37,12 @@ FIND_PACKAGE(PETSc)
 INCLUDE_DIRECTORIES(${PETSC_INCLUDES})
 ADD_DEFINITIONS(${PETSC_DEFINITIONS})
 
-set(MY_LIBRARIES fsp_matrix HyperRecOp KExpv Magnus4 cme_util)
-set(TEST_PROGRAMS diagonal_matvec form_toggle_matrix solve_toggle form_partition_toggle_matrix form_partition_hog1p_matrix form_toggle_operator solve_toggle_tv solve_hog1p_tv_with_ts solve_hog1p_tv_with_magnus
+set(MY_LIBRARIES HyperRecOp KExpv Magnus4 cme_util HyperRecOpDD)
+
+set(TEST_PROGRAMS
+  #diagonal_matvec form_toggle_matrix solve_toggle form_partition_toggle_matrix
+   #form_partition_hog1p_matrix form_toggle_operator
+   solve_toggle_tv #solve_hog1p_tv_with_ts solve_hog1p_tv_with_magnus
 solve_hog1p_tv_damped_with_magnus solve_hog1p_tv_damped_with_ts)
 
 foreach ( LIB ${MY_LIBRARIES} )

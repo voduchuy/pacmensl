@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
         auto tmatvec = [&A] (PetscReal t, Vec x, Vec y) {
                                A(t).action(x, y);
                        };
-        cme::petsc::Magnus4 my_magnus(comm, t_final, tmatvec, P, 1.0e-8, 30, false, 2, 1.0e-8);
+        cme::petsc::Magnus4 my_magnus(comm, t_final, tmatvec, P, 1.0e-8, 30, true, 2, 1.0e-8);
         my_magnus.tol = 1.0e-8;
 
         tic = MPI_Wtime();

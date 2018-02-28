@@ -1,4 +1,4 @@
-#include "HyperRecOp.hpp"
+#include "HyperRecOpDD.hpp"
 #include "cme_util.hpp"
 
 using std::cout;
@@ -6,8 +6,62 @@ using std::endl;
 
 namespace cme {
 namespace petsc {
+void HyperRecOpDD::get_ordering(const arma::Row<Int> &nmax, const arma::Row<Int> &processor_grid, const std::vector<arma::Row<Int> > &sub_domain_dims)
+{
+        MPI_Comm cart_comm;
 
-HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun) :
+        size_t d = nmax.n_elem;
+        size_t local_num_states;
+        int rank;
+        Int ierr;
+        arma::Row<int> periods(d);
+        arma::Row<Int> proc_coo(d);
+        arma::Col<Int> x_offset(d);
+
+        periods.fill(0);
+        MPI_Cart_create(comm, d, processor_grid.memptr(), periods.memptr(), 1, &cart_comm);
+        MPI_Comm_rank(cart_comm, &rank);
+        MPI_Cart_coords(cart_comm, rank, d, proc_coo.memptr());
+
+        /* Calculate the state offset, which is at the lowest corner of the sub-domain */
+        for (size_t k{0}; k < d; ++k )
+        {
+          x_offset(k) = 0;
+          for (size_t i{0}; i+1 <= proc_coo(k); ++i)
+          {
+            x_offset(k) += (sub_domain_dims[k]).at(i);
+          }
+        }
+
+        /* Generate the state space */
+        local_num_states = 1;
+        arma::Row<Int> nmax_local(d);
+        for (size_t k{0}; k < d; ++k)
+        {
+          local_num_states *= sub_domain_dims[k](proc_coo(k));
+          nmax_local[k] = sub_domain_dims[k](proc_coo(k)) - 1;
+        }
+        arma::Row<Int> indx(local_num_states);
+        for (size_t i{0}; i < local_num_states; ++i)
+        {
+          indx(i) = i;
+        }
+        local_state_space = cme::ind2sub_nd(nmax_local, indx);
+        local_state_space = local_state_space + arma::repmat(x_offset, 1, local_num_states);
+
+        /* Now generate the mapping from states to PETSc */
+        indx = cme::sub2ind_nd(nmax, local_state_space);
+        AOCreate(comm, &ao);
+        ierr = AOCreateBasic(comm, local_num_states, indx.memptr(), NULL, &ao);
+        CHKERRABORT(comm, ierr);
+
+        n_rows_here = local_num_states;
+
+        MPI_Comm_free(&cart_comm);
+
+}
+
+HyperRecOpDD::HyperRecOpDD( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, const arma::Row<Int> &processor_grid, const std::vector<arma::Row<Int> > sub_domain_dims, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun) :
         comm(new_comm),
         max_num_molecules(new_nmax),
         n_reactions(SM.n_cols),
@@ -16,6 +70,9 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
 {
         PetscInt ierr;
         PetscReal val;
+
+        /* Get the ordering and local state space */
+        get_ordering(max_num_molecules, processor_grid, sub_domain_dims);
 
         terms.resize(n_reactions+1);
 
@@ -33,12 +90,11 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
 
         VecCreate(comm, &work);
         VecSetFromOptions(work);
-        VecSetSizes(work, PETSC_DECIDE, n_rows_global);
+        VecSetSizes(work, n_rows_here, n_rows_global);
         VecSetUp(work);
 
         MatCreate(comm, &terms[n_reactions]);
-        //MatSetSizes(terms[n_reactions], PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global);
-        //MatSetFromOptions(terms[n_reactions]);
+
         /* Preallocate memory for matrix */
         if ( strcmp(mat_type, MATSEQAIJ) == 0)
         {
@@ -52,7 +108,7 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
 #ifdef HYPER_REC_OP_VERBOSE
                 PetscPrintf(comm, "Allocating memory for MPIAIJ.\n");
 #endif
-                MatCreateAIJ(comm, PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global, n_reactions+1, NULL, n_reactions+1, NULL, &terms[n_reactions]);
+                MatCreateAIJ(comm, n_rows_here, n_rows_here, n_rows_global, n_rows_global, n_reactions+1, NULL, n_reactions+1, NULL, &terms[n_reactions]);
         }
 
         MatSetUp(terms[n_reactions]);
@@ -72,7 +128,6 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
                 CHKERRABORT(comm, ierr);
         }
 
-        arma::Mat<Int> my_X= cme::ind2sub_nd( max_num_molecules, my_range);
         arma::Col<Int> xtmp;
         for ( Int ir{0}; ir < n_reactions; ++ir )
         {
@@ -92,14 +147,14 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
 #ifdef HYPER_REC_OP_VERBOSE
                         PetscPrintf(comm, "Allocating memory for MPIAIJ.\n");
 #endif
-                        MatCreateAIJ(comm, PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global, 2, NULL, 2, NULL, &terms[ir]);
+                        MatCreateAIJ(comm, n_rows_here, n_rows_here, n_rows_global, n_rows_global, 2, NULL, 2, NULL, &terms[ir]);
                 }
                 ierr = MatSetUp(terms[ir]); CHKERRABORT(comm, ierr);
 
                 /* Set values for diagonal entries */
                 for ( PetscInt i{0}; i < my_range.n_elem; ++i )
                 {
-                        xtmp = my_X.col(i);
+                        xtmp = local_state_space.col(i);
                         val = prop(xtmp.begin(), ir);
                         ierr = MatSetValue( terms[ir], my_range(i), my_range(i), -1.0*val, INSERT_VALUES );
                         CHKERRABORT(comm, ierr);
@@ -107,8 +162,10 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
 
                 /* Set values for off-diagonal entries */
                 PetscInt nLocal= my_range.n_elem;
-                arma::Mat<PetscInt> RX= my_X - repmat( SM.col(ir), 1, nLocal);
+                arma::Mat<PetscInt> RX= local_state_space - repmat( SM.col(ir), 1, nLocal);
                 arma::Row<PetscInt> rindx= cme::sub2ind_nd( max_num_molecules, RX );
+
+                AOApplicationToPetsc(ao, nLocal, rindx.memptr());
 
                 for ( PetscInt i{0}; i < my_range.n_elem; ++i )
                 {
@@ -128,20 +185,21 @@ HyperRecOp::HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, con
         }
         ierr = MatAssemblyBegin( terms[n_reactions], MAT_FINAL_ASSEMBLY ); CHKERRABORT(comm, ierr);
         ierr = MatAssemblyEnd( terms[n_reactions], MAT_FINAL_ASSEMBLY ); CHKERRABORT(comm, ierr);
+
 }
 
-void HyperRecOp::set_time(Real t_in)
+void HyperRecOpDD::set_time(Real t_in)
 {
         t_here = t_in;
 }
 
-void HyperRecOp::duplicate_structure(Mat &A)
+void HyperRecOpDD::duplicate_structure(Mat &A)
 {
         Int ierr;
         ierr = MatDuplicate(terms[n_reactions], MAT_DO_NOT_COPY_VALUES, &A); CHKERRABORT(comm, ierr);
 }
 
-void HyperRecOp::dump_to_mat(Mat A)
+void HyperRecOpDD::dump_to_mat(Mat A)
 {
         Int ierr;
         arma::Row<Real> coefficients = t_fun(t_here);
@@ -151,7 +209,7 @@ void HyperRecOp::dump_to_mat(Mat A)
         }
 }
 
-void HyperRecOp::action(Vec x, Vec y)
+void HyperRecOpDD::action(Vec x, Vec y)
 {
         Int ierr;
 
@@ -166,7 +224,7 @@ void HyperRecOp::action(Vec x, Vec y)
         }
 }
 
-void HyperRecOp::print_info()
+void HyperRecOpDD::print_info()
 {
         PetscPrintf(comm, "This is an Op object.\n");
 }

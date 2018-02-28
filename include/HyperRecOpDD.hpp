@@ -19,8 +19,10 @@ using PropFun = std::function< PetscReal (PetscInt *, PetscInt)>;
 using TcoefFun = std::function<arma::Row<PetscReal> (PetscReal t)>;
 using Real = PetscReal;
 using Int = PetscInt;
-/* Distributed data type for the truncated CME operator on a hyper-rectangle */
-class HyperRecOp
+/* Distributed data type for the truncated CME operator on a hyper-rectangle,
+   using domain decomposition.
+ */
+class HyperRecOpDD
 {
 
 protected:
@@ -29,26 +31,33 @@ MPI_Comm comm {MPI_COMM_NULL};
 
 arma::Row<Int> max_num_molecules;
 
+arma::Row<Int> sub_domain_lb, sub_domain_ub;
+
 Real t_here = 0.0;
 
-Int n_reactions;
-Int n_rows_global;
-Int n_rows_here;
 std::vector<Mat> terms;
 
 Vec work; ///< Work vector for computing operator times vector
 
 TcoefFun t_fun = NULL;
 
+arma::Mat<Int> local_state_space;
+/* Helper to generate the application ordering */
+void get_ordering(const arma::Row<Int> &nmax, const arma::Row<Int> &processor_grid, const std::vector<arma::Row<Int> > &sub_domain_dims);
+
 public:
+AO ao;
+Int n_reactions;
+Int n_rows_global;
+Int n_rows_here;
 
 /* constructors */
-HyperRecOp ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun);
+HyperRecOpDD ( MPI_Comm& new_comm, const arma::Row<Int> &new_nmax, const arma::Row<Int> &processor_grid, const std::vector<arma::Row<Int> > sub_domain_dims, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun);
 
 /* Set current time for the matrix */
 void set_time( Real t_in );
 
-HyperRecOp& operator()(Real t)
+HyperRecOpDD& operator()(Real t)
 {
         set_time(t);
         return *this;
@@ -61,6 +70,7 @@ void destroy()
                 MatDestroy(&terms[i]);
         }
         VecDestroy(&work);
+        AODestroy(&ao);
 }
 
 void duplicate_structure(Mat &A);
