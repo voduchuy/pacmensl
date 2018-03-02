@@ -43,7 +43,8 @@ set(TEST_PROGRAMS
   #diagonal_matvec form_toggle_matrix solve_toggle form_partition_toggle_matrix
    #form_partition_hog1p_matrix form_toggle_operator
    solve_toggle_tv #solve_hog1p_tv_with_ts solve_hog1p_tv_with_magnus
-solve_hog1p_tv_damped_with_magnus solve_hog1p_tv_damped_with_ts)
+solve_hog1p_tv_damped_with_magnus solve_hog1p_tv_damped_with_ts
+solve_hog1p_tv_damped_with_magnus_dd solve_hog1p_tv_damped_with_ts_dd)
 
 foreach ( LIB ${MY_LIBRARIES} )
   add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cc ${CMAKE_SOURCE_DIR}/include/${LIB}.hpp )

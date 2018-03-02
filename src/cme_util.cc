@@ -2,7 +2,7 @@
 
 namespace cme{
   namespace petsc{
-      arma::Col<PetscReal> marginal(Vec P, arma::Row<PetscInt> &nmax, PetscInt species)
+      arma::Col<PetscReal> marginal(Vec P, arma::Row<PetscInt> &nmax, PetscInt species, AO ao)
       {
         PetscInt ierr;
 
@@ -20,6 +20,11 @@ namespace cme{
         for ( PetscInt vi {0}; vi < my_range.n_elem; ++vi )
         {
                 my_range[vi]= Istart + vi;
+        }
+
+        if (ao != NULL)
+        {
+          AOPetscToApplication(ao, Iend-Istart, my_range.memptr());
         }
 
         arma::Mat<PetscInt> my_X= cme::ind2sub_nd( nmax, my_range);

@@ -75,13 +75,26 @@ int main(int argc, char *argv[]) {
         MatCreate(comm, &A1);
         A.duplicate_structure(A1);
 
+        /* Setting the ts object and its ksp from command line options */
         TS ts;
+        KSP ksp;
+        SNES snes;
+        PC pc;
+
         ierr = TSCreate(comm, &ts); CHKERRQ(ierr);
         ierr = TSSetFromOptions(ts); CHKERRQ(ierr);
+        ierr = TSGetSNES(ts, &snes); CHKERRQ(ierr);
+        ierr = SNESGetKSP(snes, &ksp); CHKERRQ(ierr);
+        ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+        ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
+        ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+        ierr = PCSetFromOptions(pc); CHKERRQ(ierr);
+
+        /* Set timing and where to write the solution */
         ierr = TSSetSolution(ts, P); CHKERRQ(ierr);
         ierr = TSSetTimeStep(ts, 1.0e-6); CHKERRQ(ierr);
         ierr = TSSetTime(ts, 0.0); CHKERRQ(ierr);
-        ierr = TSSetMaxSteps(ts, 10000); CHKERRQ(ierr);
+        ierr = TSSetMaxSteps(ts, 10000000); CHKERRQ(ierr);
         ierr = TSSetMaxTime(ts, t_final); CHKERRQ(ierr);
         ierr = TSSetExactFinalTime(ts, TS_EXACTFINALTIME_INTERPOLATE); CHKERRQ(ierr);
 

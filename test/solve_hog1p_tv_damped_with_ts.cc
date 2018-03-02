@@ -44,13 +44,17 @@ int main(int argc, char *argv[]) {
         Row<PetscInt> FSPSize({ 3, 40, 40, 60, 60});         // Size of the FSP
         PetscReal t_final = 120;
 #else
-        Row<PetscInt> FSPSize({ 3, 20, 20, 10, 10});         // Size of the FSP
-        PetscReal t_final = 30;
+        Row<PetscInt> FSPSize({ 3, 31, 31, 7, 7});         // Size of the FSP
+        PetscReal t_final = 1;
 #endif
 
         double tic;
 
+
         ierr = PetscInitialize(&argc,&argv,(char*)0,help); CHKERRQ(ierr);
+
+        PetscBool export_full_solution {PETSC_FALSE};
+        PetscOptionsGetBool(NULL, NULL, "-export_full_solution", &export_full_solution, NULL);
 
         MPI_Comm comm{PETSC_COMM_WORLD};
 
@@ -81,13 +85,26 @@ int main(int argc, char *argv[]) {
         MatCreate(comm, &A1);
         A.duplicate_structure(A1);
 
+        /* Setting the ts object and its ksp from command line options */
         TS ts;
+        KSP ksp;
+        SNES snes;
+        PC pc;
+
         ierr = TSCreate(comm, &ts); CHKERRQ(ierr);
         ierr = TSSetFromOptions(ts); CHKERRQ(ierr);
+        ierr = TSGetSNES(ts, &snes); CHKERRQ(ierr);
+        ierr = SNESGetKSP(snes, &ksp); CHKERRQ(ierr);
+        ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+        ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
+        ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+        ierr = PCSetFromOptions(pc); CHKERRQ(ierr);
+
+        /* Set timing and where to write the solution */
         ierr = TSSetSolution(ts, P); CHKERRQ(ierr);
-        ierr = TSSetTimeStep(ts, 1.0e-4); CHKERRQ(ierr);
+        ierr = TSSetTimeStep(ts, 1.0e-6); CHKERRQ(ierr);
         ierr = TSSetTime(ts, 0.0); CHKERRQ(ierr);
-        ierr = TSSetMaxSteps(ts, 10000); CHKERRQ(ierr);
+        ierr = TSSetMaxSteps(ts, 10000000); CHKERRQ(ierr);
         ierr = TSSetMaxTime(ts, t_final); CHKERRQ(ierr);
         ierr = TSSetExactFinalTime(ts, TS_EXACTFINALTIME_INTERPOLATE); CHKERRQ(ierr);
 
@@ -126,6 +143,12 @@ int main(int argc, char *argv[]) {
                         std::string filename = model_name + "_" + std::string(time_scheme) + "_marginal_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
                         marginals[i].save(filename, arma::raw_ascii);
                 }
+        }
+
+        if (export_full_solution)
+        {
+          std::string filename = model_name + "_" + std::string(time_scheme) + "_full_" + std::to_string(num_procs)+ ".out";
+          petscvec_to_file(comm, P, filename.c_str());
         }
 
         MatDestroy(&A1);

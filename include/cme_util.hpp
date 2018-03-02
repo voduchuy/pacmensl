@@ -2,6 +2,7 @@
 #include <armadillo>
 #include <petscmat.h>
 #include <petscvec.h>
+#include <petscao.h>
 
 namespace cme
 {
@@ -99,7 +100,7 @@ std::pair<intT, intT> get_task_range(arma::Row<intT> job_dist, intT rank)
 
 namespace petsc
 {
-  arma::Col<PetscReal> marginal(Vec P, arma::Row<PetscInt> &nmax, PetscInt species);
+  arma::Col<PetscReal> marginal(Vec P, arma::Row<PetscInt> &nmax, PetscInt species, AO ao=NULL);
 }
 
 }
