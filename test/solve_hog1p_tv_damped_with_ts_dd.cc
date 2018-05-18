@@ -103,14 +103,35 @@ int main(int argc, char *argv[]) {
         SNES snes;
         PC pc;
 
+        TSType ts_type;
+        KSPType ksp_type;
+        PCType pc_type;
+
         ierr = TSCreate(comm, &ts); CHKERRQ(ierr);
         ierr = TSSetFromOptions(ts); CHKERRQ(ierr);
+        ierr = TSGetType(ts, &ts_type); CHKERRQ(ierr);
+
         ierr = TSGetSNES(ts, &snes); CHKERRQ(ierr);
-        ierr = SNESGetKSP(snes, &ksp); CHKERRQ(ierr);
-        ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
         ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
+
+        ierr = SNESGetKSP(snes, &ksp); CHKERRQ(ierr);
         ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
-        ierr = PCSetFromOptions(pc); CHKERRQ(ierr);
+
+
+
+        if (strcmp(ts_type, TSSUNDIALS) == 0)
+        {
+          ierr = TSSundialsGetPC(ts, &pc); CHKERRQ(ierr);
+          ierr = PCSetFromOptions(pc); CHKERRQ(ierr);
+        }
+        else
+        {
+          ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+          ierr = PCSetFromOptions(pc); CHKERRQ(ierr);
+        }
+
+        PCGetType(pc, &pc_type);
+        PetscPrintf(comm, "TS = %s Preconditioner = %s \n", ts_type, pc_type);
 
         /* Set timing and where to write the solution */
         ierr = TSSetSolution(ts, P); CHKERRQ(ierr);

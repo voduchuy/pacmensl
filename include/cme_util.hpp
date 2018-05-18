@@ -24,10 +24,16 @@ arma::Row<intT> sub2ind_nd( const arma::Row<intT> &nmax, const arma::Mat<intT> &
                 indx(j-1) = 0;
                 for ( size_t i {1}; i<= N; i++)
                 {
-                        if (X(i-1, j-1) < 0 || X(i-1, j-1) > nmax(i-1))
+                        if (X(i-1, j-1) < 0 )
                         {
                                 indx(j-1) = -1;
                                 break;
+                        }
+
+                        if (X(i-1, j-1) > nmax(i-1))
+                        {
+                            indx(j-1) = -(i+1);
+                            break;
                         }
                         indx(j-1) += X(i-1, j-1)*nprod;
                         nprod *= ( nmax(i-1) + 1);

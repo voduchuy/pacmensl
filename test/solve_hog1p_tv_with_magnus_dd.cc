@@ -6,7 +6,7 @@ static char help[] = "Solve the 5-species spatial hog1p model with time-varying 
 #include <petscts.h>
 #include <armadillo>
 #include <cmath>
-#include "HyperRecOp.hpp"
+#include "HyperRecOpDD.hpp"
 #include "Magnus4.hpp"
 #include "hog1p_tv_model.hpp"
 
@@ -19,17 +19,6 @@ using std::endl;
 
 void petscvec_to_file(MPI_Comm comm, Vec x, const char* filename);
 void petscmat_to_file(MPI_Comm comm, Mat A, const char* filename);
-
-typedef struct {
-        cme::petsc::HyperRecOp* A = nullptr;
-} Appctx;
-
-PetscErrorCode my_jacobian(TS ts, PetscReal t, Vec u, Mat A1, Mat B1, void *appctx) {
-        Appctx   *ctx = (Appctx*) appctx;
-        (*ctx->A)(t).dump_to_mat(A1);
-        (*ctx->A)(t).dump_to_mat(B1);
-        return 0;
-};
 
 int main(int argc, char *argv[]) {
         int ierr, myRank, num_procs;
@@ -58,17 +47,30 @@ int main(int argc, char *argv[]) {
 
         MPI_Comm_size(comm, &num_procs);
 
-        cme::petsc::HyperRecOp A( comm, FSPSize, SM, propensity, t_fun);
+        arma::Row<PetscInt> processor_grid(5);
+        processor_grid.fill(0); processor_grid(0) = 1;
+
+        MPI_Dims_create(num_procs, 5, processor_grid.memptr());
+
+        std::vector<arma::Row<PetscInt> > sub_domain_dims(5);
+        for (size_t i{0}; i < 5; ++i)
+        {
+                sub_domain_dims[i] = cme::distribute_tasks(FSPSize(i)+1, processor_grid(i));
+        }
+
+        cme::petsc::HyperRecOpDD A(comm, FSPSize, processor_grid, sub_domain_dims, SM, propensity, t_fun);
 
         /* Test the action of the operator */
         Vec P0, P;
         VecCreate(comm, &P0);
         VecCreate(comm, &P);
 
-        VecSetSizes(P0, PETSC_DECIDE, arma::prod(FSPSize+1) + 5);
+        PetscInt i_0 = 0;
+        AOApplicationToPetsc(A.ao, 1, &i_0);
+        VecSetSizes(P0, A.n_rows_here, A.n_rows_global);
         VecSetFromOptions(P0);
         VecSet(P0, 0.0);
-        VecSetValue(P0, 0, 1.0, INSERT_VALUES);
+        VecSetValue(P0, i_0, 1.0, INSERT_VALUES);
         VecAssemblyBegin(P0);
         VecAssemblyEnd(P0);
 
@@ -77,7 +79,7 @@ int main(int argc, char *argv[]) {
         auto tmatvec = [&A] (PetscReal t, Vec x, Vec y) {
                                A(t).action(x, y);
                        };
-        cme::petsc::Magnus4 my_magnus(comm, t_final, tmatvec, P, 1.0e-8, 5, true, 2, 1.0e-8);
+        cme::petsc::Magnus4 my_magnus(comm, t_final, tmatvec, P, 1.0e-8, 30, true, 2, 1.0e-8);
         my_magnus.tol = 1.0e-8;
 
         tic = MPI_Wtime();
@@ -88,14 +90,14 @@ int main(int argc, char *argv[]) {
         std::vector<arma::Col<PetscReal> > marginals(FSPSize.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i )
         {
-                marginals[i] = cme::petsc::marginal(P, FSPSize, i);
+                marginals[i] = cme::petsc::marginal(P, FSPSize, i, A.ao);
         }
 
         MPI_Comm_rank(comm, &myRank);
         if (myRank == 0)
         {
                 {
-                        std::string filename = model_name + "_time_magnus_" + std::to_string(num_procs) + ".dat";
+                        std::string filename = model_name + "_time_magnus_dd_" + std::to_string(num_procs) + ".dat";
                         std::ofstream file;
                         file.open(filename);
                         file << solver_time;
@@ -103,14 +105,14 @@ int main(int argc, char *argv[]) {
                 }
                 for (PetscInt i{0}; i < marginals.size(); ++i )
                 {
-                        std::string filename = model_name + "_marginal_magnus_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
+                        std::string filename = model_name + "_marginal_magnus_dd_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
                         marginals[i].save(filename, arma::raw_ascii);
                 }
         }
 
         if (export_full_solution)
         {
-          std::string filename = model_name + "_" + "magnus" + "_full_" + std::to_string(num_procs)+ ".out";
+          std::string filename = model_name + "_" + "magnus_dd" + "_full_" + std::to_string(num_procs)+ ".out";
           petscvec_to_file(comm, P, filename.c_str());
         }
 

@@ -31,8 +31,8 @@ void Magnus4::magnus_mv(Vec x, Vec y, Magnus4* magnus_ts)
 void Magnus4::step()
 {
         if ( i_step == 0 ) t_step = 1.0e-4;
-
-        Real local_error;
+        PetscReal t_step_new;
+        PetscReal local_error;
         do {
                 /* Compute the stepsize */
                 // First vector
@@ -65,64 +65,28 @@ void Magnus4::step()
 
 
                 local_error = (t_step)*(t_step)*(t_step)*(t_step)*xtmp/720.0;
-
+                PetscReal t_step_old = t_step;
+                t_step_new = pow( 0.9e0*t_step*tol/local_error, 0.25e0)*t_step;
                 if (local_error >= 1.2e0*t_step*tol) {
-                        PetscReal t_step_old = t_step;
-                        t_step = pow( 0.9e0*t_step*tol/local_error, 0.25e0)*t_step;
-                        t_step = std::min(5*t_step_old, std::max(t_step, 0.5*t_step_old));
+
+                        t_step = std::min(5*t_step, std::max(t_step_new, 0.5*t_step));
                 }
 
         } while (local_error >= 1.2e0*t_step*tol);
 
-        t_step = std::min(t_step, t_final - t_now);
 
 #ifdef MAGNUS4_VERBOSE
         PetscPrintf(comm, "%d t = %2.4e dt = %2.4e \n", i_step, t_now, t_step);
 #endif
         /* Advance to the next step with matrix exponential */
-        expv.reset_time(t_step);
+        expv.reset_time(1.0);
         expv.solve();
 
         /* Update time */
         t_now += t_step;
         i_step++;
 
-
-        /* Compute the stepsize */
-        // First vector
-        tmatvec(t_now + t_step, solution_now, w5);
-        tmatvec(t_now, w5, w1);
-        tmatvec(t_now + t_step, w1, w5);
-        tmatvec(t_now + t_step, w5, w1);
-        // Second vector
-        tmatvec(t_now + t_step, solution_now, w5);
-        tmatvec(t_now + t_step, w5, w2);
-        tmatvec(t_now, w2, w5);
-        tmatvec(t_now + t_step, w5, w2);
-        // Third vector
-        tmatvec(t_now, solution_now, w5);
-        tmatvec(t_now + t_step, w5, w3);
-        tmatvec(t_now + t_step, w3, w5);
-        tmatvec(t_now + t_step, w5, w3);
-        // Fourth vector
-        tmatvec(t_now + t_step, solution_now, w5);
-        tmatvec(t_now + t_step, w5, w4);
-        tmatvec(t_now + t_step, w4, w5);
-        tmatvec(t_now, w5, w4);
-
-        VecAXPY(w4, -1.0, w3);
-        VecAXPY(w4, -3.0, w2);
-        VecAXPY(w4, 3.0, w1);
-
-        Real xtmp;
-        VecNorm(w4, local_error_norm, &xtmp);
-
-
-        local_error = (t_step)*(t_step)*(t_step)*(t_step)*xtmp/720.0;
-
-        {PetscReal t_step_old = t_step;
-         t_step = pow( 0.9e0*t_step*tol/local_error, 0.25e0)*t_step;
-         t_step = std::min(5*t_step_old, std::max(t_step, 0.5*t_step_old));}
+        t_step = std::min(t_step_new, t_final - t_now);
 }
 
 void Magnus4::solve()

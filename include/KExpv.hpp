@@ -18,7 +18,7 @@ class KExpv {
 
 protected:
 
-const MPI_Comm comm = MPI_COMM_NULL;       ///< Commmunicator for the Krylov algorithm. This must be the same as the one used for the vector and matrix involved.
+    const MPI_Comm comm = MPI_COMM_NULL;        ///< Commmunicator for the Krylov algorithm. This must be the same as the one used for the vector and matrix involved.
 
 MVFun matvec;
 Vec solution_now = nullptr;
@@ -70,9 +70,15 @@ KExpv(MPI_Comm _comm, Real _t_final, MVFun _matvec, Vec _v, Int _m, Real _tol = 
         Int ierr;
 
         V.resize(m+1);
+        if (comm == MPI_COMM_NULL || comm == nullptr)
+        {
+            std::cout << "Null comm passed!\n";
+        }
+        ierr = PetscPrintf(comm, "Setting up Krylov vectors, m = %d \n", m); CHKERRABORT(comm, ierr);
         /* Duplicate the distributed structure of the intial vector to the Krylov vectors */
         for (Int i{0}; i< m+1; ++i) {
                 ierr = VecCreate(comm, &V[i]); CHKERRABORT(comm, ierr);
+                PetscPrintf(comm, "Created the %d Krylov vec.\n", i);
                 ierr = VecDuplicate(solution_now, &V[i]); CHKERRABORT(comm, ierr);
         }
         ierr = VecCreate(comm, &av); CHKERRABORT(comm, ierr);

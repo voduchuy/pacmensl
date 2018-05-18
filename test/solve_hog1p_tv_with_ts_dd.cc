@@ -4,9 +4,11 @@ static char help[] = "Solve the 5-species spatial hog1p model with time-varying 
 #include <petscvec.h>
 #include <petscviewer.h>
 #include <petscts.h>
+#include <petscksp.h>
+#include <petscsnes.h>
 #include <armadillo>
 #include <cmath>
-#include "HyperRecOp.hpp"
+#include "HyperRecOpDD.hpp"
 #include "Magnus4.hpp"
 #include "hog1p_tv_model.hpp"
 
@@ -21,7 +23,7 @@ void petscvec_to_file(MPI_Comm comm, Vec x, const char* filename);
 void petscmat_to_file(MPI_Comm comm, Mat A, const char* filename);
 
 typedef struct {
-        cme::petsc::HyperRecOp* A = nullptr;
+        cme::petsc::HyperRecOpDD* A = nullptr;
 } Appctx;
 
 PetscErrorCode my_jacobian(TS ts, PetscReal t, Vec u, Mat A1, Mat B1, void *appctx) {
@@ -50,7 +52,6 @@ int main(int argc, char *argv[]) {
 
         double tic;
 
-
         ierr = PetscInitialize(&argc,&argv,(char*)0,help); CHKERRQ(ierr);
 
         PetscBool export_full_solution {PETSC_FALSE};
@@ -60,14 +61,25 @@ int main(int argc, char *argv[]) {
 
         MPI_Comm_size(comm, &num_procs);
 
-        cme::petsc::HyperRecOp A( comm, FSPSize, SM, propensity, t_fun);
+        arma::Row<PetscInt> processor_grid(5);
+        processor_grid.fill(0); processor_grid(0) = 1;
+
+        MPI_Dims_create(num_procs, 5, processor_grid.memptr());
+
+        std::vector<arma::Row<PetscInt>> sub_domain_dims(5);
+        for (size_t i{0}; i < 5; ++i)
+        {
+          sub_domain_dims[i] = cme::distribute_tasks(FSPSize(i)+1, processor_grid(i));
+        }
+
+        cme::petsc::HyperRecOpDD A(comm, FSPSize, processor_grid, sub_domain_dims, SM, propensity, t_fun);
 
         /* Test the action of the operator */
         Vec P0, P;
         VecCreate(comm, &P0);
         VecCreate(comm, &P);
 
-        VecSetSizes(P0, PETSC_DECIDE, arma::prod(FSPSize+1));
+        VecSetSizes(P0, A.n_rows_here, A.n_rows_global);
         VecSetType(P0, VECMPI);
         VecSetUp(P0);
         VecSet(P0, 0.0);
@@ -91,14 +103,35 @@ int main(int argc, char *argv[]) {
         SNES snes;
         PC pc;
 
+        TSType ts_type;
+        KSPType ksp_type;
+        PCType pc_type;
+
         ierr = TSCreate(comm, &ts); CHKERRQ(ierr);
         ierr = TSSetFromOptions(ts); CHKERRQ(ierr);
+        ierr = TSGetType(ts, &ts_type); CHKERRQ(ierr);
+
         ierr = TSGetSNES(ts, &snes); CHKERRQ(ierr);
-        ierr = SNESGetKSP(snes, &ksp); CHKERRQ(ierr);
-        ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
         ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
+
+        ierr = SNESGetKSP(snes, &ksp); CHKERRQ(ierr);
         ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
-        ierr = PCSetFromOptions(pc); CHKERRQ(ierr);
+
+
+
+        if (strcmp(ts_type, TSSUNDIALS) == 0)
+        {
+          ierr = TSSundialsGetPC(ts, &pc); CHKERRQ(ierr);
+          ierr = PCSetFromOptions(pc); CHKERRQ(ierr);
+        }
+        else
+        {
+          ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+          ierr = PCSetFromOptions(pc); CHKERRQ(ierr);
+        }
+
+        PCGetType(pc, &pc_type);
+        PetscPrintf(comm, "TS = %s Preconditioner = %s \n", ts_type, pc_type);
 
         /* Set timing and where to write the solution */
         ierr = TSSetSolution(ts, P); CHKERRQ(ierr);
@@ -122,7 +155,7 @@ int main(int argc, char *argv[]) {
         std::vector<arma::Col<PetscReal> > marginals(FSPSize.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i )
         {
-                marginals[i] = cme::petsc::marginal(P, FSPSize, i);
+                marginals[i] = cme::petsc::marginal(P, FSPSize, i, A.ao);
         }
 
         TSType time_scheme;
@@ -132,7 +165,7 @@ int main(int argc, char *argv[]) {
         if (myRank == 0)
         {
                 {
-                        std::string filename = model_name + "_" + std::string(time_scheme) + "_time_" + std::to_string(num_procs) + ".dat";
+                        std::string filename = model_name + "_" + std::string(time_scheme) + "_dd_time_" + std::to_string(num_procs) + ".dat";
                         std::ofstream file;
                         file.open(filename);
                         file << solver_time;
@@ -140,14 +173,14 @@ int main(int argc, char *argv[]) {
                 }
                 for (PetscInt i{0}; i < marginals.size(); ++i )
                 {
-                        std::string filename = model_name + "_" + std::string(time_scheme) + "_marginal_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
+                        std::string filename = model_name + "_" + std::string(time_scheme) + "_dd_marginal_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
                         marginals[i].save(filename, arma::raw_ascii);
                 }
         }
 
         if (export_full_solution)
         {
-          std::string filename = model_name + "_" + std::string(time_scheme) + "_full_" + std::to_string(num_procs)+ ".out";
+          std::string filename = model_name + "_" + std::string(time_scheme) + "_dd_full_" + std::to_string(num_procs)+ ".out";
           petscvec_to_file(comm, P, filename.c_str());
         }
 
