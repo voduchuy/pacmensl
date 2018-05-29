@@ -142,7 +142,6 @@ namespace cme {
                     ierr = MatSetValue(terms[ir], my_range(i), my_range(i), -1.0 * val, ADD_VALUES);
                     CHKERRABORT(comm, ierr);
                 }
-                PetscPrintf(comm, "Values for diagonals set\n");
 
                 /* Set values for off-diagonal entries */
                 PetscInt nLocal = my_range.n_elem;
@@ -160,7 +159,6 @@ namespace cme {
                                        INSERT_VALUES);
                     CHKERRABORT(comm, ierr);
                 }
-                PetscPrintf(comm, "Values for off-diagonals set\n");
 
                 /* Set values corresponding to the sink states, this will require communication */
                 RX = my_X + repmat(SM.col(ir), 1, nLocal);
@@ -179,7 +177,6 @@ namespace cme {
                         CHKERRABORT(comm, ierr);
                     }
                 }
-                PetscPrintf(comm, "Values for sink states set\n");
 
                 ierr = MatAssemblyBegin(terms[ir], MAT_FINAL_ASSEMBLY);
                 CHKERRABORT(comm, ierr);

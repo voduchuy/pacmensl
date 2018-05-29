@@ -9,7 +9,6 @@ static char help[] = "Formation of the two-species toggle-switch matrix.\n\n";
 #include <HyperRecOp.h>
 #include <Magnus4FSP.h>
 #include <FSP.h>
-
 using arma::dvec;
 using arma::Col;
 using arma::Row;
@@ -53,7 +52,6 @@ int main(int argc, char *argv[]) {
     CHKERRQ(ierr);
 
     MPI_Comm comm = PETSC_COMM_WORLD;
-
     cme::petsc::FSP my_fsp(comm, init_states, init_prob, SM,
             propensity, t_fun, FSPSize, FSPIncrement, t_final, fsp_tol);
     my_fsp.solve();
