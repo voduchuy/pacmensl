@@ -9,7 +9,7 @@ set(CMAKE_Fortran_COMPILER mpif90)
 set(CMAKE_Fortran_FLAGS " -m64 -O3")
 set(CMAKE_CXX_COMPILER mpicxx )
 set(CMAKE_CXX_FLAGS " -std=c++11 -O3 -DNDEBUG -DMAGNUS4_VERBOSE  -DHYPER_REC_OP_VERBOSE -g")
-set(CMAKE_EXE_LINKER_FLAGS " ")
+set(CMAKE_EXE_LINKER_FLAGS "-g ")
 
 
 
@@ -37,7 +37,7 @@ FIND_PACKAGE(PETSc)
 INCLUDE_DIRECTORIES(${PETSC_INCLUDES})
 ADD_DEFINITIONS(${PETSC_DEFINITIONS})
 
-set(MY_LIBRARIES HyperRecOp KExpv Magnus4 Magnus4FSP cme_util HyperRecOpDD)
+set(MY_LIBRARIES HyperRecOp KExpv Magnus4 Magnus4FSP cme_util HyperRecOpDD FSP)
 
 set(TEST_PROGRAMS
 #  diagonal_matvec form_toggle_matrix solve_toggle form_partition_toggle_matrix
@@ -51,10 +51,10 @@ set(TEST_PROGRAMS
         )
 
 foreach ( LIB ${MY_LIBRARIES} )
-  add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cc ${CMAKE_SOURCE_DIR}/include/${LIB}.hpp )
+  add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h)
 endforeach()
 
 foreach ( PROG ${TEST_PROGRAMS})
-  add_executable(${PROG} ${CMAKE_SOURCE_DIR}/test/${PROG}.cc)
+  add_executable(${PROG} ${CMAKE_SOURCE_DIR}/test/${PROG}.cpp)
   target_link_libraries(${PROG} ${MY_LIBRARIES} ${PETSC_LIBRARIES} -larmadillo)
 endforeach()
