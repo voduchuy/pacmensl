@@ -48,6 +48,7 @@ set(TEST_PROGRAMS
         solve_hog1p_tv_damped_with_ts
 #solve_hog1p_tv_damped_with_magnus_dd solve_hog1p_tv_damped_with_ts_dd
         test_scatter solve_toggle_adaptive_FSP
+        solve_hog_adaptive_FSP
         )
 
 foreach ( LIB ${MY_LIBRARIES} )
