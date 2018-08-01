@@ -57,8 +57,8 @@ namespace cme {
             /* Adjustable algorithmic parameters */
             Real fsp_tol;
             Real tol = 1.0e-4;
-            Int max_nstep = 10000;
-            NormType local_error_norm = NORM_2;
+            Int max_nstep = 100000;
+            NormType local_error_norm = NORM_1;
 
             /* Armadillo vector to store sink states */
             arma::Row<Real> sinks;

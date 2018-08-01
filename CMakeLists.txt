@@ -52,8 +52,11 @@ set(TEST_PROGRAMS
         )
 
 foreach ( LIB ${MY_LIBRARIES} )
-  add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h)
+  add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h test/test_ghost.cpp)
 endforeach()
+
+target_link_libraries(Magnus4FSP KExpv)
+target_link_libraries(FSP Magnus4FSP)
 
 foreach ( PROG ${TEST_PROGRAMS})
   add_executable(${PROG} ${CMAKE_SOURCE_DIR}/test/${PROG}.cpp)

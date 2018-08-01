@@ -8,7 +8,7 @@ static char help[] = "Solve the 5-species spatial hog1p model with time-varying 
 #include <cmath>
 #include "HyperRecOp.h"
 #include "Magnus4.h"
-#include "hog1p_tv_damped_model.h"
+#include "models/hog1p_tv_damped_model.h"
 
 using arma::dvec;
 using arma::Col;

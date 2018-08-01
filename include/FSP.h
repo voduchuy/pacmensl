@@ -46,7 +46,7 @@ namespace cme{
                     FSPSize(_FSPSize),
                     FSPIncrement(_FSPIncrement),
                     A(_comm, _FSPSize, _stoich_mat, _propensity, _t_fun),
-                    my_magnus(comm, 0.0, _t_final, (Int) _FSPSize.n_elem, _fsp_tol, _mg_tol, _kry_tol)
+                    my_magnus(_comm, 0.0, _t_final, (Int) _FSPSize.n_elem, _fsp_tol, _mg_tol, _kry_tol)
                     {
                         // Set up the initial vector
                         VecCreate(comm, &P);

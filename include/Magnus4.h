@@ -46,7 +46,7 @@ namespace cme{
       tmatvec(_tmatvec),
       solution_now(_v),
       tol(_tol),
-      expv(comm, t_final, [this] (Vec x, Vec y) {magnus_mv(x, y, this);}, solution_now, _m, _kry_tol )
+      expv(_comm, _t_final, [this] (Vec x, Vec y) {magnus_mv(x, y, this);}, _v, _m, _kry_tol )
       {
         t_now = 0.0;
 

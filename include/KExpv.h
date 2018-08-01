@@ -41,6 +41,8 @@ arma::Mat<Real> H;       ///< The small, dense Hessenberg matrix, each process i
 Vec av;
 arma::Mat<Real> F;
 
+bool vectors_created = false;
+
 public:
 Real tol = 1.0e-8;
 Real anorm = 1.0;
@@ -130,7 +132,7 @@ bool final_time_reached()
         Int ierr;
         matvec = _matvec;
         solution_now = _v;
-        if (av == PETSC_NULL)
+        if (vectors_created == false)
         {
             V.resize(m+1);
             if (comm == MPI_COMM_NULL || comm == nullptr)
@@ -144,6 +146,7 @@ bool final_time_reached()
             }
             ierr = VecCreate(comm, &av); CHKERRABORT(comm, ierr);
             ierr = VecDuplicate(solution_now, &av); CHKERRABORT(comm, ierr);
+            vectors_created = true;
         }
     }
 
@@ -158,6 +161,7 @@ void destroy()
                 ierr = VecDestroy(&V[i]); CHKERRABORT(comm, ierr);
         }
         ierr = VecDestroy(&av); CHKERRABORT(comm, ierr);
+        vectors_created = false;
 }
 
 };

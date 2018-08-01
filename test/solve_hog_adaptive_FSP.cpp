@@ -9,7 +9,7 @@ static char help[] = "Solve the 5-species spatial hog1p model with time-varying 
 #include <HyperRecOp.h>
 #include <Magnus4FSP.h>
 #include <FSP.h>
-#include <hog1p_tv_model.h>
+#include <models/hog1p_tv_model.h>
 
 using arma::dvec;
 using arma::Col;
@@ -33,6 +33,7 @@ int main(int argc, char *argv[]) {
     Row<PetscInt> FSPSize({3, 2, 2, 2, 2}); // Size of the FSP
     PetscReal t_final = 300.0;
     PetscReal fsp_tol = 1.0e-4;
+    PetscReal mg_tol = 1.0e-6;
     arma::Mat<PetscInt> init_states(5,1); init_states.fill(0.0);
     arma::Col<PetscReal> init_prob({1.0});
 
@@ -43,11 +44,11 @@ int main(int argc, char *argv[]) {
     ierr = PetscOptionsGetBool(NULL, NULL, "-export_full_solution", &export_full_solution, NULL); CHKERRQ(ierr);
 
     MPI_Comm comm = PETSC_COMM_WORLD;
-    PetscInt num_procs;
+    PetscMPIInt num_procs;
     MPI_Comm_size(comm, &num_procs);
 
     cme::petsc::FSP my_fsp(comm, init_states, init_prob, SM,
-            propensity, t_fun, FSPSize, FSPIncrement, t_final, fsp_tol);
+            propensity, t_fun, FSPSize, FSPIncrement, t_final, fsp_tol, mg_tol);
 
     PetscReal tic = MPI_Wtime();
     my_fsp.solve();

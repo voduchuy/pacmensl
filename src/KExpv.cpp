@@ -48,7 +48,9 @@ void KExpv::step()
                         k1 = 0;
                         mb = j+1;
                         tau = t_final - t_now;
+#ifdef KEXPV_VERBOSE
                         PetscPrintf(comm, "Happy breakdown. \n");
+#endif
                         break;
                 }
 
