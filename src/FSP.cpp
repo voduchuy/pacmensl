@@ -24,7 +24,6 @@ namespace cme{
                             FSPSize(i) = (PetscInt) std::ceil(((double) FSPSize(i)) * (FSPIncrement(i) + 1.0e0));
                         }
                     }
-                    std::cout << FSPSize << std::endl;
 
                     // Generate the expanded matrices
                     A.destroy();
@@ -34,7 +33,6 @@ namespace cme{
                     Vec Pnew;
                     VecCreate(comm, &Pnew);
                     VecSetSizes(Pnew, PETSC_DECIDE, arma::prod(FSPSize + 1) + FSPSize.n_elem);
-                    VecSetType(Pnew, VECMPI);
                     VecSetUp(Pnew);
                     VecSet(Pnew, 0.0);
 
@@ -73,15 +71,12 @@ namespace cme{
                     ierr = VecSwap(P, Pnew); CHKERRABORT(comm, ierr);
                     ierr = VecScatterDestroy(&scatter); CHKERRABORT(comm, ierr);
                     ierr = VecDestroy(&Pnew); CHKERRABORT(comm, ierr);
-                    std::cout << "Update Magnus4 object \n";
+
                     // Reset the Magnus4 object
                     my_magnus.destroy();
                     my_magnus.update_vector(P, tmatvec);
                 }
             }
-
-
-            std::cout << FSPSize << std::endl;
         }
     }
 }
