@@ -91,9 +91,8 @@ namespace cme {
         void Magnus4FSP::solve() {
             Real prob_sum{0.0};
             Real t_old;
-            Int failed_steps = 0;
-            PetscBool fsp_fail = false;
-            while (t_now < t_final && ~fsp_fail) {
+
+            while (t_now < t_final) {
                 t_old = t_now;
                 VecCopy(solution_now, solution_old);
 
@@ -101,27 +100,21 @@ namespace cme {
 
                 step();
 
-                /* Ensure FSP criteria, if fails use a backtracking strategy */
+                /* Ensure FSP criteria, if fails quit */
                 get_sinks();
                 Real err_bound = (fsp_tol/(Real) n_sinks) * std::pow( t_now/ t_final, 2.0);
                 if ( sinks.max() >= err_bound) {
-                    failed_steps ++;
                     /* Set solution to the previous time point */
                     VecCopy(solution_old, solution_now);
                     t_now = t_old;
-                    t_step_max = 0.5e0 * t_step;
 
                     /* Determine which sink states need expansion */
                     to_expand.fill(0);
                     to_expand.elem( arma::find(sinks >= err_bound ) ).ones();
 
 #ifdef MAGNUS4_VERBOSE
-                    PetscPrintf(comm, "FSP criteria failed. Trying with a smaller step...\n");
+                    PetscPrintf(comm, "FSP criteria failed. Trying with a bigger FSP...\n");
 #endif
-                }
-
-
-                if (t_now - t_old >= t_step_max || failed_steps > 5) {
                     break;
                 }
             }

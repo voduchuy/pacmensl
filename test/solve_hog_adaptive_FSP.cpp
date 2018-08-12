@@ -25,67 +25,60 @@ using namespace hog1p_cme;
 int main(int argc, char *argv[]) {
     int ierr, myRank;
 
-    std::string model_name = "hog1p";
-
+    static char model[] = "hog";
     /* CME problem sizes */
     int nSpecies = 5; // Number of species
     Row<PetscReal> FSPIncrement({0.25, 0.25, 0.25, 0.25, 0.25}); // Max fraction of states added to each dimension when expanding the FSP
-    Row<PetscInt> FSPSize({3, 2, 2, 2, 2}); // Size of the FSP
-    PetscReal t_final = 300.0;
-    PetscReal fsp_tol = 1.0e-4;
-    PetscReal mg_tol = 1.0e-6;
+    Row<PetscInt> FSPSize({3, 1, 1, 1, 1}); // Size of the FSP
+    PetscReal t_final = 60.00;
+    PetscReal fsp_tol = 1.0e-2;
+    PetscReal magnus_tol = 1.0e-4;
     arma::Mat<PetscInt> init_states(5,1); init_states.fill(0.0);
     arma::Col<PetscReal> init_prob({1.0});
 
-    ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
-    CHKERRQ(ierr);
-
-    PetscBool export_full_solution {PETSC_FALSE};
-    ierr = PetscOptionsGetBool(NULL, NULL, "-export_full_solution", &export_full_solution, NULL); CHKERRQ(ierr);
+    ierr = PetscInitialize(&argc, &argv, (char *) 0, help); CHKERRQ(ierr);
 
     MPI_Comm comm = PETSC_COMM_WORLD;
-    PetscMPIInt num_procs;
+    PetscMPIInt num_procs, my_rank;
     MPI_Comm_size(comm, &num_procs);
+    MPI_Comm_rank(comm, &my_rank);
 
+    /* Initialize the FSP solver object */
     cme::petsc::FSP my_fsp(comm, init_states, init_prob, SM,
-            propensity, t_fun, FSPSize, FSPIncrement, t_final, fsp_tol, mg_tol);
+                           propensity, t_fun, FSPSize, FSPIncrement, t_final, fsp_tol, magnus_tol);
 
-    PetscReal tic = MPI_Wtime();
+    /* Solve the problem */
+    PetscReal tic, exec_time;
+    PetscTime(&tic);
     my_fsp.solve();
-    PetscReal solver_time = MPI_Wtime() - tic;
+    PetscTime(&exec_time); exec_time -= tic;
 
-    /* Compute the marginal distributions */
-    std::vector<arma::Col<PetscReal> > marginals(FSPSize.n_elem);
-    for (PetscInt i{0}; i < marginals.size(); ++i )
+    /* Export the result:
+        - Final FSP dimensions.
+        - Runtime.
+        - Final probability vector.
+     */
+    std::string fname;
+    if (my_rank == 0)
     {
-        marginals[i] = cme::petsc::marginal(my_fsp.get_P(), FSPSize, i);
+        std::ofstream fid;
+        // Export final FSP size
+        fname = std::string(model) +  "_fsp_dim.txt";
+        fid.open(fname, std::ios_base::app);
+        fid << std::to_string(num_procs) << " " << my_fsp.get_size() << "\n";
+        fid.close();
+        // Export runtime
+        fname = std::string(model) + "_time.txt";
+        fid.open(fname, std::ios_base::app);
+        fid << std::to_string(num_procs) << " " << exec_time << "\n";
+        fid.close();
     }
 
-    MPI_Comm_rank(comm, &myRank);
-    if (myRank == 0)
-    {
-        {
-            std::string filename = model_name + "_time_FSP_" + std::to_string(num_procs) + ".dat";
-            std::ofstream file;
-            file.open(filename);
-            file << solver_time;
-            file.close();
-        }
-        for (PetscInt i{0}; i < marginals.size(); ++i )
-        {
-            std::string filename = model_name + "_marginal_FSP_" + std::to_string(i) + "_"+ std::to_string(num_procs)+ ".dat";
-            marginals[i].save(filename, arma::raw_ascii);
-        }
-    }
+    fname = std::string(model) + "_sol.out";
+    petscvec_to_file(comm, my_fsp.get_P(), fname.c_str());
 
-    if (export_full_solution)
-    {
-        std::string filename = model_name + "_" + "FSP" + "_full_" + std::to_string(num_procs)+ ".out";
-        petscvec_to_file(comm, my_fsp.get_P(), filename.c_str());
-    }
-
+    /* Destroy FSP object and finalize */
     my_fsp.destroy();
-
     ierr = PetscFinalize();
     return ierr;
 }

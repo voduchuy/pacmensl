@@ -40,19 +40,13 @@ ADD_DEFINITIONS(${PETSC_DEFINITIONS})
 set(MY_LIBRARIES HyperRecOp KExpv Magnus4 Magnus4FSP cme_util HyperRecOpDD FSP)
 
 set(TEST_PROGRAMS
-#  diagonal_matvec form_toggle_matrix solve_toggle form_partition_toggle_matrix
-#   form_partition_hog1p_matrix form_toggle_operator
-#   solve_toggle_tv solve_hog1p_tv_with_ts
-        solve_hog1p_tv_with_magnus
-#solve_hog1p_tv_damped_with_magnus
-        solve_hog1p_tv_damped_with_ts
-#solve_hog1p_tv_damped_with_magnus_dd solve_hog1p_tv_damped_with_ts_dd
-        test_scatter solve_toggle_adaptive_FSP
+        diagonal_matvec
+        solve_toggle_adaptive_FSP
         solve_hog_adaptive_FSP
         )
 
 foreach ( LIB ${MY_LIBRARIES} )
-  add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h test/test_ghost.cpp)
+  add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h)
 endforeach()
 
 target_link_libraries(Magnus4FSP KExpv)

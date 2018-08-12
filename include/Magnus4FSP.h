@@ -140,7 +140,6 @@ namespace cme {
                 to_expand.set_size(n_sinks);
                 VecGetSize(solution_now, &n_global);
                 sink_indices = arma::linspace<arma::Row<Int>>(n_global - n_sinks, n_global - 1, n_sinks);
-                std::cout << sink_indices;
 
                 Int itmp{0}, i1, i2;
                 VecGetOwnershipRange(solution_now, &i1, &i2);

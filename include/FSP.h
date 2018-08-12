@@ -77,6 +77,11 @@ namespace cme{
                 return P;
             }
 
+            arma::Row<Int> get_size()
+            {
+                return FSPSize;
+            }
+
             void solve();
 
             void destroy()
