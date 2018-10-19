@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
   ierr = PetscInitialize(&argc,&argv,(char*)0,help); CHKERRQ(ierr);
 
   MPI_Comm comm = PETSC_COMM_WORLD;
-  PetscInt n_rows_global = 10000000;
+  PetscInt n_rows_global = 1000;
   PetscInt i_start, i_end, num_procs, rank_proc;
 
   MPI_Comm_size(comm, &num_procs);
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 
   Mat A;
   MatCreate(comm, &A);
-  MatSetType(A, MATMPIAIJ);
+  MatSetFromOptions(A);
   MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global );
   MatSetUp(A);
   MatGetOwnershipRange(A, &i_start, &i_end);
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   /* Generate vectors for matmult */
   Vec x,y;
   VecCreate(comm, &x);
-  VecSetType(x, VECMPI);
+  VecSetFromOptions(x);
   VecSetSizes(x, PETSC_DECIDE, n_rows_global);
   VecSetUp(x);
   VecSet(x, 1.0);
