@@ -1,4 +1,4 @@
-#include "HyperRecOp.h"
+#include "MatrixSet.h"
 #include "cme_util.h"
 
 using std::cout;
@@ -7,7 +7,7 @@ using std::endl;
 namespace cme {
     namespace petsc {
 
-        HyperRecOp::HyperRecOp(MPI_Comm &new_comm, const arma::Row<Int> &new_nmax, const arma::Mat<Int> &SM,
+        MatrixSet::MatrixSet(MPI_Comm &new_comm, const arma::Row<Int> &new_nmax, const arma::Mat<Int> &SM,
                                PropFun prop, TcoefFun new_t_fun) :
                 comm(new_comm),
                 n_reactions(SM.n_cols),
@@ -17,17 +17,17 @@ namespace cme {
             generate_matrices(new_nmax, SM, prop);
         }
 
-        void HyperRecOp::set_time(Real t_in) {
+        void MatrixSet::set_time(Real t_in) {
             t_here = t_in;
         }
 
-        void HyperRecOp::duplicate_structure(Mat &A) {
+        void MatrixSet::duplicate_structure(Mat &A) {
             Int ierr;
             ierr = MatDuplicate(terms[n_reactions], MAT_DO_NOT_COPY_VALUES, &A);
             CHKERRABORT(comm, ierr);
         }
 
-        void HyperRecOp::dump_to_mat(Mat A) {
+        void MatrixSet::dump_to_mat(Mat A) {
             Int ierr;
             arma::Row<Real> coefficients = t_fun(t_here);
             for (Int ir{0}; ir < n_reactions; ++ir) {
@@ -36,7 +36,7 @@ namespace cme {
             }
         }
 
-        void HyperRecOp::action(Vec x, Vec y) {
+        void MatrixSet::action(Vec x, Vec y) {
             Int ierr;
 
             arma::Row<Real> coefficients = t_fun(t_here);
@@ -52,13 +52,13 @@ namespace cme {
             }
         }
 
-        void HyperRecOp::print_info() {
+        void MatrixSet::print_info() {
             PetscPrintf(comm, "This is an Op object.\n");
         }
 
-        void HyperRecOp::generate_matrices(const arma::Row<Int> new_nmax, const arma::Mat<Int> &SM, PropFun prop) {
-            max_num_molecules = new_nmax;
-            n_rows_global = arma::prod(max_num_molecules + 1) + max_num_molecules.n_elem;
+        void MatrixSet::generate_matrices(const arma::Row<Int> new_nmax, const arma::Mat<Int> &SM, PropFun prop) {
+            fsp_size = new_nmax;
+            n_rows_global = arma::prod(fsp_size + 1) + fsp_size.n_elem;
             PetscInt ierr;
             PetscReal val;
 
@@ -96,7 +96,7 @@ namespace cme {
             CHKERRABORT(comm, ierr);
             MatSetUp(terms[n_reactions]);
 
-            PetscInt n_states = arma::prod(max_num_molecules+1);
+            PetscInt n_states = arma::prod(fsp_size+1);
             PetscInt Istart, Iend;
             // Get the indices of rows the current process owns, which will range from Istart to Iend-1
             ierr = MatGetOwnershipRange(terms[n_reactions], &Istart, &Iend);
@@ -106,7 +106,7 @@ namespace cme {
 
             arma::Row<Int> my_range = arma::linspace<arma::Row<Int>>(Istart, Iend-1, Iend-Istart);
 
-            arma::Mat<Int> my_X = cme::ind2sub_nd(max_num_molecules, my_range);
+            arma::Mat<Int> my_X = cme::ind2sub_nd(fsp_size, my_range);
 
             arma::Col<Int> xtmp;
             for (Int ir{0}; ir < n_reactions; ++ir) {
@@ -134,7 +134,7 @@ namespace cme {
                 ierr = MatSetOption(terms[ir], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
                 CHKERRABORT(comm, ierr);
 
-                /* Set row values corresponding to the usual states, this will require no communication */
+                /* Set row values corresponding to the usual local_states, this will require no communication */
                 /* Set values for diagonal entries */
                 for (size_t i{0}; i < my_range.n_elem; ++i) {
                     xtmp = my_X.col(i);
@@ -146,7 +146,7 @@ namespace cme {
                 /* Set values for off-diagonal entries */
                 PetscInt nLocal = my_range.n_elem;
                 arma::Mat<PetscInt> RX = my_X - repmat(SM.col(ir), 1, nLocal);
-                arma::Row<PetscInt> rindx = cme::sub2ind_nd(max_num_molecules, RX);
+                arma::Row<PetscInt> rindx = cme::sub2ind_nd(fsp_size, RX);
 
                 for (size_t i{0}; i < my_range.n_elem; ++i) {
                     xtmp = RX.col(i);
@@ -160,9 +160,9 @@ namespace cme {
                     CHKERRABORT(comm, ierr);
                 }
 
-                /* Set values corresponding to the sink states, this will require communication */
+                /* Set values corresponding to the sink local_states, this will require communication */
                 RX = my_X + repmat(SM.col(ir), 1, nLocal);
-                rindx = cme::sub2ind_nd(max_num_molecules, RX);
+                rindx = cme::sub2ind_nd(fsp_size, RX);
                 for (PetscInt i{0}; i < my_range.n_elem; ++i) {
                     xtmp = my_X.col(i);
                     val = prop(xtmp.begin(), ir);

@@ -1,4 +1,4 @@
-static char help[] = "Solve the 5-species spatial hog1p model with time-varying propensities using adaptive finite state projection.\n\n";
+static char help[] = "Formation of the two-species toggle-switch matrix.\n\n";
 
 #include <petscmat.h>
 #include <petscvec.h>
@@ -6,10 +6,12 @@ static char help[] = "Solve the 5-species spatial hog1p model with time-varying 
 #include <cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include <HyperRecOp.h>
+#include <string>
+#include <fstream>
+#include <MatrixSet.h>
 #include <Magnus4FSP.h>
 #include <FSP.h>
-#include <models/hog1p_tv_model.h>
+#include "models/toggle_model.h"
 
 using arma::dvec;
 using arma::Col;
@@ -17,23 +19,22 @@ using arma::Row;
 
 using std::cout;
 using std::endl;
+using namespace toggle_cme;
 
 void petscvec_to_file(MPI_Comm comm, Vec x, const char *filename);
-
-using namespace hog1p_cme;
 
 int main(int argc, char *argv[]) {
     int ierr, myRank;
 
-    static char model[] = "hog";
+    static char model[] = "toggle";
     /* CME problem sizes */
-    int nSpecies = 5; // Number of species
-    Row<PetscReal> FSPIncrement({0.25, 0.25, 0.25, 0.25, 0.25}); // Max fraction of states added to each dimension when expanding the FSP
-    Row<PetscInt> FSPSize({3, 1, 1, 1, 1}); // Size of the FSP
-    PetscReal t_final = 60.00;
-    PetscReal fsp_tol = 1.0e-2;
-    PetscReal magnus_tol = 1.0e-4;
-    arma::Mat<PetscInt> init_states(5,1); init_states.fill(0.0);
+    int nSpecies = 2; // Number of species
+    Row<PetscReal> FSPIncrement({0.25, 0.25}); // Max fraction of local_states added to each dimension when expanding the FSP
+    Row<PetscInt> FSPSize({50, 50}); // Size of the initial FSP
+    PetscReal t_final = 100.0;
+    PetscReal fsp_tol = 1.0e-6;
+    /* Specifiy initial local_states and their probabilities */
+    arma::Mat<PetscInt> init_states(2,1); init_states(0,0) = 0; init_states(1,0) = 0;
     arma::Col<PetscReal> init_prob({1.0});
 
     ierr = PetscInitialize(&argc, &argv, (char *) 0, help); CHKERRQ(ierr);
@@ -45,7 +46,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the FSP solver object */
     cme::petsc::FSP my_fsp(comm, init_states, init_prob, SM,
-                           propensity, t_fun, FSPSize, FSPIncrement, t_final, fsp_tol, magnus_tol);
+            propensity, t_fun, FSPSize, FSPIncrement, t_final, fsp_tol);
 
     /* Solve the problem */
     PetscReal tic, exec_time;

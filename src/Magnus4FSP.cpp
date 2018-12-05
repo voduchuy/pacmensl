@@ -66,13 +66,13 @@ namespace cme {
 
                 local_error = (t_step) * (t_step) * (t_step) * (t_step) * xtmp / 720.0;
                 PetscReal t_step_old = t_step;
-                t_step_new = pow(0.9e0 * t_step * tol / local_error, 0.25e0) * t_step;
-                if (local_error >= 1.2e0 * t_step * tol) {
+                t_step_new = pow(0.5e0 *  tol / local_error, 0.25e0) * t_step;
+                if (local_error >= 1.2e0 * tol) {
 
                     t_step = std::min(5 * t_step, std::max(t_step_new, 0.5 * t_step));
                 }
 
-            } while (local_error >= 1.2e0 * t_step * tol);
+            } while (local_error >= 1.2e0 * tol);
 
 #ifdef MAGNUS4_VERBOSE
             PetscPrintf(comm, "%d t = %2.4e dt = %2.4e \n", i_step, t_now, t_step);
@@ -108,7 +108,7 @@ namespace cme {
                     VecCopy(solution_old, solution_now);
                     t_now = t_old;
 
-                    /* Determine which sink states need expansion */
+                    /* Determine which sink local_states need expansion */
                     to_expand.fill(0);
                     to_expand.elem( arma::find(sinks >= err_bound ) ).ones();
 

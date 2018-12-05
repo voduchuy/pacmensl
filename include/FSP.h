@@ -10,7 +10,7 @@
 #include<cstdlib>
 #include<cmath>
 #include<Magnus4FSP.h>
-#include<HyperRecOp.h>
+#include<MatrixSet.h>
 #include<petsc.h>
 
 namespace cme{
@@ -21,7 +21,7 @@ namespace cme{
         private:
             MPI_Comm comm = NULL;
             Vec P;
-            HyperRecOp A;
+            MatrixSet A;
             arma::Row<Int> FSPSize;
             arma::Row<Real> FSPIncrement;
             Real t_final;

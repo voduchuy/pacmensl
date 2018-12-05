@@ -60,7 +60,7 @@ namespace cme {
             Int max_nstep = 100000;
             NormType local_error_norm = NORM_1;
 
-            /* Armadillo vector to store sink states */
+            /* Armadillo vector to store sink local_states */
             arma::Row<Real> sinks;
             Int n_sinks;
             arma::Row<Int> sink_indices;

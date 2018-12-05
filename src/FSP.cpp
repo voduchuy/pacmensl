@@ -58,9 +58,9 @@ namespace cme{
                     arma::Mat<PetscInt> my_X = cme::ind2sub_nd(FSPSize_old, indices_new);
                     indices_new = cme::sub2ind_nd(FSPSize, my_X);
                     indices_new = arma::join_horiz(indices_new, indices_sinks);
-
                     ierr = ISCreateGeneral(comm, (PetscInt) indices_new.n_elem, indices_new.begin(), PETSC_COPY_VALUES, &is_old); CHKERRABORT(comm, ierr);
 
+                    // Scatter from old vector to the expanded vector
                     VecScatter scatter;
                     ierr = VecScatterCreate(P, NULL, Pnew, is_old, &scatter); CHKERRABORT(comm, ierr);
                     ierr = VecScatterBegin(scatter, P, Pnew, INSERT_VALUES, SCATTER_FORWARD); CHKERRABORT(comm, ierr);
