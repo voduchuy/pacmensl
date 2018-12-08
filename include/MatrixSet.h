@@ -29,10 +29,10 @@ namespace cme {
             MPI_Comm comm{MPI_COMM_NULL};
 
             arma::Row<Int> fsp_size;
-            Real t_here = 0.0;
 
             Int n_reactions;
             Int n_rows_global;
+            Int n_rows_local;
             std::vector<Mat> terms;
 
             Vec work; ///< Work vector for computing operator times vector
@@ -41,33 +41,19 @@ namespace cme {
         public:
 
             /* constructors */
-            MatrixSet(MPI_Comm &new_comm, const arma::Row<Int> &new_nmax, const arma::Mat<Int> &SM, PropFun prop,
-                      TcoefFun new_t_fun);
+            explicit MatrixSet(MPI_Comm _comm);
 
-            void generate_matrices(const arma::Row<Int> new_nmax, const arma::Mat<Int> &SM, PropFun prop);
+            void GenerateMatrices(FiniteStateSubset &fsp, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun);
 
-            /* Set current time for the matrix */
-            void set_time(Real t_in);
+            void Destroy();
 
-            MatrixSet &operator()(Real t) {
-                set_time(t);
-                return *this;
-            }
+            void DuplicateStructure(Mat &A);
 
-            void destroy() {
-                for (PetscInt i{0}; i < n_reactions + 1; ++i) {
-                    MatDestroy(&terms[i]);
-                }
-                VecDestroy(&work);
-            }
+            void PrintInfo();
 
-            void duplicate_structure(Mat &A);
+            void Action(PetscReal t, Vec x, Vec y);
 
-            void dump_to_mat(Mat A);
-
-            void print_info();
-
-            void action(Vec x, Vec y);
+            ~MatrixSet();
         };
     }
 }

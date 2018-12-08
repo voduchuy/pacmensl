@@ -4,6 +4,13 @@
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscao.h>
+#include <petscis.h>
+#include <petscistypes.h>
+#include <petscoptions.h>
+#include <petsc.h>
+#include <petscsys.h>
+#include <petscconf.h>
+#include <cassert>
 
 namespace cme {
 /*
@@ -16,22 +23,22 @@ namespace cme {
 
         arma::Row<intT> indx(nst);
 
-        int nprod{1};
-        for (size_t j{1}; j <= nst; j++) {
+        intT nprod{1};
+        for (size_t j{0}; j < nst; j++) {
             nprod = 1;
-            indx(j - 1) = 0;
-            for (size_t i{1}; i <= N; i++) {
-                if (X(i - 1, j - 1) < 0) {
-                    indx(j - 1) = -1;
+            indx(j) = 0;
+            for (size_t i{0}; i < N; i++) {
+                if (X(i, j) < 0) {
+                    indx(j) = (intT) -1;
                     break;
                 }
 
-                if (X(i - 1, j - 1) > nmax(i - 1)) {
-                    indx(j - 1) = -(i + 1);
+                if (X(i, j) > nmax(i)) {
+                    indx(j) = (intT) -(i + 2);
                     break;
                 }
-                indx(j - 1) += X(i - 1, j - 1) * nprod;
-                nprod *= (nmax(i - 1) + 1);
+                indx(j) += X(i, j) * nprod;
+                nprod *= (nmax(i) + 1);
             }
         }
 
@@ -107,10 +114,6 @@ namespace cme {
         }
         i2 = i1 + job_dist(rank);
         return std::make_pair(i1, i2);
-    }
-
-    namespace petsc {
-        arma::Col<PetscReal> marginal(Vec P, arma::Row<PetscInt> &nmax, PetscInt species, AO ao = NULL);
     }
 
 }

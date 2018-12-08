@@ -4,7 +4,7 @@
 
 namespace hog1p_cme {
 // stoichiometric matrix of the toggle switch model
-const arma::Mat<int> SM {
+const arma::Mat<PetscInt> SM {
         {  1,  -1,  -1, 0, 0,  0,  0,  0,  0 },
         {  0,  0,   0,  1, 0, -1,  0,  0,  0 },
         {  0,  0,   0,  0, 1,  0, -1,  0,  0 },

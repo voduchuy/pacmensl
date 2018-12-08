@@ -9,7 +9,7 @@ namespace cme {
     namespace petsc {
         FiniteStateSubset::FiniteStateSubset(MPI_Comm new_comm) {
             int ierr;
-            comm = new_comm;
+            MPI_Comm_dup(new_comm, &comm);
             partitioning_type = NotSet;
             local_states.resize(0);
             fsp_size.resize(0);
@@ -28,28 +28,49 @@ namespace cme {
             n_states_global = arma::prod(fsp_size + 1);
         }
 
-        arma::Mat<PetscInt> FiniteStateSubset::GetStates() {
+        arma::Mat<PetscInt> FiniteStateSubset::GetLocalStates() {
             arma::Mat<PetscInt> states_return = local_states;
             return states_return;
         }
 
         arma::Row<PetscInt> FiniteStateSubset::State2Petsc(arma::Mat<PetscInt> state) {
             arma::Row<PetscInt> lex_indices = cme::sub2ind_nd(fsp_size, state);
-            AOApplicationToPetsc(lex2petsc, (PetscInt) lex_indices.n_elem, &lex_indices[0]);
+
+            // Temporary fix for AO Memory Scalable does not give correct output for negative input
+            arma::Row<PetscInt> neg_indices(lex_indices.n_elem);
+            for (auto i = 0; i < lex_indices.n_elem; ++i){
+                if (lex_indices(i) < 0){
+                    neg_indices(i) = 1;
+                    lex_indices(i) = 0;
+                }
+                else{
+                    neg_indices(i) = 0;
+                }
+            }
+            //
+
+            CHKERRABORT(comm, AOApplicationToPetsc(lex2petsc, (PetscInt) lex_indices.n_elem, &lex_indices[0]));
+
+
+            // Temporary fix for AO Memory Scalable does not give correct output for negative input
+            for (auto i = 0; i < lex_indices.n_elem; ++i){
+                if (neg_indices(i) > 0) {
+                    lex_indices(i) = -1;
+                }
+            }
+            //
             return lex_indices;
         }
 
         FiniteStateSubset::~FiniteStateSubset() {
-            int ierr;
-            comm = nullptr;
-            ierr = AODestroy(&lex2petsc);
+            PetscMPIInt ierr;
+            ierr = MPI_Comm_free(&comm);
             CHKERRABORT(comm, ierr);
-            ierr = PetscLayoutDestroy(&vec_layout);
-            CHKERRABORT(comm, ierr);
+            Destroy();
         }
 
         std::tuple<PetscInt, PetscInt> FiniteStateSubset::GetLayoutStartEnd() {
-            int start, end, ierr;
+            PetscInt start, end, ierr;
             ierr = PetscLayoutGetRange(vec_layout, &start, &end);
             CHKERRABORT(comm, ierr);
             return std::make_tuple(start, end);
@@ -57,21 +78,21 @@ namespace cme {
         }
 
         arma::Row<PetscReal> FiniteStateSubset::SinkStatesReduce(Vec P) {
-            int ierr;
+            PetscInt ierr;
 
             arma::Row<PetscReal> local_sinks(fsp_size.n_elem), global_sinks(fsp_size.n_elem);
 
-            int p_local_size;
+            PetscInt p_local_size;
             ierr = VecGetLocalSize(P, &p_local_size); CHKERRABORT(comm, ierr);
 
-            if (p_local_size != local_states.n_cols){
-                printf("FiniteStateSubset::SinkStatesReduce: The layout of P and FiniteStateSubset do not match.\n");
+            if (p_local_size != local_states.n_cols + fsp_size.n_elem){
+                printf("FiniteStateSubset::SinkStatesReduce: The layout of p and FiniteStateSubset do not match.\n");
                 MPI_Abort(comm, 1);
             }
 
             PetscReal *p_data;
             VecGetArray(P, &p_data);
-            for (int i{0}; i < fsp_size.n_elem; ++i){
+            for (auto i{0}; i < fsp_size.n_elem; ++i){
                 local_sinks(i) = p_data[p_local_size -1 - i];
                 ierr = MPI_Allreduce(&local_sinks[i], &global_sinks[i], 1, MPIU_REAL, MPI_SUM, comm);
                 CHKERRABORT(comm, ierr);
@@ -79,5 +100,59 @@ namespace cme {
 
             return global_sinks;
         }
+
+        MPI_Comm FiniteStateSubset::GetComm() {
+            return comm;
+        }
+
+        arma::Row<PetscInt> FiniteStateSubset::GetFSPSize() {
+            return fsp_size;
+        }
+
+        PetscInt FiniteStateSubset::GetNumLocalStates() {
+            return n_local_states;
+        }
+
+        PetscInt FiniteStateSubset::GetNumSpecies() {
+            return (PetscInt(fsp_size.n_elem));
+        }
+
+        void FiniteStateSubset::PrintAO() {
+            CHKERRABORT(comm, AOView(lex2petsc, PETSC_VIEWER_STDOUT_(comm)));
+        }
+
+        arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species)
+        {
+            MPI_Comm comm;
+            PetscObjectGetComm((PetscObject) P, &comm);
+
+            PetscReal *local_data; VecGetArray(P, &local_data);
+
+            arma::Col<PetscReal> p_local(local_data, fsp.n_local_states, false, true);
+            arma::Col<PetscReal> v(fsp.fsp_size(species)+1); v.fill(0.0);
+
+            for (PetscInt i{0}; i < fsp.n_local_states; ++i)
+            {
+                v(fsp.local_states(species, i)) += p_local(i);
+            }
+
+            MPI_Barrier( comm );
+
+            arma::Col<PetscReal> w(fsp.fsp_size(species)+1); w.fill(0.0);
+            MPI_Allreduce( &v[0], &w[0], v.size(), MPI_DOUBLE, MPI_SUM, comm );
+
+            VecRestoreArray(P, &local_data);
+            return w;
+        }
+
+        void FiniteStateSubset::Destroy() {
+            if (lex2petsc) AODestroy(&lex2petsc);
+            if (vec_layout) PetscLayoutDestroy(&vec_layout);
+        }
+
+        AO FiniteStateSubset::GetAO() {
+            return lex2petsc;
+        }
+
     }
 }

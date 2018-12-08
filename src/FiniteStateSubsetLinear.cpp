@@ -8,12 +8,12 @@
 namespace cme {
     namespace petsc {
         void FiniteStateSubsetLinear::GenerateStatesAndOrdering() {
-            int ierr;
+            PetscInt ierr;
             PetscLayout layout_without_sinks;
-            int local_size_without_sinks, global_size_with_sinks;
-            int start1, end1, start2, end2;
+            PetscInt local_size_without_sinks, global_size_with_sinks;
+            PetscInt start1, end1, start2, end2;
 
-            int rank;
+            PetscMPIInt rank;
             MPI_Comm_rank(comm, &rank);
 
             ierr = PetscLayoutCreate(comm, &layout_without_sinks);
@@ -42,7 +42,7 @@ namespace cme {
             CHKERRABORT(comm, ierr);
 
             // Count number of local states
-            n_states_local = local_size_without_sinks;
+            n_local_states = local_size_without_sinks;
 
             arma::Row<PetscInt> fsp_indices(local_size_without_sinks + n_species);
             arma::Row<PetscInt> petsc_indices(local_size_without_sinks + n_species);
@@ -57,16 +57,26 @@ namespace cme {
                 petsc_indices[local_size_without_sinks + n_species -1 -i] = end2 -1 -i;
             }
 
-            AOCreateMemoryScalable(comm, local_size_without_sinks + n_species, fsp_indices.memptr(), petsc_indices.memptr(), &lex2petsc);
-            CHKERRABORT(comm, ierr);
+            // Create the AO object that maps from lexicographic ordering to Petsc Vec ordering
+            IS fsp_is, petsc_is;
+            ISCreateGeneral(comm, local_size_without_sinks + n_species, &fsp_indices[0], PETSC_COPY_VALUES, &fsp_is);
+            ISCreateGeneral(comm, local_size_without_sinks + n_species, &petsc_indices[0], PETSC_COPY_VALUES, &petsc_is);
+            AOCreate(comm, &lex2petsc);
+            AOSetIS(lex2petsc, fsp_is, petsc_is);
+            AOSetType(lex2petsc, AOMEMORYSCALABLE);
+            AOSetFromOptions(lex2petsc);
+            CHKERRABORT(comm, ISDestroy(&fsp_is));
+            CHKERRABORT(comm, ISDestroy(&petsc_is));
+
+//            ierr = AOCreateBasic(comm, local_size_without_sinks + n_species, &fsp_indices[0], &petsc_indices[0], &lex2petsc);
 
             // Generate the local states
-            arma::Row<PetscInt> petsc_local_indices(n_states_local);
-            CHKERRABORT(comm, PetscLayoutGetRange(vec_layout, &petsc_local_indices[0], &petsc_local_indices[n_states_local-1]));
-            for (PetscInt i{0}; i < n_states_local; ++i){
+            arma::Row<PetscInt> petsc_local_indices(n_local_states);
+            CHKERRABORT(comm, PetscLayoutGetRange(vec_layout, &petsc_local_indices[0], &petsc_local_indices[n_local_states-1]));
+            for (PetscInt i{0}; i < n_local_states; ++i){
                 petsc_local_indices[i] = petsc_local_indices[0] + i;
             }
-            CHKERRABORT(comm, AOPetscToApplication(lex2petsc, n_states_local, &petsc_local_indices[0]));
+            CHKERRABORT(comm, AOPetscToApplication(lex2petsc, n_local_states, &petsc_local_indices[0]));
             local_states = ind2sub_nd(fsp_size, petsc_local_indices);
 
             ierr = PetscLayoutDestroy(&layout_without_sinks);

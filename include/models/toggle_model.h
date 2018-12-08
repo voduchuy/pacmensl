@@ -4,7 +4,7 @@
 
 namespace toggle_cme{
 /* Stoichiometric matrix of the toggle switch model */
-    arma::Mat<int> SM{{1, 1, -1, 0, 0, 0},
+    arma::Mat<PetscInt> SM{{1, 1, -1, 0, 0, 0},
                       {0, 0, 0,  1, 1, -1}};
 
     const int nReaction = 6;

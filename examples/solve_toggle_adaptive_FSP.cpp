@@ -10,7 +10,7 @@ static char help[] = "Formation of the two-species toggle-switch matrix.\n\n";
 #include <fstream>
 #include <MatrixSet.h>
 #include <Magnus4FSP.h>
-#include <FSP.h>
+#include <FSPSolver.h>
 #include "models/toggle_model.h"
 
 using arma::dvec;

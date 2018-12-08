@@ -100,7 +100,7 @@ namespace cme {
 
                 step();
 
-                /* Ensure FSP criteria, if fails quit */
+                /* Ensure FSPSolver criteria, if fails quit */
                 get_sinks();
                 Real err_bound = (fsp_tol/(Real) n_sinks) * std::pow( t_now/ t_final, 2.0);
                 if ( sinks.max() >= err_bound) {
@@ -113,7 +113,7 @@ namespace cme {
                     to_expand.elem( arma::find(sinks >= err_bound ) ).ones();
 
 #ifdef MAGNUS4_VERBOSE
-                    PetscPrintf(comm, "FSP criteria failed. Trying with a bigger FSP...\n");
+                    PetscPrintf(comm, "FSPSolver criteria failed. Trying with a bigger FSPSolver...\n");
 #endif
                     break;
                 }

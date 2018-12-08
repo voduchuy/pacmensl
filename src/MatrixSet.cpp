@@ -1,3 +1,6 @@
+
+#include <MatrixSet.h>
+
 #include "MatrixSet.h"
 #include "cme_util.h"
 
@@ -7,39 +10,20 @@ using std::endl;
 namespace cme {
     namespace petsc {
 
-        MatrixSet::MatrixSet(MPI_Comm &new_comm, const arma::Row<Int> &new_nmax, const arma::Mat<Int> &SM,
-                               PropFun prop, TcoefFun new_t_fun) :
-                comm(new_comm),
-                n_reactions(SM.n_cols),
-                t_fun(new_t_fun)
-        {
-            terms.resize(n_reactions + 1);
-            generate_matrices(new_nmax, SM, prop);
+        MatrixSet::MatrixSet(MPI_Comm _comm) {
+            MPI_Comm_dup(_comm, &comm);
         }
 
-        void MatrixSet::set_time(Real t_in) {
-            t_here = t_in;
-        }
-
-        void MatrixSet::duplicate_structure(Mat &A) {
+        void MatrixSet::DuplicateStructure(Mat &A) {
             Int ierr;
             ierr = MatDuplicate(terms[n_reactions], MAT_DO_NOT_COPY_VALUES, &A);
             CHKERRABORT(comm, ierr);
         }
 
-        void MatrixSet::dump_to_mat(Mat A) {
-            Int ierr;
-            arma::Row<Real> coefficients = t_fun(t_here);
-            for (Int ir{0}; ir < n_reactions; ++ir) {
-                ierr = MatAXPY(A, coefficients[ir], terms[ir], SUBSET_NONZERO_PATTERN);
-                CHKERRABORT(comm, ierr);
-            }
-        }
-
-        void MatrixSet::action(Vec x, Vec y) {
+        void MatrixSet::Action(PetscReal t, Vec x, Vec y) {
             Int ierr;
 
-            arma::Row<Real> coefficients = t_fun(t_here);
+            arma::Row<Real> coefficients = t_fun(t);
 
             ierr = VecSet(y, 0.0);
             CHKERRABORT(comm, ierr);
@@ -50,130 +34,119 @@ namespace cme {
                 ierr = VecAXPY(y, coefficients[ir], work);
                 CHKERRABORT(comm, ierr);
             }
+
         }
 
-        void MatrixSet::print_info() {
+        void MatrixSet::PrintInfo() {
             PetscPrintf(comm, "This is an Op object.\n");
         }
 
-        void MatrixSet::generate_matrices(const arma::Row<Int> new_nmax, const arma::Mat<Int> &SM, PropFun prop) {
-            fsp_size = new_nmax;
-            n_rows_global = arma::prod(fsp_size + 1) + fsp_size.n_elem;
+        void MatrixSet::GenerateMatrices(FiniteStateSubset &fsp, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun) {
             PetscInt ierr;
+
+            t_fun = new_t_fun;
+
+            n_reactions = PetscInt(SM.n_cols);
+            terms.resize(n_reactions);
+
+            PetscInt n_local_states = fsp.GetNumLocalStates();
+
+            fsp_size = fsp.GetFSPSize();//fsp_size;
+
+            n_rows_local = n_local_states + fsp.GetNumSpecies();
+
+            PetscMPIInt rank;
+            MPI_Comm_rank(comm, &rank);
+
+            // Generate matrix layout from FSP's layout
+            ierr = VecCreate(comm, &work);
+            CHKERRABORT(comm, ierr);
+            ierr = VecSetFromOptions(work);
+            CHKERRABORT(comm, ierr);
+            ierr = VecSetSizes(work, n_rows_local, PETSC_DECIDE);
+            CHKERRABORT(comm, ierr);
+            ierr = VecSetUp(work);
+            CHKERRABORT(comm, ierr);
+
+            // Get the global and local numbers of rows
+            VecGetSize(work, &n_rows_global);
+
+            // Get local range of PETSC indices and local states
+
+            arma::Mat<Int> my_X = fsp.GetLocalStates();
+            arma::Row<Int> my_range((size_t) n_rows_local);
+            ierr = VecGetOwnershipRange(work, &my_range[0], &my_range[n_rows_local - 1]);
+            CHKERRABORT(comm, ierr);
+
+            for (PetscInt i{0}; i < n_rows_local; ++i) {
+                my_range[i] = my_range[0] + i;
+            }
+
+            arma::Mat<Int> Xtmp(fsp_size.n_elem, (size_t) fsp.GetNumLocalStates());
+            arma::Row<PetscInt> rindx((size_t) fsp.GetNumLocalStates());
+            rindx.fill(0);
+            arma::Row<PetscInt> rindx_sinks((size_t) fsp.GetNumLocalStates());
+            arma::Row<Int> d_nnz((size_t) n_rows_local);
+            arma::Row<Int> o_nnz((size_t) n_rows_local);
             PetscReal val;
-
-            MatType mat_type;
-            Int comm_size;
-            MPI_Comm_size(comm, &comm_size);
-            if (comm_size == 1) {
-                mat_type = MATSEQAIJ;
-            } else {
-                mat_type = MATMPIAIJ;
-            }
-
-            VecCreate(comm, &work);
-            VecSetFromOptions(work);
-            VecSetSizes(work, PETSC_DECIDE, n_rows_global);
-            VecSetUp(work);
-
-            MatCreate(comm, &terms[n_reactions]);
-
-            /* Preallocate memory for matrix */
-            if (strcmp(mat_type, MATSEQAIJ) == 0) {
-#ifdef HYPER_REC_OP_VERBOSE
-                PetscPrintf(comm, "Allocating memory for SEQAIJ.\n");
-#endif
-                MatCreateSeqAIJ(comm, n_rows_global, n_rows_global, n_reactions + 1, NULL, &terms[n_reactions]);
-            } else if (strcmp(mat_type, MATMPIAIJ) == 0) {
-#ifdef HYPER_REC_OP_VERBOSE
-                PetscPrintf(comm, "Allocating memory for MPIAIJ.\n");
-#endif
-                MatCreateAIJ(comm, PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global, n_reactions + 1, NULL,
-                             n_reactions + 1, NULL, &terms[n_reactions]);
-            }
-
-            ierr = MatSetOption(terms[n_reactions], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-            CHKERRABORT(comm, ierr);
-            MatSetUp(terms[n_reactions]);
-
-            PetscInt n_states = arma::prod(fsp_size+1);
-            PetscInt Istart, Iend;
-            // Get the indices of rows the current process owns, which will range from Istart to Iend-1
-            ierr = MatGetOwnershipRange(terms[n_reactions], &Istart, &Iend);
-            CHKERRABORT(comm, ierr);
-
-            Iend = std::min(Iend, n_states);
-
-            arma::Row<Int> my_range = arma::linspace<arma::Row<Int>>(Istart, Iend-1, Iend-Istart);
-
-            arma::Mat<Int> my_X = cme::ind2sub_nd(fsp_size, my_range);
-
-            arma::Col<Int> xtmp;
             for (Int ir{0}; ir < n_reactions; ++ir) {
-                ierr = MatCreate(comm, &terms[ir]);
+                // Determine the number of nonzeros per row on the diagonal and off-diagonal portion of the matrix
+                d_nnz.fill(1);
+                o_nnz.fill(0);
+                // nnz per row for sink states
+                Xtmp = my_X + repmat(SM.col(ir), 1, fsp.GetNumLocalStates());
+                rindx_sinks = sub2ind_nd(fsp_size, Xtmp);
+                for (Int i{0}; i < fsp.GetNumLocalStates(); ++i) {
+                    if (rindx_sinks(i) <
+                        -1) {// the sub2ind return -1-d if the state exceed the bound on the d dimension
+                        d_nnz((size_t) n_rows_local + (rindx_sinks(i) + 2) - 1) += 1;
+                    }
+                }
+                // nnz per row for normal states
+                Xtmp = my_X - repmat(SM.col(ir), 1, fsp.GetNumLocalStates());
+                rindx = fsp.State2Petsc(Xtmp);
+
+                for (Int i{0}; i < fsp.GetNumLocalStates(); ++i) {
+                    if (rindx(i) >= my_range(0) && rindx(i) <= my_range(n_rows_local - 1)) {
+                        d_nnz(i) += 1;
+                    } else if (rindx(i) >= 0) {
+                        o_nnz(i) += 1;
+                    }
+                }
+
+                // Create matrix with preallocated memory
+                ierr = MatCreateAIJ(comm, n_rows_local, n_rows_local,
+                                    n_rows_global, n_rows_global, 0, &d_nnz[0], 0, &o_nnz[0],
+                                    &terms[ir]);
                 CHKERRABORT(comm, ierr);
-
-                /* Preallocate memory for matrix */
-#ifdef HYPER_REC_OP_VERBOSE
-                if (strcmp(mat_type, MATSEQAIJ) == 0) {
-                    PetscPrintf(comm, "Allocating memory for SEQAIJ.\n");
-                } else if (strcmp(mat_type, MATMPIAIJ) == 0) {
-                    PetscPrintf(comm, "Allocating memory for MPIAIJ.\n");
-                }
-#endif
-
-                if (strcmp(mat_type, MATSEQAIJ) == 0) {
-                    MatCreateSeqAIJ(comm, n_rows_global, n_rows_global, 2, NULL, &terms[ir]);
-                } else if (strcmp(mat_type, MATMPIAIJ) == 0) {
-                    MatCreateAIJ(comm, PETSC_DECIDE, PETSC_DECIDE, n_rows_global, n_rows_global, 2, NULL, 2, NULL,
-                                 &terms[ir]);
-                }
+                ierr = MatSetOption(terms[ir], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+                CHKERRABORT(comm, ierr);
                 ierr = MatSetUp(terms[ir]);
                 CHKERRABORT(comm, ierr);
 
-                ierr = MatSetOption(terms[ir], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-                CHKERRABORT(comm, ierr);
-
-                /* Set row values corresponding to the usual local_states, this will require no communication */
+                /* Set row values corresponding to the usual local_states*/
                 /* Set values for diagonal entries */
-                for (size_t i{0}; i < my_range.n_elem; ++i) {
-                    xtmp = my_X.col(i);
-                    val = prop(xtmp.begin(), ir);
+                for (size_t i{0}; i < n_local_states; ++i) {
+                    val = prop(my_X.colptr(i), ir);
                     ierr = MatSetValue(terms[ir], my_range(i), my_range(i), -1.0 * val, ADD_VALUES);
                     CHKERRABORT(comm, ierr);
                 }
 
                 /* Set values for off-diagonal entries */
-                PetscInt nLocal = my_range.n_elem;
-                arma::Mat<PetscInt> RX = my_X - repmat(SM.col(ir), 1, nLocal);
-                arma::Row<PetscInt> rindx = cme::sub2ind_nd(fsp_size, RX);
-
-                for (size_t i{0}; i < my_range.n_elem; ++i) {
-                    xtmp = RX.col(i);
-                    val = prop(xtmp.begin(), ir);
-
+                for (size_t i{0}; i < n_local_states; ++i) {
+                    val = prop(Xtmp.colptr(i), ir);
                     ierr = MatSetValue(terms[ir], my_range(i), rindx(i), val,
                                        ADD_VALUES);
                     CHKERRABORT(comm, ierr);
-                    ierr = MatSetValue(terms[n_reactions], my_range(i), rindx(i), 0.0,
-                                       INSERT_VALUES);
-                    CHKERRABORT(comm, ierr);
                 }
 
-                /* Set values corresponding to the sink local_states, this will require communication */
-                RX = my_X + repmat(SM.col(ir), 1, nLocal);
-                rindx = cme::sub2ind_nd(fsp_size, RX);
-                for (PetscInt i{0}; i < my_range.n_elem; ++i) {
-                    xtmp = my_X.col(i);
-                    val = prop(xtmp.begin(), ir);
-
-                    if (rindx(i) < -1) {
-                        rindx(i) = (n_states - 1) - (rindx(i)+1);
-                        ierr = MatSetValue(terms[ir], rindx(i), my_range(i), val,
+                /* Set values corresponding to the sink local_states */
+                for (PetscInt i{0}; i < n_local_states; ++i) {
+                    if (rindx_sinks(i) < -1) {
+                        val = prop(my_X.colptr(i), ir);
+                        ierr = MatSetValue(terms[ir], my_range((size_t) n_rows_local - 1) + (rindx_sinks(i) + 2), my_range(i),
+                                           val,
                                            ADD_VALUES);
-                        CHKERRABORT(comm, ierr);
-                        ierr = MatSetValue(terms[n_reactions], rindx(i), my_range(i), 0.0,
-                                           INSERT_VALUES);
                         CHKERRABORT(comm, ierr);
                     }
                 }
@@ -185,16 +158,20 @@ namespace cme {
                 ierr = MatAssemblyEnd(terms[ir], MAT_FINAL_ASSEMBLY);
                 CHKERRABORT(comm, ierr);
             }
+        }
 
-            for (PetscInt i{0}; i < my_range.n_elem; ++i) {
-                ierr = MatSetValue(terms[n_reactions], my_range(i), my_range(i), 0.0,
-                                   INSERT_VALUES);// note that Petsc enters values by rows
-                CHKERRABORT(comm, ierr);
+        MatrixSet::~MatrixSet() {
+            MPI_Comm_free(&comm);
+            Destroy();
+        }
+
+        void MatrixSet::Destroy() {
+            for (PetscInt i{0}; i < n_reactions; ++i) {
+                if (terms[i]) {
+                    MatDestroy(&terms[i]);
+                }
             }
-            ierr = MatAssemblyBegin(terms[n_reactions], MAT_FINAL_ASSEMBLY);
-            CHKERRABORT(comm, ierr);
-            ierr = MatAssemblyEnd(terms[n_reactions], MAT_FINAL_ASSEMBLY);
-            CHKERRABORT(comm, ierr);
+            if (work) VecDestroy(&work);
         }
     }
 }

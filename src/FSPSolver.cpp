@@ -1,0 +1,207 @@
+//
+// Created by Huy Vo on 5/29/18.
+//
+
+#include <FSPSolver.h>
+
+#include "FSPSolver.h"
+
+namespace cme{
+    namespace petsc{
+        FSPSolver::FSPSolver(MPI_Comm _comm, PartioningType _part_type, ODESolverType _solve_type)
+        {
+            MPI_Comm_dup(_comm, &comm);
+            partioning_type = _part_type;
+            odes_type = _solve_type;
+        }
+
+
+        void FSPSolver::SetInitFSPSize(arma::Row<Int> &_fsp_size) {
+            fsp_size = _fsp_size;
+        }
+
+        void FSPSolver::SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors) {
+            fsp_expasion_factors = _expansion_factors;
+        }
+
+        void FSPSolver::SetFSPTolerance(PetscReal _fsp_tol) {
+            fsp_tol = _fsp_tol;
+        }
+
+        void FSPSolver::SetStoichiometry(arma::Mat<Int> &stoich) {
+            stoich_mat = stoich;
+        }
+
+        void FSPSolver::SetPropensity(PropFun _prop) {
+            propensity = _prop;
+        }
+
+        void FSPSolver::SetTimeFunc(TcoefFun _t_fun) {
+            t_fun = _t_fun;
+        }
+
+        void FSPSolver::SetFinalTime(PetscReal t) {
+            t_final = t;
+        }
+
+        void FSPSolver::Solve()
+        {
+            Int ierr;
+            PetscInt solver_stat = 1;
+            PetscReal t = 0.0e0;
+
+            if (verbosity > 1){
+                ode_solver->SetPrintIntermediateSteps(1);
+            }
+
+            arma::Row<PetscInt> to_expand(fsp->GetNumSpecies());
+            while (solver_stat) {
+
+                solver_stat = ode_solver->Solve();
+
+                // Expand the FSPSolver if the solver halted prematurely
+                if (solver_stat) {
+                    to_expand = ode_solver->GetExpansionIndicator();
+
+                    for (auto i{0}; i < to_expand.n_elem; ++i)
+                    {
+                        if (to_expand(i) == 1)
+                        {
+                            fsp_size(i) = (PetscInt) std::ceil(((double) fsp_size(i)) * (fsp_expasion_factors(i) + 1.0e0));
+                        }
+                    }
+                    if (verbosity){
+                        PetscPrintf(comm, "\n ------------- \n");
+                        PetscPrintf(comm, "At time t = %.2e expansion to new fsp size: \n", ode_solver->GetCurrentTime());
+                        for (auto i {0}; i < fsp_size.n_elem; ++i){
+                            PetscPrintf(comm, "%d ", fsp_size[i]);
+                        }
+                        PetscPrintf(comm, "\n ------------- \n");
+                    }
+                    // Get local states correspoinding to the current solution
+                    arma::Mat<PetscInt> states_old = fsp->GetLocalStates();
+                    // Reset the fsp object
+                    fsp->Destroy();
+                    fsp->SetSize(fsp_size);
+                    fsp->GenerateStatesAndOrdering();
+
+                    // Generate the expanded vector and scatter forward the current solution
+                    Vec Pnew;
+                    VecCreate(comm, &Pnew);
+                    VecSetSizes(Pnew, fsp->GetNumLocalStates() + fsp->GetNumSpecies(), PETSC_DECIDE);
+                    VecSetUp(Pnew);
+                    VecSet(Pnew, 0.0);
+
+                    IS new_locations;
+                    arma::Row<Int> new_states_locations = fsp->State2Petsc(states_old);
+                    arma::Row<Int> new_sinks_locations(to_expand.n_elem);
+                    Int i_end_new;
+                    ierr = VecGetOwnershipRange(Pnew, NULL, &i_end_new); CHKERRABORT(comm, ierr);
+                    for (auto i{0}; i < new_sinks_locations.n_elem; ++i){
+                        new_sinks_locations[i] = i_end_new - ((Int) new_sinks_locations.n_elem) + i;
+                    }
+
+                    arma::Row<Int> new_locations_vals = arma::join_horiz(new_states_locations, new_sinks_locations);
+                    ierr = ISCreateGeneral(comm, (PetscInt) new_locations_vals.n_elem, &new_locations_vals[0], PETSC_COPY_VALUES, &new_locations); CHKERRABORT(comm, ierr);
+
+                    // Scatter from old vector to the expanded vector
+                    VecScatter scatter;
+                    ierr = VecScatterCreate(*p, NULL, Pnew, new_locations, &scatter); CHKERRABORT(comm, ierr);
+                    ierr = VecScatterBegin(scatter, *p, Pnew, INSERT_VALUES, SCATTER_FORWARD); CHKERRABORT(comm, ierr);
+                    ierr = VecScatterEnd(scatter, *p, Pnew, INSERT_VALUES, SCATTER_FORWARD); CHKERRABORT(comm, ierr);
+
+                    // Swap p to the expanded vector
+                    ierr = VecDestroy(p); CHKERRABORT(comm, ierr);
+                    ierr = VecDuplicate(Pnew, p); CHKERRABORT(comm, ierr);
+                    ierr = VecSwap(*p, Pnew); CHKERRABORT(comm, ierr);
+                    ierr = VecScatterDestroy(&scatter); CHKERRABORT(comm, ierr);
+                    ierr = VecDestroy(&Pnew); CHKERRABORT(comm, ierr);
+
+                    // Free data of the ODE solver (they will be rebuilt at the beginning of the loop)
+                    A->Destroy();
+                    ode_solver->Free();
+
+                    A->GenerateMatrices(*fsp, stoich_mat, propensity, t_fun);
+                }
+            }
+        }
+
+        FSPSolver::~FSPSolver() {
+            MPI_Comm_free(&comm);
+            Destroy();
+        }
+
+        void FSPSolver::Destroy() {
+            VecDestroy(p);
+            delete A;
+            delete fsp;
+            delete ode_solver;
+        }
+
+        Vec& FSPSolver::GetP() {
+            return *p;
+        }
+
+        void FSPSolver::SetUp() {
+            // Make sure all the necessary parameters have been set
+            assert(t_fun);
+            assert(propensity);
+            assert(stoich_mat.n_elem > 0);
+            assert(init_states.n_elem > 0);
+            assert(init_probs.n_elem > 0);
+            assert(fsp_size.n_elem > 0);
+
+            switch (partioning_type){
+                case Linear:
+                    fsp = new FiniteStateSubsetLinear(comm);
+                    break;
+                case ParMetis:
+                    fsp = new FiniteStateSubsetParMetis(comm);
+                    break;
+                default:
+                    throw std::runtime_error("FSP Setup: requested partitioning type not supported.\n");
+            }
+            fsp->SetStoichiometry(stoich_mat);
+            fsp->SetSize(fsp_size);
+            fsp->GenerateStatesAndOrdering();
+
+            A = new MatrixSet(comm);
+            A->GenerateMatrices(*fsp, stoich_mat, propensity, t_fun);
+            tmatvec = [&] (Real t, Vec x, Vec y){
+                A->Action(t, x, y);
+            };
+
+            p = new Vec;
+            CHKERRABORT(comm, VecCreate(comm, p));
+            CHKERRABORT(comm, VecSetSizes(*p, fsp->GetNumSpecies() + fsp->GetNumLocalStates(), PETSC_DECIDE));
+            CHKERRABORT(comm, VecSetFromOptions(*p));
+            arma::Row<Int> indices = fsp->State2Petsc(init_states);
+            CHKERRABORT(comm, VecSetValues(*p, PetscInt(init_probs.n_elem), &indices[0], &init_probs[0], INSERT_VALUES));
+            CHKERRABORT(comm, VecSetUp(*p));
+            CHKERRABORT(comm, VecAssemblyBegin(*p));
+            CHKERRABORT(comm, VecAssemblyEnd(*p));
+
+            ode_solver = new CVODEFSP(PETSC_COMM_WORLD, CV_BDF, CV_NEWTON);
+            ode_solver->SetFinalTime(t_final);
+            ode_solver->SetFSPTolerance(fsp_tol);
+            ode_solver->SetInitSolution(p);
+            ode_solver->SetRHS(this->tmatvec);
+            ode_solver->SetFiniteStateSubset(this->fsp);
+        }
+
+        void FSPSolver::SetVerbosityLevel(int verbosity_level) {
+            verbosity = verbosity_level;
+        }
+
+        void FSPSolver::SetInitProbabilities(arma::Mat<Int> &_init_states, arma::Col<PetscReal> &_init_probs) {
+            init_states = _init_states;
+            init_probs = _init_probs;
+            assert(init_probs.n_elem == init_states.n_cols);
+        }
+
+        FiniteStateSubset &FSPSolver::GetStateSubset() {
+            return *fsp;
+        }
+
+    }
+}
