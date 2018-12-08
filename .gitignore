@@ -1,3 +1,10 @@
+cmake-build-debug/*
+CMakeFiles/*
+bin/*
+test_data/*
+.clang_complete
+.atom-dbg.cson
+lib/*
 *.DS_Store
 .DS_Store
 *.gch
