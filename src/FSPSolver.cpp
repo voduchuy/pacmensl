@@ -67,7 +67,7 @@ namespace cme{
                     {
                         if (to_expand(i) == 1)
                         {
-                            fsp_size(i) = (PetscInt) std::ceil(((double) fsp_size(i)) * (fsp_expasion_factors(i) + 1.0e0));
+                            fsp_size(i) = (PetscInt) std::ceil(((PetscReal) fsp_size(i)) * (fsp_expasion_factors(i) + 1.0e0));
                         }
                     }
                     if (verbosity){

@@ -8,7 +8,7 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<petscmat.h>
 #include<petscao.h>
 #include<armadillo>
-#include"models/hog1p_tv_model.h"
+#include"models/hog1p_5d_model.h"
 #include"cme_util.h"
 #include"FiniteStateSubset.h"
 #include"FiniteStateSubsetLinear.h"

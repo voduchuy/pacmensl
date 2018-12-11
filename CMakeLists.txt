@@ -29,8 +29,7 @@ set(EXAMPLES
         )
 
 set(BENCHMARKS
-        benchmark_partitioning_schemes
-        benchmark_scalability
+        benchmark
         )
 
 set(EXT_LIBRARIES
@@ -43,8 +42,8 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
 set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_CXX_COMPILER mpicxx )
-set(CMAKE_CXX_FLAGS " -g -std=c++11 -O2 -DMAGNUS4_VERBOSE  -DHYPER_REC_OP_VERBOSE")
-set(CMAKE_EXE_LINKER_FLAGS "-g ")
+set(CMAKE_CXX_FLAGS " -g -std=c++11 -O3")
+#set(CMAKE_EXE_LINKER_FLAGS "-g ")
 
 FIND_PACKAGE(PETSc)
 INCLUDE_DIRECTORIES(${PETSC_INCLUDES})
@@ -71,11 +70,14 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 foreach ( LIB ${MY_LIBRARIES} )
-  add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h)
+  add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h)
+    target_link_libraries(${LIB} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 endforeach()
 
-target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetParMetis FiniteStateSubsetLinear)
-target_link_libraries(FSPSolver FiniteStateSubset FiniteProblemSolver MatrixSet CVODEFSP)
+target_link_libraries(MatrixSet FiniteStateSubset)
+target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetParMetis FiniteStateSubsetLinear ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+target_link_libraries(CVODEFSP FiniteProblemSolver)
+target_link_libraries(FSPSolver FiniteStateSubset FiniteProblemSolver MatrixSet CVODEFSP ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 
 foreach ( PROG ${TEST_PROGRAMS})
   add_executable(${PROG} ${CMAKE_SOURCE_DIR}/test/${PROG}.cpp)

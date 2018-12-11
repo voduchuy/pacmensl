@@ -52,6 +52,11 @@ namespace cme{
             expand_sink.fill(0);
             while(t_now < t_final){
                 cvode_stat = CVode(cvode_mem, t_final, solution_tmp, &t_now_tmp, CV_ONE_STEP); CVODECHKERR(comm, cvode_stat);
+                // Interpolate the solution if the last step went over the prescribed final time
+                if (t_now_tmp > t_final){
+                    cvode_stat = CVodeGetDky(cvode_mem, t_final, 0, solution_tmp); CVODECHKERR(comm, cvode_stat);
+                    t_now_tmp = t_final;
+                }
                 // Check that the temporary solution satisfies FSP tolerance
                 while(1){
                     sink_values = fsp->SinkStatesReduce(*solution_tmp_dat);

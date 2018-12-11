@@ -56,33 +56,32 @@ namespace cme{
             CHKERRABORT(comm, MatPartitioningApply(partitioning, &processor_id));
             CHKERRABORT(comm, ISPartitioningToNumbering(processor_id, &global_numbering));
 
-            const PetscInt *proc_id_array, *global_numbering_array;
-            CHKERRABORT(comm, ISGetIndices(processor_id, &proc_id_array));
-            CHKERRABORT(comm, ISGetIndices(global_numbering, &global_numbering_array));
             // Figure out how many states each processor own by reducing the proc_id_array
             PetscMPIInt my_rank, comm_size;
             MPI_Comm_size(comm, &comm_size);
             MPI_Comm_rank(comm, &my_rank);
-            arma::Row<PetscInt> n_own(comm_size);
+            std::vector<PetscInt> n_own((size_t) comm_size);
             ISPartitioningCount(processor_id, comm_size, &n_own[0]);
             n_local_states = n_own[my_rank];
 
             // Generate layout
+            PetscInt layout_start, layout_end;
             CHKERRABORT(comm, PetscLayoutCreate(comm, &vec_layout));
             CHKERRABORT(comm, PetscLayoutSetLocalSize(vec_layout, n_local_states + n_species));
             CHKERRABORT(comm, PetscLayoutSetSize(vec_layout, PETSC_DECIDE));
             CHKERRABORT(comm, PetscLayoutSetUp(vec_layout));
-
-            PetscInt layout_start, layout_end;
             CHKERRABORT(comm, PetscLayoutGetRange(vec_layout, &layout_start, &layout_end));
 
             // Adjust global numbering to add sink states
+            const PetscInt *proc_id_array, *global_numbering_array;
+            CHKERRABORT(comm, ISGetIndices(processor_id, &proc_id_array));
+            CHKERRABORT(comm, ISGetIndices(global_numbering, &global_numbering_array));
             std::vector<PetscInt> corrected_global_numbering(local_end - local_start + n_species);
             for (PetscInt i{0}; i < local_end-local_start; ++i){
                 corrected_global_numbering.at(i) = global_numbering_array[i] + proc_id_array[i]*((PetscInt) fsp_size.n_elem);
             }
 
-            arma::Row<PetscInt> fsp_indices(local_end - local_start + n_species);
+            std::vector<PetscInt> fsp_indices(local_end - local_start + n_species);
             for (PetscInt i = 0; i < local_end - local_start; ++i){
                 fsp_indices.at(i) = local_start + i;
             }
@@ -91,6 +90,12 @@ namespace cme{
                 corrected_global_numbering[local_end - local_start + n_species - i -1 ] = layout_end - 1 -i;
                 fsp_indices[local_end - local_start + n_species - i -1 ] = n_states_global + my_rank*n_species + i;
             }
+            CHKERRABORT(comm, ISRestoreIndices(processor_id, &proc_id_array));
+            CHKERRABORT(comm, ISRestoreIndices(global_numbering, &global_numbering_array));
+            CHKERRABORT(comm, ISDestroy(&processor_id));
+            CHKERRABORT(comm, ISDestroy(&global_numbering));
+            CHKERRABORT(comm, MatPartitioningDestroy(&partitioning));
+            CHKERRABORT(comm, MatDestroy(&adj));
 
             // Create the AO object that maps from lexicographic ordering to Petsc Vec ordering
             IS fsp_is, petsc_is;
@@ -103,22 +108,14 @@ namespace cme{
             CHKERRABORT(comm, ISDestroy(&fsp_is));
             CHKERRABORT(comm, ISDestroy(&petsc_is));
 
-//            AOCreateBasic(comm, local_end - local_start + n_species, &fsp_indices[0], &corrected_global_numbering[0], &lex2petsc);
             // Generate local states
-            arma::Row<PetscInt> petsc_local_indices(n_local_states);
-            CHKERRABORT(comm, PetscLayoutGetRange(vec_layout, &petsc_local_indices[0], &petsc_local_indices[n_local_states-1]));
+            std::vector<PetscInt> petsc_local_indices((size_t) n_local_states);
+            CHKERRABORT(comm, PetscLayoutGetRange(vec_layout, &petsc_local_indices[0], NULL));
             for (PetscInt i{0}; i < n_local_states; ++i){
                 petsc_local_indices[i] = petsc_local_indices[0] + i;
             }
             CHKERRABORT(comm, AOPetscToApplication(lex2petsc, n_local_states, &petsc_local_indices[0]));
-            local_states = ind2sub_nd(fsp_size, petsc_local_indices);
-
-            CHKERRABORT(comm, ISRestoreIndices(processor_id, &proc_id_array));
-            CHKERRABORT(comm, ISRestoreIndices(global_numbering, &global_numbering_array));
-            CHKERRABORT(comm, ISDestroy(&processor_id));
-            CHKERRABORT(comm, ISDestroy(&global_numbering));
-            CHKERRABORT(comm, MatPartitioningDestroy(&partitioning));
-            CHKERRABORT(comm, MatDestroy(&adj));
+            local_states = ind2sub_nd<arma::Mat<PetscInt>>(fsp_size, petsc_local_indices);
         }
     }
 }

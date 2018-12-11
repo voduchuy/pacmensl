@@ -77,7 +77,7 @@ namespace cme {
                 petsc_local_indices[i] = petsc_local_indices[0] + i;
             }
             CHKERRABORT(comm, AOPetscToApplication(lex2petsc, n_local_states, &petsc_local_indices[0]));
-            local_states = ind2sub_nd(fsp_size, petsc_local_indices);
+            local_states = ind2sub_nd<arma::Mat<PetscInt>>(fsp_size, petsc_local_indices);
 
             ierr = PetscLayoutDestroy(&layout_without_sinks);
             CHKERRABORT(comm, ierr);

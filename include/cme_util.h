@@ -45,17 +45,17 @@ namespace cme {
         return indx;
     };
 
-    template<typename intT>
-    arma::Mat<intT> ind2sub_nd(const arma::Row<intT> &nmax, const arma::Row<intT> &indx) {
-        arma::uword N = nmax.size();
-        arma::uword nst = indx.size();
+    template<typename IntMatT, typename IntVecT1, typename IntVecT2>
+    IntMatT ind2sub_nd(const IntVecT1 &nmax, const IntVecT2 &indx) {
+        auto N = nmax.size();
+        auto nst = indx.size();
 
-        arma::Mat<intT> X(N, nst);
+        IntMatT X(N, nst);
 
         int k;
-        for (size_t j{1}; j <= nst; j++) {
-            k = indx(j - 1);
-            for (size_t i{1}; i <= N; i++) {
+        for (auto j{1}; j <= nst; j++) {
+            k = indx.at(j - 1);
+            for (auto i{1}; i <= N; i++) {
                 X(i - 1, j - 1) = k % (nmax(i - 1) + 1);
                 k = k / (nmax(i - 1) + 1);
             }
@@ -63,6 +63,8 @@ namespace cme {
 
         return X;
     };
+    template arma::Mat<PetscInt> ind2sub_nd<arma::Mat<PetscInt>, arma::Row<PetscInt>, arma::Row<PetscInt>>(const arma::Row<PetscInt> &nmax, const arma::Row<PetscInt> &indx);
+    template arma::Mat<PetscInt> ind2sub_nd<arma::Mat<PetscInt>, arma::Row<PetscInt>, std::vector<PetscInt>>(const arma::Row<PetscInt> &nmax, const std::vector<PetscInt> &indx);
 
     template<typename intT>
     arma::Col<intT> ind2sub_nd(const arma::Row<intT> &nmax, const intT &indx) {

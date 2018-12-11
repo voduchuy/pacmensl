@@ -35,30 +35,7 @@ namespace cme {
 
         arma::Row<PetscInt> FiniteStateSubset::State2Petsc(arma::Mat<PetscInt> state) {
             arma::Row<PetscInt> lex_indices = cme::sub2ind_nd(fsp_size, state);
-
-            // Temporary fix for AO Memory Scalable does not give correct output for negative input
-            arma::Row<PetscInt> neg_indices(lex_indices.n_elem);
-            for (auto i = 0; i < lex_indices.n_elem; ++i){
-                if (lex_indices(i) < 0){
-                    neg_indices(i) = 1;
-                    lex_indices(i) = 0;
-                }
-                else{
-                    neg_indices(i) = 0;
-                }
-            }
-            //
-
             CHKERRABORT(comm, AOApplicationToPetsc(lex2petsc, (PetscInt) lex_indices.n_elem, &lex_indices[0]));
-
-
-            // Temporary fix for AO Memory Scalable does not give correct output for negative input
-            for (auto i = 0; i < lex_indices.n_elem; ++i){
-                if (neg_indices(i) > 0) {
-                    lex_indices(i) = -1;
-                }
-            }
-            //
             return lex_indices;
         }
 

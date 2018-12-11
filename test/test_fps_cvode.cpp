@@ -46,13 +46,14 @@ int main(int argc, char *argv[]) {
 
         PetscPrintf(PETSC_COMM_WORLD, "Initial vector set.\n");
 
-        PetscReal fsp_tol = 1.0e-2, t_final = 100.0;
+        PetscReal fsp_tol = 1.0e-2, t_final = 1000.0;
         CVODEFSP cvode_solver(PETSC_COMM_WORLD, CV_BDF, CV_NEWTON);
         cvode_solver.SetFinalTime(t_final);
         cvode_solver.SetFSPTolerance(fsp_tol);
         cvode_solver.SetInitSolution(&P);
         cvode_solver.SetRHS(AV);
         cvode_solver.SetFiniteStateSubset(&fsp);
+        cvode_solver.SetPrintIntermediateSteps(1);
         PetscPrintf(PETSC_COMM_WORLD, "Solver parameters set.\n");
         PetscInt solver_stat = cvode_solver.Solve();
         PetscPrintf(PETSC_COMM_WORLD, "\n Solver returns with status %d and time %.2e \n", solver_stat,
