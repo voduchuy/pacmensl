@@ -23,14 +23,19 @@ namespace cme{
             assert(solution != nullptr);
             assert(rhs);
             assert(fsp != nullptr);
+
+            PetscInt petsc_err;
+
             // N_Vector wrapper for the solution
             solution_wrapper = N_VMake_Petsc(solution);
 
             // Copy solution to the temporary solution
             solution_tmp = N_VClone(solution_wrapper);
             Vec* solution_tmp_dat = N_VGetVector_Petsc(solution_tmp);
-            CHKERRABORT(comm, VecSetUp(*solution_tmp_dat));
-            CHKERRABORT(comm, VecCopy(*solution, *solution_tmp_dat));
+            petsc_err = VecSetUp(*solution_tmp_dat);
+            CHKERRABORT(comm, petsc_err);
+            petsc_err = VecCopy(*solution, *solution_tmp_dat);
+            CHKERRABORT(comm, petsc_err);
             t_now_tmp = t_now;
 
             // Initialize cvode
@@ -75,10 +80,18 @@ namespace cme{
                 // Copy data from temporary vector to solution vector
                 t_now = t_now_tmp;
                 CHKERRABORT(comm, VecCopy(*solution_tmp_dat, *solution));
-                if (expand_sink.max() != 0) break;
                 if (print_intermediate){
                     PetscPrintf(comm, "t_now = %.2e \n", t_now);
                 }
+                if (logging){
+                    perf_info.model_time[perf_info.n_step] = t_now;
+                    petsc_err = VecGetSize(*solution, &perf_info.n_eqs[size_t(perf_info.n_step)] );
+                    CHKERRABORT(comm, petsc_err);
+                    petsc_err = PetscTime(&perf_info.cpu_time[perf_info.n_step]);
+                    CHKERRABORT(comm, petsc_err);
+                    perf_info.n_step += 1;
+                }
+                if (expand_sink.max() != 0) break;
             }
             return expand_sink.max();
         }

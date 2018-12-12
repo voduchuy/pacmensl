@@ -31,7 +31,7 @@ namespace cme{
         }
 
         void FiniteProblemSolver::SetRHS(std::function<void (PetscReal, Vec, Vec)> _rhs) {
-            rhs = _rhs;
+            rhs = std::move(_rhs);
         }
 
         void FiniteProblemSolver::SetFiniteStateSubset(FiniteStateSubset *_fsp) {
@@ -66,6 +66,34 @@ namespace cme{
 
         arma::Row<PetscInt> FiniteProblemSolver::GetExpansionIndicator() {
             return expand_sink;
+        }
+
+        void FiniteProblemSolver::EnableLogging() {
+            logging = PETSC_TRUE;
+            perf_info.n_step = 0;
+            perf_info.model_time.resize(100000);
+            perf_info.cpu_time.resize(100000);
+            perf_info.n_eqs.resize(100000);
+        }
+
+        FiniteProblemSolverPerfInfo FiniteProblemSolver::GetAvgPerfInfo() {
+            assert(logging);
+
+            FiniteProblemSolverPerfInfo perf_out = perf_info;
+
+            PetscMPIInt comm_size;
+            MPI_Comm_size(comm, &comm_size);
+
+            for (auto i{perf_out.n_step-1}; i >= 0; --i){
+                perf_out.cpu_time[i] = perf_out.cpu_time[i] - perf_out.cpu_time[0];
+                MPI_Allreduce(MPI_IN_PLACE, (void*) &perf_out.cpu_time[i], 1, MPIU_REAL, MPI_SUM, comm);
+            }
+
+            for (auto i{0}; i < perf_out.n_step; ++i){
+                perf_out.cpu_time[i] /= PetscReal(comm_size);
+            }
+
+            return perf_out;
         }
     }
 }

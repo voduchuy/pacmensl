@@ -84,6 +84,7 @@ namespace cme{
             Vec& GetP();
             FiniteStateSubset& GetStateSubset();
             FSPSolverComponentTiming GetAvgComponentTiming();
+            FiniteProblemSolverPerfInfo GetSolverPerfInfo();
 
             void Solve();
 

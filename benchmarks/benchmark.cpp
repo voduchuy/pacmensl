@@ -7,9 +7,7 @@ static char help[] = "Timing the time to solve hog1p model to time 5 min.\n\n";
 #include <cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include <MatrixSet.h>
-//#include <Magnus4FSP.h>
-#include <FSPSolver.h>
+#include "FSPSolver.h"
 #include "models/toggle_model.h"
 #include "models/hog1p_5d_model.h"
 #include "models/transcription_regulation_6d_model.h"
@@ -53,7 +51,7 @@ int main(int argc, char *argv[]) {
     PartioningType fsp_par_type = ParMetis;
     ODESolverType fsp_odes_type = CVODE_BDF;
     PetscBool output_marginal = PETSC_FALSE;
-    PetscBool fsp_logging = PETSC_FALSE;
+    PetscBool fsp_log_events = PETSC_FALSE;
     PetscInt verbosity = 0;
     // Read options for fsp
     char opt[100];
@@ -93,7 +91,7 @@ int main(int argc, char *argv[]) {
             part_option = "parmetis";
             FSPSize = {3, 10, 10}; // Size of the FSP
             expansion_factors = {0.0, 0.5, 0.5};
-            t_final = 60.00 * 50;
+            t_final = 60.00 * 15;
             fsp_tol = 1.0e-6;
             X0 = {0, 0, 0};
             X0 = X0.t();
@@ -144,11 +142,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_logging", opt, 100, &opt_set);
+    ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set);
     CHKERRQ(ierr);
     if (opt_set) {
         if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
-            fsp_logging = PETSC_TRUE;
+            fsp_log_events = PETSC_TRUE;
         }
     }
 
@@ -166,7 +164,7 @@ int main(int argc, char *argv[]) {
         fsp.SetTimeFunc(t_fun);
         fsp.SetPropensity(propensity);
         fsp.SetVerbosityLevel(verbosity);
-        fsp.SetLogging(fsp_logging);
+        fsp.SetLogging(fsp_log_events);
         fsp.SetExpansionFactors(expansion_factors);
         fsp.SetInitProbabilities(X0, p0);
 
@@ -186,25 +184,34 @@ int main(int argc, char *argv[]) {
             {
                 std::string filename = model_name + "_time_" + std::to_string(num_procs) + "_" + part_option + ".dat";
                 std::ofstream file;
-                file.open(filename);
-                file << solver_time;
+                file.open(filename, std::ios_base::app);
+                file << solver_time << "\n";
                 file.close();
             }
         }
 
-        if (fsp_logging){
+        if (fsp_log_events){
             FSPSolverComponentTiming timings = fsp.GetAvgComponentTiming();
+            FiniteProblemSolverPerfInfo perf_info = fsp.GetSolverPerfInfo();
             if (myRank == 0){
                 std::string filename = model_name + "_time_breakdown_" + std::to_string(num_procs) + "_" + part_option + ".dat";
                 std::ofstream file;
                 file.open(filename);
-                file << "Component, Average Time (sec), Percentage \n";
+                file << "Component, Average processor time (sec), Percentage \n";
                 file << "State Partioning," << std::scientific << std::setprecision(2) << timings.StatePartitioningTime << "," << timings.StatePartitioningTime/solver_time*100.0 << "\n"
                      << "FSP Matrices Generation," << std::scientific << std::setprecision(2) << timings.MatrixGenerationTime << "," << timings.MatrixGenerationTime/solver_time*100.0 << "\n"
                      << "Solving truncated ODEs," << std::scientific << std::setprecision(2) << timings.ODESolveTime << "," << timings.ODESolveTime/solver_time*100.0 << "\n"
                      << "FSP Solution scattering," << std::scientific << std::setprecision(2) << timings.SolutionScatterTime << "," << timings.SolutionScatterTime/solver_time*100.0 << "\n"
                      << "Time-dependent Matrix action," << std::scientific << std::setprecision(2) << timings.RHSEvalTime << "," << timings.RHSEvalTime/solver_time*100.0 << "\n"
                      << "Total," << solver_time << "," << 100.0 << "\n";
+                file.close();
+
+                filename = model_name + "_perf_info_" + std::to_string(num_procs) + "_" + part_option + ".dat";
+                file.open(filename);
+                file << "Model time, ODEs size, Average processor time (sec) \n";
+                for (auto i{0}; i < perf_info.n_step; ++i){
+                    file << perf_info.model_time[i] << "," << perf_info.n_eqs[i] << "," << perf_info.cpu_time[i] << "\n";
+                }
                 file.close();
             }
         }

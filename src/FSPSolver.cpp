@@ -183,13 +183,21 @@ namespace cme {
             assert(init_probs.n_elem > 0);
             assert(fsp_size.n_elem > 0);
 
+            PetscErrorCode ierr;
             // Register events if logging is needed
             if (log_fsp_events) {
-                CHKERRABORT(comm, PetscLogEventRegister("Finite state subset partitioning", 0, &StateSetPartitioning));
-                CHKERRABORT(comm, PetscLogEventRegister("Generate FSP matrices", 0, &MatrixGeneration));
-                CHKERRABORT(comm, PetscLogEventRegister("Solve reduced problem", 0, &ODESolve));
-                CHKERRABORT(comm, PetscLogEventRegister("FSP RHS evaluation", 0, &RHSEvaluation));
-                CHKERRABORT(comm, PetscLogEventRegister("FSP Solution scatter", 0, &SolutionScatter));
+                ierr = PetscLogDefaultBegin();
+                CHKERRABORT(comm, ierr);
+                ierr = PetscLogEventRegister("Finite state subset partitioning", 0, &StateSetPartitioning);
+                CHKERRABORT(comm, ierr);
+                ierr = PetscLogEventRegister("Generate FSP matrices", 0, &MatrixGeneration);
+                CHKERRABORT(comm, ierr);
+                ierr = PetscLogEventRegister("Solve reduced problem", 0, &ODESolve);
+                CHKERRABORT(comm, ierr);
+                ierr = PetscLogEventRegister("FSP RHS evaluation", 0, &RHSEvaluation);
+                CHKERRABORT(comm, ierr);
+                ierr = PetscLogEventRegister("FSP Solution scatter", 0, &SolutionScatter);
+                CHKERRABORT(comm, ierr);
             }
 
             switch (partioning_type) {
@@ -233,15 +241,22 @@ namespace cme {
             }
 
             p = new Vec;
-            CHKERRABORT(comm, VecCreate(comm, p));
-            CHKERRABORT(comm, VecSetSizes(*p, fsp->GetNumSpecies() + fsp->GetNumLocalStates(), PETSC_DECIDE));
-            CHKERRABORT(comm, VecSetFromOptions(*p));
             arma::Row<Int> indices = fsp->State2Petsc(init_states);
+            ierr = VecCreate(comm, p);
+            CHKERRABORT(comm, ierr);
+            ierr = VecSetSizes(*p, fsp->GetNumSpecies() + fsp->GetNumLocalStates(), PETSC_DECIDE);
+            CHKERRABORT(comm, ierr);
+            ierr = VecSetFromOptions(*p);
+            CHKERRABORT(comm, ierr);
+            ierr = VecSetValues(*p, PetscInt(init_probs.n_elem), &indices[0], &init_probs[0], INSERT_VALUES);
             CHKERRABORT(comm,
-                        VecSetValues(*p, PetscInt(init_probs.n_elem), &indices[0], &init_probs[0], INSERT_VALUES));
-            CHKERRABORT(comm, VecSetUp(*p));
-            CHKERRABORT(comm, VecAssemblyBegin(*p));
-            CHKERRABORT(comm, VecAssemblyEnd(*p));
+                        ierr);
+            ierr = VecSetUp(*p);
+            CHKERRABORT(comm, ierr);
+            ierr = VecAssemblyBegin(*p);
+            CHKERRABORT(comm, ierr);
+            ierr = VecAssemblyEnd(*p);
+            CHKERRABORT(comm, ierr);
 
             ode_solver = new CVODEFSP(PETSC_COMM_WORLD, CV_BDF, CV_NEWTON);
             ode_solver->SetFinalTime(t_final);
@@ -249,6 +264,9 @@ namespace cme {
             ode_solver->SetInitSolution(p);
             ode_solver->SetRHS(this->tmatvec);
             ode_solver->SetFiniteStateSubset(this->fsp);
+            if (log_fsp_events) {
+                ode_solver->EnableLogging();
+            }
         }
 
         void FSPSolver::SetVerbosityLevel(int verbosity_level) {
@@ -274,7 +292,7 @@ namespace cme {
             PetscMPIInt comm_size;
             MPI_Comm_size(comm, &comm_size);
 
-            auto get_avg_timing = [&] (PetscLogEvent event){
+            auto get_avg_timing = [&](PetscLogEvent event) {
                 PetscReal timing;
                 PetscReal tmp;
                 PetscEventPerfInfo info;
@@ -291,6 +309,10 @@ namespace cme {
             timings.RHSEvalTime = get_avg_timing(RHSEvaluation);
             timings.SolutionScatterTime = get_avg_timing(SolutionScatter);
             return timings;
+        }
+
+        FiniteProblemSolverPerfInfo FSPSolver::GetSolverPerfInfo() {
+            return ode_solver->GetAvgPerfInfo();
         }
 
     }
