@@ -6,10 +6,9 @@
 
 #include "FSPSolver.h"
 
-namespace cme{
-    namespace petsc{
-        FSPSolver::FSPSolver(MPI_Comm _comm, PartioningType _part_type, ODESolverType _solve_type)
-        {
+namespace cme {
+    namespace petsc {
+        FSPSolver::FSPSolver(MPI_Comm _comm, PartioningType _part_type, ODESolverType _solve_type) {
             MPI_Comm_dup(_comm, &comm);
             partioning_type = _part_type;
             odes_type = _solve_type;
@@ -44,36 +43,41 @@ namespace cme{
             t_final = t;
         }
 
-        void FSPSolver::Solve()
-        {
+        void FSPSolver::Solve() {
             Int ierr;
             PetscInt solver_stat = 1;
             PetscReal t = 0.0e0;
 
-            if (verbosity > 1){
+            if (verbosity > 1) {
                 ode_solver->SetPrintIntermediateSteps(1);
             }
 
             arma::Row<PetscInt> to_expand(fsp->GetNumSpecies());
             while (solver_stat) {
 
+                if (log_fsp_events) {
+                    CHKERRABORT(comm, PetscLogEventBegin(ODESolve, 0, 0, 0, 0));
+                }
                 solver_stat = ode_solver->Solve();
+                if (log_fsp_events) {
+                    CHKERRABORT(comm, PetscLogEventEnd(ODESolve, 0, 0, 0, 0));
+                }
 
                 // Expand the FSPSolver if the solver halted prematurely
                 if (solver_stat) {
                     to_expand = ode_solver->GetExpansionIndicator();
 
-                    for (auto i{0}; i < to_expand.n_elem; ++i)
-                    {
-                        if (to_expand(i) == 1)
-                        {
-                            fsp_size(i) = (PetscInt) std::ceil(((PetscReal) fsp_size(i)) * (fsp_expasion_factors(i) + 1.0e0));
+                    for (auto i{0}; i < to_expand.n_elem; ++i) {
+                        if (to_expand(i) == 1) {
+                            fsp_size(i) = (PetscInt) std::ceil(
+                                    ((PetscReal) fsp_size(i)) * (fsp_expasion_factors(i) + 1.0e0));
                         }
                     }
-                    if (verbosity){
+                    if (verbosity) {
                         PetscPrintf(comm, "\n ------------- \n");
-                        PetscPrintf(comm, "At time t = %.2e expansion to new fsp size: \n", ode_solver->GetCurrentTime());
-                        for (auto i {0}; i < fsp_size.n_elem; ++i){
+                        PetscPrintf(comm, "At time t = %.2e expansion to new fsp size: \n",
+                                    ode_solver->GetCurrentTime());
+                        for (auto i{0}; i < fsp_size.n_elem; ++i) {
                             PetscPrintf(comm, "%d ", fsp_size[i]);
                         }
                         PetscPrintf(comm, "\n ------------- \n");
@@ -83,9 +87,18 @@ namespace cme{
                     // Reset the fsp object
                     fsp->Destroy();
                     fsp->SetSize(fsp_size);
+                    if (log_fsp_events) {
+                        CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
+                    }
                     fsp->GenerateStatesAndOrdering();
+                    if (log_fsp_events) {
+                        CHKERRABORT(comm, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
+                    }
 
                     // Generate the expanded vector and scatter forward the current solution
+                    if (log_fsp_events) {
+                        CHKERRABORT(comm, PetscLogEventBegin(SolutionScatter, 0, 0, 0, 0));
+                    }
                     Vec Pnew;
                     VecCreate(comm, &Pnew);
                     VecSetSizes(Pnew, fsp->GetNumLocalStates() + fsp->GetNumSpecies(), PETSC_DECIDE);
@@ -96,32 +109,51 @@ namespace cme{
                     arma::Row<Int> new_states_locations = fsp->State2Petsc(states_old);
                     arma::Row<Int> new_sinks_locations(to_expand.n_elem);
                     Int i_end_new;
-                    ierr = VecGetOwnershipRange(Pnew, NULL, &i_end_new); CHKERRABORT(comm, ierr);
-                    for (auto i{0}; i < new_sinks_locations.n_elem; ++i){
+                    ierr = VecGetOwnershipRange(Pnew, NULL, &i_end_new);
+                    CHKERRABORT(comm, ierr);
+                    for (auto i{0}; i < new_sinks_locations.n_elem; ++i) {
                         new_sinks_locations[i] = i_end_new - ((Int) new_sinks_locations.n_elem) + i;
                     }
 
                     arma::Row<Int> new_locations_vals = arma::join_horiz(new_states_locations, new_sinks_locations);
-                    ierr = ISCreateGeneral(comm, (PetscInt) new_locations_vals.n_elem, &new_locations_vals[0], PETSC_COPY_VALUES, &new_locations); CHKERRABORT(comm, ierr);
+                    ierr = ISCreateGeneral(comm, (PetscInt) new_locations_vals.n_elem, &new_locations_vals[0],
+                                           PETSC_COPY_VALUES, &new_locations);
+                    CHKERRABORT(comm, ierr);
 
                     // Scatter from old vector to the expanded vector
                     VecScatter scatter;
-                    ierr = VecScatterCreate(*p, NULL, Pnew, new_locations, &scatter); CHKERRABORT(comm, ierr);
-                    ierr = VecScatterBegin(scatter, *p, Pnew, INSERT_VALUES, SCATTER_FORWARD); CHKERRABORT(comm, ierr);
-                    ierr = VecScatterEnd(scatter, *p, Pnew, INSERT_VALUES, SCATTER_FORWARD); CHKERRABORT(comm, ierr);
+                    ierr = VecScatterCreate(*p, NULL, Pnew, new_locations, &scatter);
+                    CHKERRABORT(comm, ierr);
+                    ierr = VecScatterBegin(scatter, *p, Pnew, INSERT_VALUES, SCATTER_FORWARD);
+                    CHKERRABORT(comm, ierr);
+                    ierr = VecScatterEnd(scatter, *p, Pnew, INSERT_VALUES, SCATTER_FORWARD);
+                    CHKERRABORT(comm, ierr);
 
                     // Swap p to the expanded vector
-                    ierr = VecDestroy(p); CHKERRABORT(comm, ierr);
-                    ierr = VecDuplicate(Pnew, p); CHKERRABORT(comm, ierr);
-                    ierr = VecSwap(*p, Pnew); CHKERRABORT(comm, ierr);
-                    ierr = VecScatterDestroy(&scatter); CHKERRABORT(comm, ierr);
-                    ierr = VecDestroy(&Pnew); CHKERRABORT(comm, ierr);
+                    ierr = VecDestroy(p);
+                    CHKERRABORT(comm, ierr);
+                    ierr = VecDuplicate(Pnew, p);
+                    CHKERRABORT(comm, ierr);
+                    ierr = VecSwap(*p, Pnew);
+                    CHKERRABORT(comm, ierr);
+                    ierr = VecScatterDestroy(&scatter);
+                    CHKERRABORT(comm, ierr);
+                    ierr = VecDestroy(&Pnew);
+                    CHKERRABORT(comm, ierr);
+                    if (log_fsp_events) {
+                        CHKERRABORT(comm, PetscLogEventEnd(SolutionScatter, 0, 0, 0, 0));
+                    }
 
                     // Free data of the ODE solver (they will be rebuilt at the beginning of the loop)
                     A->Destroy();
                     ode_solver->Free();
-
+                    if (log_fsp_events) {
+                        CHKERRABORT(comm, PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
+                    }
                     A->GenerateMatrices(*fsp, stoich_mat, propensity, t_fun);
+                    if (log_fsp_events) {
+                        CHKERRABORT(comm, PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
+                    }
                 }
             }
         }
@@ -138,7 +170,7 @@ namespace cme{
             delete ode_solver;
         }
 
-        Vec& FSPSolver::GetP() {
+        Vec &FSPSolver::GetP() {
             return *p;
         }
 
@@ -151,7 +183,16 @@ namespace cme{
             assert(init_probs.n_elem > 0);
             assert(fsp_size.n_elem > 0);
 
-            switch (partioning_type){
+            // Register events if logging is needed
+            if (log_fsp_events) {
+                CHKERRABORT(comm, PetscLogEventRegister("Finite state subset partitioning", 0, &StateSetPartitioning));
+                CHKERRABORT(comm, PetscLogEventRegister("Generate FSP matrices", 0, &MatrixGeneration));
+                CHKERRABORT(comm, PetscLogEventRegister("Solve reduced problem", 0, &ODESolve));
+                CHKERRABORT(comm, PetscLogEventRegister("FSP RHS evaluation", 0, &RHSEvaluation));
+                CHKERRABORT(comm, PetscLogEventRegister("FSP Solution scatter", 0, &SolutionScatter));
+            }
+
+            switch (partioning_type) {
                 case Linear:
                     fsp = new FiniteStateSubsetLinear(comm);
                     break;
@@ -163,20 +204,41 @@ namespace cme{
             }
             fsp->SetStoichiometry(stoich_mat);
             fsp->SetSize(fsp_size);
+            if (log_fsp_events) {
+                CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
+            }
             fsp->GenerateStatesAndOrdering();
+            if (log_fsp_events) {
+                CHKERRABORT(comm, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
+            }
 
             A = new MatrixSet(comm);
+            if (log_fsp_events) {
+                CHKERRABORT(comm, PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
+            }
             A->GenerateMatrices(*fsp, stoich_mat, propensity, t_fun);
-            tmatvec = [&] (Real t, Vec x, Vec y){
-                A->Action(t, x, y);
-            };
+            if (log_fsp_events) {
+                CHKERRABORT(comm, PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
+            }
+            if (log_fsp_events) {
+                tmatvec = [&](Real t, Vec x, Vec y) {
+                    CHKERRABORT(comm, PetscLogEventBegin(RHSEvaluation, 0, 0, 0, 0));
+                    A->Action(t, x, y);
+                    CHKERRABORT(comm, PetscLogEventEnd(RHSEvaluation, 0, 0, 0, 0));
+                };
+            } else {
+                tmatvec = [&](Real t, Vec x, Vec y) {
+                    A->Action(t, x, y);
+                };
+            }
 
             p = new Vec;
             CHKERRABORT(comm, VecCreate(comm, p));
             CHKERRABORT(comm, VecSetSizes(*p, fsp->GetNumSpecies() + fsp->GetNumLocalStates(), PETSC_DECIDE));
             CHKERRABORT(comm, VecSetFromOptions(*p));
             arma::Row<Int> indices = fsp->State2Petsc(init_states);
-            CHKERRABORT(comm, VecSetValues(*p, PetscInt(init_probs.n_elem), &indices[0], &init_probs[0], INSERT_VALUES));
+            CHKERRABORT(comm,
+                        VecSetValues(*p, PetscInt(init_probs.n_elem), &indices[0], &init_probs[0], INSERT_VALUES));
             CHKERRABORT(comm, VecSetUp(*p));
             CHKERRABORT(comm, VecAssemblyBegin(*p));
             CHKERRABORT(comm, VecAssemblyEnd(*p));
@@ -201,6 +263,34 @@ namespace cme{
 
         FiniteStateSubset &FSPSolver::GetStateSubset() {
             return *fsp;
+        }
+
+        void FSPSolver::SetLogging(PetscBool logging) {
+            log_fsp_events = logging;
+        }
+
+        FSPSolverComponentTiming FSPSolver::GetAvgComponentTiming() {
+            FSPSolverComponentTiming timings;
+            PetscMPIInt comm_size;
+            MPI_Comm_size(comm, &comm_size);
+
+            auto get_avg_timing = [&] (PetscLogEvent event){
+                PetscReal timing;
+                PetscReal tmp;
+                PetscEventPerfInfo info;
+                CHKERRABORT(comm, PetscLogEventGetPerfInfo(PETSC_DETERMINE, event, &info));
+                tmp = info.time;
+                MPI_Allreduce(&tmp, &timing, 1, MPIU_REAL, MPI_SUM, comm);
+                timing /= PetscReal(comm_size);
+                return timing;
+            };
+
+            timings.MatrixGenerationTime = get_avg_timing(MatrixGeneration);
+            timings.StatePartitioningTime = get_avg_timing(StateSetPartitioning);
+            timings.ODESolveTime = get_avg_timing(ODESolve);
+            timings.RHSEvalTime = get_avg_timing(RHSEvaluation);
+            timings.SolutionScatterTime = get_avg_timing(SolutionScatter);
+            return timings;
         }
 
     }

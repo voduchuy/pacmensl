@@ -18,6 +18,14 @@
 
 namespace cme{
     namespace petsc{
+        struct FSPSolverComponentTiming{
+            PetscReal StatePartitioningTime;
+            PetscReal MatrixGenerationTime;
+            PetscReal ODESolveTime;
+            PetscReal SolutionScatterTime;
+            PetscReal RHSEvalTime;
+        };
+
         class FSPSolver {
             using Real = PetscReal;
             using Int = PetscInt;
@@ -48,6 +56,14 @@ namespace cme{
 
             arma::Col<PetscReal> init_probs;
             int verbosity = 0;
+
+            // For logging events using PETSc LogEvent
+            PetscBool log_fsp_events = PETSC_FALSE;
+            PetscLogEvent StateSetPartitioning;
+            PetscLogEvent MatrixGeneration;
+            PetscLogEvent ODESolve;
+            PetscLogEvent SolutionScatter;
+            PetscLogEvent RHSEvaluation;
         public:
 
             explicit FSPSolver(MPI_Comm _comm, PartioningType _part_type, ODESolverType _solve_type);
@@ -61,11 +77,13 @@ namespace cme{
             void SetTimeFunc(TcoefFun _t_fun);
             void SetVerbosityLevel(int verbosity_level);
             void SetInitProbabilities(arma::Mat<Int> &_init_states, arma::Col<PetscReal> &_init_probs);
+            void SetLogging(PetscBool logging);
 
             void SetUp();
 
             Vec& GetP();
             FiniteStateSubset& GetStateSubset();
+            FSPSolverComponentTiming GetAvgComponentTiming();
 
             void Solve();
 

@@ -82,39 +82,8 @@ int main(int argc, char *argv[]) {
         printf("proc = %d : %d -> %d \n", rank, ia0[i], ia[i]);
     }
 
-//    Correct result for 2 processes should be:
-//    proc = 0 : 0 -> 7
-//    proc = 0 : -1 -> -1
-//    proc = 0 : 1 -> 6
-//    proc = 0 : 2 -> 5
-//    proc = 0 : -1 -> -1
-//    proc = 0 : 4 -> 3
-//    proc = 0 : 5 -> 2
-//    proc = 0 : 6 -> 1
-//    proc = 1 : -1 -> -1
-//    proc = 1 : 8 -> 15
-//    proc = 1 : 9 -> 14
-//    proc = 1 : 10 -> 13
-//    proc = 1 : -1 -> -1
-//    proc = 1 : 12 -> 11
-//    proc = 1 : 13 -> 10
-//    proc = 1 : 14 -> 9
-
-    // AO maps correctly if there are no negative entries
-//    if (rank == 0) {
-//        ia = {0, 0, 1, 2, 0, 4, 5, 6};
-//    } else {
-//        ia = {0, 8, 9, 10, 0, 12, 13, 14};
-//    }
-//    ia0 = ia;
-//    AOApplicationToPetsc(app2petsc, n_loc, &ia[0]);
-//
-//    for (auto i{0}; i < n_loc; ++i) {
-//        printf("proc = %d : %d -> %d \n", rank, ia0[i], ia[i]);
-//    }
-
     ierr = PetscLayoutDestroy(&layout);
-    CHKERRABORT(comm, ierr);
+    CHKERRQ(ierr);
     ierr = PetscFinalize();
     CHKERRQ(ierr);
 }

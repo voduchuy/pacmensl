@@ -1,63 +1,70 @@
 #pragma once
+
 #include <armadillo>
 #include <petscmat.h>
 
-namespace hog1p_cme {
+namespace six_species_cme {
 // stoichiometric matrix of the toggle switch model
-    arma::Mat<PetscInt> SM {
-            {  1,  -1,  -1, 0, 0,  0,  0,  0,  0 },
-            {  0,  0,   0,  1, 0, -1,  0,  0,  0 },
-            {  0,  0,   0,  0, 1,  0, -1,  0,  0 },
-            {  0,  0,   0,  0, 0,  1,  0, -1,  0 },
-            {  0,  0,   0,  0, 0,  0,  1,  0, -1 },
+    arma::Mat<PetscInt> SM{
+            {1, -1, 0, 0,   0,  0,  0,   0,  -2,   2},
+            {0, 0,  0, 0,  -1,  1,  -1,  1,   1,  -1},
+            {0, 0,  0, 0,  -1,  1,  0,   0,   0,  0},
+            {0, 0,  0, 0,   1, -1,  -1,  1,   0,  0},
+            {0, 0,  0, 0,   0,  0,  1,  -1,   0,  0},
+            {0, 0,  1, -1,  0,  0,  0,   0,   0,  0}
     };
 
 // reaction parameters
-    const PetscReal k12 {1.29}, k21 {1.0e0}, k23 {0.0067},
-            k32 {0.027}, k34 {0.133}, k43 {0.0381},
-            kr2 {0.0116}, kr3 {0.987}, kr4 {0.0538},
-            trans {0.01}, gamma {0.0049},
-// parameters for the time-dependent factors
-            r1 {6.9e-5}, r2 {7.1e-3}, eta {3.1}, Ahog {9.3e09}, Mhog {6.4e-4};
+    const PetscReal
+    Avo = 6.022140857e23,
+    c0 = 0.043,
+    c1 = 0.0007,
+    c2 = 0.078,
+    c3 = 0.0039,
+    c4 = 0.012e09/(Avo),
+    c5 = 0.4791,
+    c6 = 0.00012e09/(Avo),
+    c7 = 0.8765e-11,
+    c8 = 0.05e09/(Avo),
+    c9 = 0.5,
+    avg_cell_cyc_time = 35*60.0;
 
 // propensity function
     PetscReal propensity(PetscInt *X, PetscInt k) {
         switch (k) {
             case 0:
-                return k12 * double(X[0] == 0) + k23 * double(X[0] == 1) + k34 * double(X[0] == 2);
+                return c0*PetscReal(X[5]);
             case 1:
-                return k32 * double(X[0] == 2) + k43 * double(X[0] == 3);
+                return c1*PetscReal(X[0]);
             case 2:
-                return k21 * double(X[0] == 1);
+                return c2*PetscReal(X[3]);
             case 3:
-                return kr2 * double(X[0] == 1) + kr3 * double(X[0] == 2) + kr4 * double(X[0] == 3);
+                return c3*PetscReal(X[5]);
             case 4:
-                return kr2 * double(X[0] == 1) + kr3 * double(X[0] == 2) + kr4 * double(X[0] == 3);
+                return PetscReal(X[1])*PetscReal(X[2]);
             case 5:
-                return trans * double(X[1]);
+                return c5*PetscReal(X[3]);
             case 6:
-                return trans * double(X[2]);
+                return PetscReal(X[3])*PetscReal(X[1]);
             case 7:
-                return gamma * double(X[3]);
+                return c7*PetscReal(X[4]);
             case 8:
-                return gamma * double(X[4]);
+                return 0.5*PetscReal(X[0])*PetscReal(X[0]-1);
+            case 9:
+                return c9*PetscReal(X[1]);
             default:
                 return 0.0;
         }
     }
 
 // function to compute the time-dependent coefficients of the propensity functions
-    arma::Row<double> t_fun( double t)
-    {
-        arma::Row<double> u( 9, arma::fill::ones );
+    arma::Row<PetscReal> t_fun(PetscReal t) {
+        arma::Row<PetscReal> u(10, arma::fill::ones);
 
-        double h1 = (1.0 - exp(-r1*t))*exp(-r2*t);
-
-        double hog1p = pow( h1/( 1.0 + h1/Mhog), eta )*Ahog;
-
-        u(2) = std::max( 0.0, 3200.0 - 7710.0*(hog1p) );
-        //u(2) = std::max(0.0, 3200.0 - (hog1p));
-
+        PetscReal AV = 6.022140857*1.0e8*pow(2.0, t/avg_cell_cyc_time); // cell's volume
+        u(4) =  0.012e09/AV;
+        u(6) = 0.00012e09/AV;
+        u(8) = 0.05e09/AV;
         return u;
     }
 
