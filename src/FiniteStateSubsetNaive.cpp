@@ -3,11 +3,11 @@
 //
 
 
-#include "FiniteStateSubsetLinear.h"
+#include "FiniteStateSubsetNaive.h"
 
 namespace cme {
     namespace petsc {
-        void FiniteStateSubsetLinear::GenerateStatesAndOrdering() {
+        void FiniteStateSubsetNaive::GenerateStatesAndOrdering() {
             PetscInt ierr;
             PetscLayout layout_without_sinks;
             PetscInt local_size_without_sinks, global_size_with_sinks;

@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
     CHKERRQ(ierr);
     MPI_Comm comm;
-    MPI_Comm_dup(PETSC_COMM_WORLD, &comm);
+    MPI_Comm_dup(PETSC_COMM_SELF, &comm);
     MPI_Comm_size(comm, &num_procs);
     PetscPrintf(comm, "\n ================ \n");
 
@@ -65,14 +65,14 @@ int main(int argc, char *argv[]) {
             FSPSize = {10, 6, 1, 2, 1, 1}; // Size of the FSP
             expansion_factors = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
             t_final = 400.0;
-            fsp_tol = 1.0e-2;
+            fsp_tol = 1.0e-6;
             X0 = {2, 6, 0, 2, 0, 0};
             X0 = X0.t();
             p0 = {1.0};
             stoich_mat = six_species_cme::SM;
             t_fun = six_species_cme::t_fun;
             propensity = six_species_cme::propensity;
-            PetscPrintf(PETSC_COMM_WORLD, "Problem: Transcription regulation with 6 species.\n");
+            PetscPrintf(comm, "Problem: Transcription regulation with 6 species.\n");
         } else if (strcmp(opt, "toggle") == 0) {
             model_name = "toggle";
             FSPSize = {20, 20}; // Size of the FSP
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
             stoich_mat = toggle_cme::SM;
             t_fun = toggle_cme::t_fun;
             propensity = toggle_cme::propensity;
-            PetscPrintf(PETSC_COMM_WORLD, "Problem: Toggle switch with 2 species.\n");
+            PetscPrintf(comm, "Problem: Toggle switch with 2 species.\n");
         } else if (strcmp(opt, "hog3d") == 0) {
             model_name = "hog3d";
             part_option = "parmetis";
@@ -103,9 +103,9 @@ int main(int argc, char *argv[]) {
             fsp_odes_type = CVODE_BDF;
             output_marginal = PETSC_FALSE;
             verbosity = 0;
-            PetscPrintf(PETSC_COMM_WORLD, "Problem: Hog1p with 3 species.\n");
+            PetscPrintf(comm, "Problem: Hog1p with 3 species.\n");
         } else {
-            PetscPrintf(PETSC_COMM_WORLD, "Problem: Hog1p with 5 species.\n");
+            PetscPrintf(comm, "Problem: Hog1p with 5 species.\n");
         }
     }
 
@@ -116,15 +116,15 @@ int main(int argc, char *argv[]) {
         if (strcmp(opt, "Naive") == 0 ) {
             fsp_par_type = Naive;
             part_option = "linear";
-            PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with natural ordering.\n");
+            PetscPrintf(comm, "FSP is partitioned with natural ordering.\n");
         } else {
-            PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with Graph.\n");
+            PetscPrintf(comm, "FSP is partitioned with Graph.\n");
         }
     }
     if (num_procs == 1){
         fsp_par_type = Naive;
 //        part_option = "linear";
-        PetscPrintf(PETSC_COMM_WORLD, "Only 1 processor! FSP is partitioned with natural ordering.\n");
+        PetscPrintf(comm, "Only 1 processor! FSP is partitioned with natural ordering.\n");
     }
 
     ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_output_marginal", opt, 100, &opt_set);
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
         PetscReal tic, tic1, solver_time, total_time;
 
         tic = MPI_Wtime();
-        FSPSolver fsp(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
+        FSPSolver fsp(comm, fsp_par_type, fsp_odes_type);
         fsp.SetInitFSPSize(FSPSize);
         fsp.SetFSPTolerance(fsp_tol);
         fsp.SetFinalTime(t_final);
@@ -178,66 +178,24 @@ int main(int argc, char *argv[]) {
         fsp.SetUp();
         fsp.Solve();
 
+        MPI_Barrier(PETSC_COMM_WORLD);
+
         solver_time = MPI_Wtime() - tic1;
         total_time = MPI_Wtime() - tic;
 
         PetscPrintf(comm, "Total time (including setting up) = %.2e \n", total_time);
         PetscPrintf(comm, "Solving time = %.2e \n", solver_time);
 
+
+
         MPI_Comm_rank(PETSC_COMM_WORLD, &myRank);
         if (myRank == 0) {
             {
-                std::string filename = model_name + "_time_" + std::to_string(num_procs) + "_" + part_option + ".dat";
+                std::string filename = model_name + "multiple_singles_time_" + std::to_string(num_procs) + "_" + part_option + ".dat";
                 std::ofstream file;
                 file.open(filename, std::ios_base::app);
                 file << solver_time << "\n";
                 file.close();
-            }
-        }
-
-        if (fsp_log_events){
-            FSPSolverComponentTiming timings = fsp.GetAvgComponentTiming();
-            FiniteProblemSolverPerfInfo perf_info = fsp.GetSolverPerfInfo();
-            if (myRank == 0){
-                std::string filename = model_name + "_time_breakdown_" + std::to_string(num_procs) + "_" + part_option + ".dat";
-                std::ofstream file;
-                file.open(filename);
-                file << "Component, Average processor time (sec), Percentage \n";
-                file << "State Partioning," << std::scientific << std::setprecision(2) << timings.StatePartitioningTime << "," << timings.StatePartitioningTime/solver_time*100.0 << "\n"
-                     << "FSP Matrices Generation," << std::scientific << std::setprecision(2) << timings.MatrixGenerationTime << "," << timings.MatrixGenerationTime/solver_time*100.0 << "\n"
-                     << "Solving truncated ODEs," << std::scientific << std::setprecision(2) << timings.ODESolveTime << "," << timings.ODESolveTime/solver_time*100.0 << "\n"
-                     << "FSP Solution scattering," << std::scientific << std::setprecision(2) << timings.SolutionScatterTime << "," << timings.SolutionScatterTime/solver_time*100.0 << "\n"
-                     << "Time-dependent Matrix action," << std::scientific << std::setprecision(2) << timings.RHSEvalTime << "," << timings.RHSEvalTime/solver_time*100.0 << "\n"
-                     << "Total," << solver_time << "," << 100.0 << "\n";
-                file.close();
-
-                filename = model_name + "_perf_info_" + std::to_string(num_procs) + "_" + part_option + ".dat";
-                file.open(filename);
-                file << "Model time, ODEs size, Average processor time (sec) \n";
-                for (auto i{0}; i < perf_info.n_step; ++i){
-                    file << perf_info.model_time[i] << "," << perf_info.n_eqs[i] << "," << perf_info.cpu_time[i] << "\n";
-                }
-                file.close();
-            }
-        }
-
-        if (output_marginal) {
-            /* Compute the marginal distributions */
-            Vec P = fsp.GetP();
-            FiniteStateSubset &state_set = fsp.GetStateSubset();
-            std::vector<arma::Col<PetscReal>> marginals(FSPSize.n_elem);
-            for (PetscInt i{0}; i < marginals.size(); ++i) {
-                marginals[i] = cme::petsc::marginal(state_set, P, i);
-            }
-
-            MPI_Comm_rank(PETSC_COMM_WORLD, &myRank);
-            if (myRank == 0) {
-                for (PetscInt i{0}; i < marginals.size(); ++i) {
-                    std::string filename =
-                            model_name + "_marginal_" + std::to_string(i) + "_" + std::to_string(num_procs) + "_" +
-                            part_option + ".dat";
-                    marginals[i].save(filename, arma::raw_ascii);
-                }
             }
         }
     }

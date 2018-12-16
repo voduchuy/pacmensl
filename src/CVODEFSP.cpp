@@ -46,8 +46,9 @@ namespace cme{
             cvode_stat = CVodeSetMaxConvFails(cvode_mem, 10000); CVODECHKERR(comm, cvode_stat);
             cvode_stat = CVodeSetMaxNonlinIters(cvode_mem, 10000); CVODECHKERR(comm, cvode_stat);
 
-            // Create the BCGSTAB linear solver without preconditioning
+            // Create the linear solver without preconditioning
             linear_solver = SUNSPBCGS(solution_tmp, PREC_NONE, 0);
+//            linear_solver = SUNSPGMR(solution_tmp, PREC_NONE, 30);
             cvode_stat = CVSpilsSetLinearSolver(cvode_mem, linear_solver); CVODECHKERR(comm, cvode_stat);
             cvode_stat = CVSpilsSetJacTimes(cvode_mem, NULL, &cvode_jac); CVODECHKERR(comm, cvode_stat);
 

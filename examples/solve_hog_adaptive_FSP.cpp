@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     std::string model_name = "hog1p";
     /* CME problem sizes */
     int nSpecies = 5; // Number of species
-    Row<PetscInt> FSPSize({3, 4, 4, 4, 4}); // Size of the FSP
+    Row<PetscInt> FSPSize({3, 10, 10, 10, 10}); // Size of the FSP
     PetscReal t_final = 60.00*15;
     PetscReal fsp_tol = 1.0e-1;
     arma::Mat<PetscInt> X0 = {0,0,0,0,0}; X0 = X0.t();
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     // Begin PETSC context
     {
         arma::Row<PetscReal> expansion_factors = {0.0, 0.25,0.25,0.25,0.25};
-        FSPSolver fsp(PETSC_COMM_WORLD, Linear, CVODE_BDF);
+        FSPSolver fsp(PETSC_COMM_WORLD, Naive, CVODE_BDF);
         fsp.SetInitFSPSize(FSPSize);
         fsp.SetFSPTolerance(fsp_tol);
         fsp.SetFinalTime(t_final);

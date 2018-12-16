@@ -5,8 +5,9 @@ PROJECT(Parallel_FSP)
 set(MY_LIBRARIES
         cme_util
         FiniteStateSubset
-        FiniteStateSubsetLinear
-        FiniteStateSubsetParMetis
+        FiniteStateSubsetNaive
+        FiniteStateSubsetGraph
+        FiniteStateSubsetHyperGraph
         MatrixSet
         FiniteProblemSolver
         CVODEFSP
@@ -22,20 +23,21 @@ set(TEST_PROGRAMS
         )
 
 set(EXAMPLES
-#        solve_toggle_adaptive_FSP
         solve_hog_adaptive_FSP
-#        solve_hog1p_tv_with_ts
-#        solve_hog1p_tv_with_cvode
+        distribute_states
         )
 
 set(BENCHMARKS
         benchmark
+        multiple_single_core_jobs
         )
 
 set(EXT_LIBRARIES
         -larmadillo
         -lsundials_cvode
-        -lsundials_nvecpetsc)
+        -lsundials_nvecpetsc
+        -lzoltan
+        -lparmetis)
 
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
@@ -71,11 +73,12 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 foreach ( LIB ${MY_LIBRARIES} )
   add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h)
-    target_link_libraries(${LIB} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+  target_link_libraries(${LIB} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 endforeach()
 
 target_link_libraries(MatrixSet FiniteStateSubset)
-target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetParMetis FiniteStateSubsetLinear ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+target_link_libraries( FiniteStateSubsetHyperGraph FiniteStateSubset)
+target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetHyperGraph FiniteStateSubsetGraph FiniteStateSubsetNaive ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 target_link_libraries(CVODEFSP FiniteProblemSolver)
 target_link_libraries(FSPSolver FiniteStateSubset FiniteProblemSolver MatrixSet CVODEFSP ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 

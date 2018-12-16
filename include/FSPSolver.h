@@ -11,8 +11,9 @@
 #include"MatrixSet.h"
 #include"FiniteProblemSolver.h"
 #include"FiniteStateSubset.h"
-#include"FiniteStateSubsetLinear.h"
-#include"FiniteStateSubsetParMetis.h"
+#include"FiniteStateSubsetNaive.h"
+#include"FiniteStateSubsetGraph.h"
+#include"FiniteStateSubsetHyperGraph.h"
 #include"CVODEFSP.h"
 #include"cme_util.h"
 

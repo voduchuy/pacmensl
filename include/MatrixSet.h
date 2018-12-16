@@ -12,8 +12,8 @@
 #include <petscao.h>
 #include "cme_util.h"
 #include "FiniteStateSubset.h"
-#include "FiniteStateSubsetParMetis.h"
-#include "FiniteStateSubsetLinear.h"
+#include "FiniteStateSubsetGraph.h"
+#include "FiniteStateSubsetNaive.h"
 
 namespace cme {
     namespace petsc {

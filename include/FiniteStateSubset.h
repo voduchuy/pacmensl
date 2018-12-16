@@ -5,12 +5,13 @@
 #ifndef PARALLEL_FSP_FINITESTATESUBSET_H
 #define PARALLEL_FSP_FINITESTATESUBSET_H
 
+#include <zoltan.h>
 #include "cme_util.h"
 
 namespace cme {
     namespace petsc {
         enum PartioningType {
-            Linear, ParMetis, NotSet
+            Naive, Graph, HyperGraph, NotSet
         };
 
         class FiniteStateSubset {
@@ -29,6 +30,8 @@ namespace cme {
 
             PetscLayout vec_layout = nullptr;
             AO lex2petsc = nullptr;
+
+            Zoltan_Struct *zoltan;
         public:
 
             // Generic Interface
@@ -43,6 +46,8 @@ namespace cme {
             void SetSize(arma::Row<PetscInt> &new_fsp_size);
 
             PetscInt GetNumLocalStates();
+
+            PetscInt GetNumGlobalStates();
 
             PetscInt GetNumSpecies();
 
@@ -68,10 +73,24 @@ namespace cme {
             virtual void GenerateStatesAndOrdering() {};
 
             friend arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
+
+            // Interface to Zoltan
+            friend int zoltan_num_obj(void *fss_data, int *ierr);
+
+            friend void zoltan_obj_list(void *fss_data, int num_gid_entries, int num_lid_entries,
+                                        ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts,
+                                        int *ierr);
+
+            friend void zoltan_hg_size_cs(void *fss_data, int *num_lists, int *num_pins, int *format, int *ierr);
         };
 
         arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
 
+        int zoltan_num_obj(void *fss_data, int *ierr);
+
+        void zoltan_obj_list(void *fss_data, int num_gid_entries, int num_lid_entries,
+                                    ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts,
+                                    int *ierr);
     }
 }
 

@@ -2,16 +2,16 @@
 // Created by Huy Vo on 12/4/18.
 //
 
-#include <FiniteStateSubsetParMetis.h>
+#include <FiniteStateSubsetGraph.h>
 
-#include "FiniteStateSubsetParMetis.h"
+#include "FiniteStateSubsetGraph.h"
 
 namespace cme{
     namespace petsc{
-        void FiniteStateSubsetParMetis::GenerateStatesAndOrdering() {
+        void FiniteStateSubsetGraph::GenerateStatesAndOrdering() {
             // This can only be done after the stoichiometry has been set
             if (stoich_set == 0){
-                throw std::runtime_error("FintieStateSubset: stoichiometry is required for ParMetis partioning type.");
+                throw std::runtime_error("FintieStateSubset: stoichiometry is required for Graph partioning type.");
             }
 
             // Create the adjacency matrix

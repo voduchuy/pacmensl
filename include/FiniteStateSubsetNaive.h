@@ -9,9 +9,9 @@
 
 namespace cme{
     namespace petsc{
-        class FiniteStateSubsetLinear: public FiniteStateSubset{
+        class FiniteStateSubsetNaive: public FiniteStateSubset{
         public:
-            explicit FiniteStateSubsetLinear(MPI_Comm new_comm): FiniteStateSubset(new_comm) { partitioning_type = Linear;};
+            explicit FiniteStateSubsetNaive(MPI_Comm new_comm): FiniteStateSubset(new_comm) { partitioning_type = Naive;};
 
             void GenerateStatesAndOrdering() override;
         };

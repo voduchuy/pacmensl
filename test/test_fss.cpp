@@ -11,28 +11,43 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"models/hog1p_5d_model.h"
 #include"cme_util.h"
 #include"FiniteStateSubset.h"
-#include"FiniteStateSubsetLinear.h"
-#include"FiniteStateSubsetParMetis.h"
+#include"FiniteStateSubsetNaive.h"
+#include"FiniteStateSubsetGraph.h"
+#include"FiniteStateSubsetHyperGraph.h"
 
 using namespace cme::petsc;
 
 int main(int argc, char *argv[]) {
     int ierr;
     arma::Row<PetscInt> fsp_size = {1, 1, 1, 1, 1};
+    float ver;
 
+    MPI_Init(&argc, &argv);
     ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
+    Zoltan_Initialize(argc, argv, &ver);
+    MPI_Comm comm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &comm);
     CHKERRQ(ierr);
     {
-        FiniteStateSubset *fsp = new FiniteStateSubsetLinear(PETSC_COMM_WORLD);
+        FiniteStateSubset *fsp = new FiniteStateSubsetNaive(comm);
 
         fsp->SetSize(fsp_size);
         fsp->GenerateStatesAndOrdering();
         arma::Mat<PetscInt> local_states = fsp->GetLocalStates();
         arma::Row<PetscInt> petsc_indices = fsp->State2Petsc(local_states);
         fsp->PrintAO();
-        MPI_Barrier(PETSC_COMM_WORLD);
+        delete fsp;
 
-        fsp = new FiniteStateSubsetParMetis(PETSC_COMM_WORLD);
+        MPI_Barrier(comm);
+
+        fsp = new FiniteStateSubsetGraph(comm);
+        fsp->SetSize(fsp_size);
+        fsp->SetStoichiometry(hog1p_cme::SM);
+        fsp->GenerateStatesAndOrdering();
+        fsp->PrintAO();
+        delete fsp;
+
+        fsp = new FiniteStateSubsetHyperGraph(comm);
         fsp->SetSize(fsp_size);
         fsp->SetStoichiometry(hog1p_cme::SM);
         fsp->GenerateStatesAndOrdering();
@@ -41,4 +56,6 @@ int main(int argc, char *argv[]) {
     }
     ierr = PetscFinalize();
     CHKERRQ(ierr);
+    MPI_Comm_free(&comm);
+    MPI_Finalize();
 }

@@ -45,6 +45,31 @@ namespace cme {
         return indx;
     };
 
+    template<typename intT, typename intT_out>
+    void sub2ind_nd(const arma::Row<intT> &nmax, const arma::Mat<intT> &X, intT_out *indx) {
+        arma::uword N = nmax.n_elem;
+        arma::uword nst = X.n_cols;
+
+        intT nprod{1};
+        for (size_t j{0}; j < nst; j++) {
+            nprod = 1;
+            indx[j] = intT_out(0);
+            for (size_t i{0}; i < N; i++) {
+                if (X(i, j) < 0) {
+                    indx[j] = (intT_out) -1;
+                    break;
+                }
+
+                if (X(i, j) > nmax(i)) {
+                    indx[j] = (intT_out) -(i + 2);
+                    break;
+                }
+                indx[j] += (intT_out) X(i, j) * nprod;
+                nprod *= (nmax(i) + 1);
+            }
+        }
+    };
+
     template<typename IntMatT, typename IntVecT1, typename IntVecT2>
     IntMatT ind2sub_nd(const IntVecT1 &nmax, const IntVecT2 &indx) {
         auto N = nmax.size();
@@ -63,8 +88,14 @@ namespace cme {
 
         return X;
     };
-    template arma::Mat<PetscInt> ind2sub_nd<arma::Mat<PetscInt>, arma::Row<PetscInt>, arma::Row<PetscInt>>(const arma::Row<PetscInt> &nmax, const arma::Row<PetscInt> &indx);
-    template arma::Mat<PetscInt> ind2sub_nd<arma::Mat<PetscInt>, arma::Row<PetscInt>, std::vector<PetscInt>>(const arma::Row<PetscInt> &nmax, const std::vector<PetscInt> &indx);
+
+    template arma::Mat<PetscInt>
+    ind2sub_nd<arma::Mat<PetscInt>, arma::Row<PetscInt>, arma::Row<PetscInt>>(const arma::Row<PetscInt> &nmax,
+                                                                              const arma::Row<PetscInt> &indx);
+
+    template arma::Mat<PetscInt>
+    ind2sub_nd<arma::Mat<PetscInt>, arma::Row<PetscInt>, std::vector<PetscInt>>(const arma::Row<PetscInt> &nmax,
+                                                                                const std::vector<PetscInt> &indx);
 
     template<typename intT>
     arma::Col<intT> ind2sub_nd(const arma::Row<intT> &nmax, const intT &indx) {

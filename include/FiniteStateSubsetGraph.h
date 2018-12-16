@@ -9,9 +9,9 @@
 
 namespace cme{
     namespace petsc{
-        class FiniteStateSubsetParMetis: public FiniteStateSubset{
+        class FiniteStateSubsetGraph: public FiniteStateSubset{
         public:
-            explicit FiniteStateSubsetParMetis(MPI_Comm new_comm): FiniteStateSubset(new_comm) {partitioning_type = ParMetis;};
+            explicit FiniteStateSubsetGraph(MPI_Comm new_comm): FiniteStateSubset(new_comm) {partitioning_type = Graph;};
             void GenerateStatesAndOrdering() override;
         };
     }

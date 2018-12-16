@@ -14,8 +14,8 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"models/toggle_model.h"
 #include"cme_util.h"
 #include"FiniteStateSubset.h"
-#include"FiniteStateSubsetLinear.h"
-#include"FiniteStateSubsetParMetis.h"
+#include"FiniteStateSubsetNaive.h"
+#include"FiniteStateSubsetGraph.h"
 #include"MatrixSet.h"
 
 using namespace cme::petsc;
@@ -31,11 +31,11 @@ int main(int argc, char *argv[]) {
     double Q_sum;
     {
 
-        FiniteStateSubset *fsp = new FiniteStateSubsetLinear(PETSC_COMM_WORLD);
+        FiniteStateSubset *fsp = new FiniteStateSubsetNaive(PETSC_COMM_WORLD);
         fsp->SetSize(fsp_size);
         fsp->SetStoichiometry(toggle_cme::SM);
         fsp->GenerateStatesAndOrdering();
-        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with ParMetis-partitioned layout.\n");
+        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 
         MatrixSet A(PETSC_COMM_WORLD);
         A.GenerateMatrices(*fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);

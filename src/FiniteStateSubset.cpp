@@ -10,11 +10,15 @@ namespace cme {
         FiniteStateSubset::FiniteStateSubset(MPI_Comm new_comm) {
             int ierr;
             MPI_Comm_dup(new_comm, &comm);
+            zoltan = Zoltan_Create(comm);
             partitioning_type = NotSet;
             local_states.resize(0);
             fsp_size.resize(0);
             n_states_global = 0;
             stoichiometry.resize(0);
+
+            Zoltan_Set_Num_Obj_Fn(zoltan, &zoltan_num_obj, this);
+            Zoltan_Set_Obj_List_Fn(zoltan, &zoltan_obj_list, this);
         };
 
         void FiniteStateSubset::SetStoichiometry(arma::Mat<PetscInt> SM) {
@@ -42,6 +46,7 @@ namespace cme {
         FiniteStateSubset::~FiniteStateSubset() {
             PetscMPIInt ierr;
             ierr = MPI_Comm_free(&comm);
+            Zoltan_Destroy(&zoltan);
             CHKERRABORT(comm, ierr);
             Destroy();
         }
@@ -131,5 +136,23 @@ namespace cme {
             return lex2petsc;
         }
 
+        PetscInt FiniteStateSubset::GetNumGlobalStates() {
+            return n_states_global;
+        }
+
+        // Interface to HyperGraph
+        int zoltan_num_obj(void *fss_data, int *ierr) {
+            *ierr = 0;
+            return ((FiniteStateSubset*) fss_data)->n_local_states;
+        }
+
+        void zoltan_obj_list(void *fss_data, int num_gid_entries, int num_lid_entries,
+                             ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim,
+                             float *obj_wgts, int *ierr) {
+            FiniteStateSubset* data = (FiniteStateSubset*) fss_data;
+            local_ids = nullptr;
+            sub2ind_nd<PetscInt, ZOLTAN_ID_TYPE>(data->fsp_size, data->local_states, global_id);
+            *ierr = 0;
+        }
     }
 }

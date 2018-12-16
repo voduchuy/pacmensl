@@ -21,11 +21,11 @@ int main(int argc, char *argv[]) {
     // Begin PETSC context
     {
         arma::Row<PetscInt> fsp_size = {30, 30};
-        FiniteStateSubsetParMetis fsp(PETSC_COMM_WORLD);
+        FiniteStateSubsetGraph fsp(PETSC_COMM_WORLD);
         fsp.SetSize(fsp_size);
         fsp.SetStoichiometry(toggle_cme::SM);
         fsp.GenerateStatesAndOrdering();
-        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with ParMetis-partitioned layout.\n");
+        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 
         MatrixSet A(PETSC_COMM_WORLD);
         A.GenerateMatrices(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
