@@ -34,7 +34,7 @@ namespace cme{
 
             MPI_Comm comm = MPI_COMM_NULL;
 
-            PartioningType partioning_type;
+            PartitioningType partioning_type;
             ODESolverType odes_type;
 
             arma::Row<Int> fsp_size;
@@ -67,7 +67,7 @@ namespace cme{
             PetscLogEvent RHSEvaluation;
         public:
 
-            explicit FSPSolver(MPI_Comm _comm, PartioningType _part_type, ODESolverType _solve_type);
+            explicit FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
 
             void SetInitFSPSize(arma::Row<Int> &_fsp_size);
             void SetFinalTime(PetscReal t);

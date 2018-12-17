@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     std::string model_name, part_option;
     arma::Row<PetscInt> FSPSize;
     arma::Mat<PetscInt> stoich_mat;
-    PartioningType fsp_par_type;
+    PartitioningType fsp_par_type;
     std::fstream ofs;
     std::string filename;
     arma::Mat<PetscInt> local_states;

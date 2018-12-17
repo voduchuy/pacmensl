@@ -148,5 +148,4 @@ namespace cme {
         i2 = i1 + job_dist(rank);
         return std::make_pair(i1, i2);
     }
-
 }

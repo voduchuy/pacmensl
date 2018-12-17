@@ -8,7 +8,7 @@
 
 namespace cme {
     namespace petsc {
-        FSPSolver::FSPSolver(MPI_Comm _comm, PartioningType _part_type, ODESolverType _solve_type) {
+        FSPSolver::FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type) {
             MPI_Comm_dup(_comm, &comm);
             partioning_type = _part_type;
             odes_type = _solve_type;

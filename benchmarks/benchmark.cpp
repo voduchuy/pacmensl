@@ -26,18 +26,19 @@ using namespace hog1p_cme;
 using namespace cme::petsc;
 
 int main(int argc, char *argv[]) {
-    PetscMPIInt ierr, myRank, num_procs;
 
+    PetscMPIInt ierr, myRank, num_procs;
     ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
     CHKERRQ(ierr);
+
     MPI_Comm comm;
     MPI_Comm_dup(PETSC_COMM_WORLD, &comm);
     MPI_Comm_size(comm, &num_procs);
     PetscPrintf(comm, "\n ================ \n");
 
-    // Default options
+    std::string part_option;
+    // Default problem
     std::string model_name = "hog1p";
-    std::string part_option = "parmetis";
     Row<PetscInt> FSPSize({3, 3, 3, 3, 3}); // Size of the FSP
     arma::Row<PetscReal> expansion_factors = {0.0, 0.5, 0.5, 0.5, 0.5};
     PetscReal t_final = 60.00 * 5;
@@ -48,7 +49,9 @@ int main(int argc, char *argv[]) {
     arma::Mat<PetscInt> stoich_mat = hog1p_cme::SM;
     TcoefFun t_fun = hog1p_cme::t_fun;
     PropFun propensity = hog1p_cme::propensity;
-    PartioningType fsp_par_type = Graph;
+
+    // Default options
+    PartitioningType fsp_par_type = Graph;
     ODESolverType fsp_odes_type = CVODE_BDF;
     PetscBool output_marginal = PETSC_FALSE;
     PetscBool fsp_log_events = PETSC_FALSE;
@@ -99,10 +102,6 @@ int main(int argc, char *argv[]) {
             stoich_mat = hog3d_cme::SM;
             t_fun = hog3d_cme::t_fun;
             propensity = hog3d_cme::propensity;
-            fsp_par_type = Graph;
-            fsp_odes_type = CVODE_BDF;
-            output_marginal = PETSC_FALSE;
-            verbosity = 0;
             PetscPrintf(PETSC_COMM_WORLD, "Problem: Hog1p with 3 species.\n");
         } else {
             PetscPrintf(PETSC_COMM_WORLD, "Problem: Hog1p with 5 species.\n");
@@ -113,17 +112,11 @@ int main(int argc, char *argv[]) {
     ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
     CHKERRQ(ierr);
     if (opt_set) {
-        if (strcmp(opt, "Naive") == 0 ) {
-            fsp_par_type = Naive;
-            part_option = "linear";
-            PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with natural ordering.\n");
-        } else {
-            PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with Graph.\n");
-        }
+        fsp_par_type = str2part(std::string(opt));
+        PetscPrintf(PETSC_COMM_WORLD, "Partitioning with option %s \n", opt);
     }
     if (num_procs == 1){
         fsp_par_type = Naive;
-//        part_option = "linear";
         PetscPrintf(PETSC_COMM_WORLD, "Only 1 processor! FSP is partitioned with natural ordering.\n");
     }
 
@@ -155,7 +148,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-
+    part_option = part2str(fsp_par_type);
     // Begin PETSC context
     {
         PetscReal tic, tic1, solver_time, total_time;
@@ -203,7 +196,7 @@ int main(int argc, char *argv[]) {
                 std::ofstream file;
                 file.open(filename);
                 file << "Component, Average processor time (sec), Percentage \n";
-                file << "State Partioning," << std::scientific << std::setprecision(2) << timings.StatePartitioningTime << "," << timings.StatePartitioningTime/solver_time*100.0 << "\n"
+                file << "State Partitioning," << std::scientific << std::setprecision(2) << timings.StatePartitioningTime << "," << timings.StatePartitioningTime/solver_time*100.0 << "\n"
                      << "FSP Matrices Generation," << std::scientific << std::setprecision(2) << timings.MatrixGenerationTime << "," << timings.MatrixGenerationTime/solver_time*100.0 << "\n"
                      << "Solving truncated ODEs," << std::scientific << std::setprecision(2) << timings.ODESolveTime << "," << timings.ODESolveTime/solver_time*100.0 << "\n"
                      << "FSP Solution scattering," << std::scientific << std::setprecision(2) << timings.SolutionScatterTime << "," << timings.SolutionScatterTime/solver_time*100.0 << "\n"

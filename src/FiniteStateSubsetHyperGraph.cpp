@@ -52,6 +52,8 @@ namespace cme {
 
                 vtx_gid[i] = i_here;
                 vtx_edge_ptr[i] = nnz;
+                pin_gid[nnz] = i_here;
+                nnz++;
                 for (PetscInt j = 0; j < stoichiometry.n_cols; ++j) {
                     if (irx.at(j) > 0) {
                         pin_gid[nnz] = (ZOLTAN_ID_TYPE) irx.at(j);
@@ -190,6 +192,8 @@ namespace cme {
             Zoltan_Set_Param(zoltan, "LB_APPROACH", "PARTITION");
             Zoltan_Set_Param(zoltan, "RETURN_LISTS", "PARTS");
             Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "0");
+            Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0"); /* use Zoltan default vertex weights */
+            Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");/* use Zoltan default hyperedge weights */
             Zoltan_Set_HG_Size_CS_Fn(zoltan, &zoltan_get_hypergraph_size, (void *) &this->hg_data);
             Zoltan_Set_HG_CS_Fn(zoltan, &zoltan_get_hypergraph, (void *) &this->hg_data);
         }

@@ -10,7 +10,7 @@
 
 namespace cme {
     namespace petsc {
-        enum PartioningType {
+        enum PartitioningType {
             Naive, Graph, HyperGraph, NotSet
         };
 
@@ -20,7 +20,7 @@ namespace cme {
             int stoich_set = 0;
             MPI_Comm comm;
 
-            PartioningType partitioning_type;
+            PartitioningType partitioning_type;
             arma::Row<PetscInt> fsp_size;
             PetscInt n_species;
             PetscInt n_states_global;
@@ -60,6 +60,7 @@ namespace cme {
             std::tuple<PetscInt, PetscInt> GetLayoutStartEnd();
 
             arma::Row<PetscInt> State2Petsc(arma::Mat<PetscInt> state);
+            void State2Petsc(arma::Mat<PetscInt> state, PetscInt *indx);
 
             arma::Row<PetscReal> SinkStatesReduce(Vec P);
 
@@ -91,6 +92,13 @@ namespace cme {
         void zoltan_obj_list(void *fss_data, int num_gid_entries, int num_lid_entries,
                                     ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts,
                                     int *ierr);
+
+
+        /*!
+         * Helper functions to convert back and forth between partitioning options and string
+         */
+         std::string part2str(PartitioningType part);
+         PartitioningType str2part(std::string str);
     }
 }
 

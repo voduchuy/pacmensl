@@ -9,6 +9,7 @@
 #include <armadillo>
 #include <mpi.h>
 #include <petscmat.h>
+#include <petscis.h>
 #include <petscao.h>
 #include "cme_util.h"
 #include "FiniteStateSubset.h"
@@ -33,9 +34,19 @@ namespace cme {
             Int n_reactions;
             Int n_rows_global;
             Int n_rows_local;
-            std::vector<Mat> terms;
 
+            // Local data of the matrix
+            std::vector<Mat> diag_mats;
+            std::vector<Mat> offdiag_mats;
+
+            // Data for computing the matrix action
             Vec work; ///< Work vector for computing operator times vector
+            Vec lvec; ///< Local vector to receive scattered data from the input vec
+            PetscInt lvec_length; ///< Number of ghost entries owned by the local process
+            VecScatter action_ctx; ///< Scatter context for computing matrix action
+            ISLocalToGlobalMapping lvec2global; ///< Mapping between local vector and global input vec
+            Vec xx, yy, zz; // Local portion of the vectors
+
             TcoefFun t_fun = NULL;
 
         public:
@@ -46,10 +57,6 @@ namespace cme {
             void GenerateMatrices(FiniteStateSubset &fsp, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun);
 
             void Destroy();
-
-            void DuplicateStructure(Mat &A);
-
-            void PrintInfo();
 
             void Action(PetscReal t, Vec x, Vec y);
 

@@ -43,6 +43,11 @@ namespace cme {
             return lex_indices;
         }
 
+        void FiniteStateSubset::State2Petsc(arma::Mat<PetscInt> state, PetscInt *indx) {
+            cme::sub2ind_nd(fsp_size, state, indx);
+            CHKERRABORT(comm, AOApplicationToPetsc(lex2petsc, (PetscInt) state.n_cols, indx));
+        }
+
         FiniteStateSubset::~FiniteStateSubset() {
             PetscMPIInt ierr;
             ierr = MPI_Comm_free(&comm);
@@ -65,17 +70,18 @@ namespace cme {
             arma::Row<PetscReal> local_sinks(fsp_size.n_elem), global_sinks(fsp_size.n_elem);
 
             PetscInt p_local_size;
-            ierr = VecGetLocalSize(P, &p_local_size); CHKERRABORT(comm, ierr);
+            ierr = VecGetLocalSize(P, &p_local_size);
+            CHKERRABORT(comm, ierr);
 
-            if (p_local_size != local_states.n_cols + fsp_size.n_elem){
+            if (p_local_size != local_states.n_cols + fsp_size.n_elem) {
                 printf("FiniteStateSubset::SinkStatesReduce: The layout of p and FiniteStateSubset do not match.\n");
                 MPI_Abort(comm, 1);
             }
 
             PetscReal *p_data;
             VecGetArray(P, &p_data);
-            for (auto i{0}; i < fsp_size.n_elem; ++i){
-                local_sinks(i) = p_data[p_local_size -1 - i];
+            for (auto i{0}; i < fsp_size.n_elem; ++i) {
+                local_sinks(i) = p_data[p_local_size - 1 - i];
                 ierr = MPI_Allreduce(&local_sinks[i], &global_sinks[i], 1, MPIU_REAL, MPI_SUM, comm);
                 CHKERRABORT(comm, ierr);
             }
@@ -103,25 +109,26 @@ namespace cme {
             CHKERRABORT(comm, AOView(lex2petsc, PETSC_VIEWER_STDOUT_(comm)));
         }
 
-        arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species)
-        {
+        arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species) {
             MPI_Comm comm;
             PetscObjectGetComm((PetscObject) P, &comm);
 
-            PetscReal *local_data; VecGetArray(P, &local_data);
+            PetscReal *local_data;
+            VecGetArray(P, &local_data);
 
             arma::Col<PetscReal> p_local(local_data, fsp.n_local_states, false, true);
-            arma::Col<PetscReal> v(fsp.fsp_size(species)+1); v.fill(0.0);
+            arma::Col<PetscReal> v(fsp.fsp_size(species) + 1);
+            v.fill(0.0);
 
-            for (PetscInt i{0}; i < fsp.n_local_states; ++i)
-            {
+            for (PetscInt i{0}; i < fsp.n_local_states; ++i) {
                 v(fsp.local_states(species, i)) += p_local(i);
             }
 
-            MPI_Barrier( comm );
+            MPI_Barrier(comm);
 
-            arma::Col<PetscReal> w(fsp.fsp_size(species)+1); w.fill(0.0);
-            MPI_Allreduce( &v[0], &w[0], v.size(), MPI_DOUBLE, MPI_SUM, comm );
+            arma::Col<PetscReal> w(fsp.fsp_size(species) + 1);
+            w.fill(0.0);
+            MPI_Allreduce(&v[0], &w[0], v.size(), MPI_DOUBLE, MPI_SUM, comm);
 
             VecRestoreArray(P, &local_data);
             return w;
@@ -143,16 +150,39 @@ namespace cme {
         // Interface to HyperGraph
         int zoltan_num_obj(void *fss_data, int *ierr) {
             *ierr = 0;
-            return ((FiniteStateSubset*) fss_data)->n_local_states;
+            return ((FiniteStateSubset *) fss_data)->n_local_states;
         }
 
         void zoltan_obj_list(void *fss_data, int num_gid_entries, int num_lid_entries,
                              ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim,
                              float *obj_wgts, int *ierr) {
-            FiniteStateSubset* data = (FiniteStateSubset*) fss_data;
+            FiniteStateSubset *data = (FiniteStateSubset *) fss_data;
             local_ids = nullptr;
             sub2ind_nd<PetscInt, ZOLTAN_ID_TYPE>(data->fsp_size, data->local_states, global_id);
             *ierr = 0;
+        }
+
+        std::string part2str(PartitioningType part) {
+            switch (part) {
+                case Naive:
+                    return std::string("naive");
+                case Graph:
+                    return std::string("graph");
+                case HyperGraph:
+                    return std::string("hyper_graph");
+                default:
+                    return std::string("naive");
+            }
+        }
+
+        PartitioningType str2part(std::string str) {
+            if (str == "naive" || str == "Naive" || str == "NAIVE") {
+                return Naive;
+            } else if (str == "graph" || str == "Graph" || str == "GRAPH") {
+                return Graph;
+            } else {
+                return HyperGraph;
+            }
         }
     }
 }

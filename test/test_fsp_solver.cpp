@@ -30,17 +30,13 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(PETSC_COMM_WORLD, &num_procs);
 
     // Read options for fsp
-    PartioningType fsp_par_type = Naive;
+    PartitioningType fsp_par_type = Naive;
     ODESolverType fsp_odes_type = CVODE_BDF;
     char opt[100];
     PetscBool opt_set;
     ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
-    if (opt_set){
-        if (strcmp(opt, "Graph") == 0){
-            fsp_par_type = Graph;
-            PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with Graph.\n");
-        }
-    }
+    fsp_par_type = str2part(std::string(opt));
+    PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with %s.\n", part2str(fsp_par_type).c_str());
 
     // Begin PETSC context
     {

@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     arma::Mat<PetscInt> stoich_mat = hog1p_cme::SM;
     TcoefFun t_fun = hog1p_cme::t_fun;
     PropFun propensity = hog1p_cme::propensity;
-    PartioningType fsp_par_type = Graph;
+    PartitioningType fsp_par_type = Graph;
     ODESolverType fsp_odes_type = CVODE_BDF;
     PetscBool output_marginal = PETSC_FALSE;
     PetscBool fsp_log_events = PETSC_FALSE;
