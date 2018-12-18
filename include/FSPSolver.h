@@ -18,7 +18,7 @@
 #include"cme_util.h"
 
 namespace cme{
-    namespace petsc{
+    namespace parallel{
         struct FSPSolverComponentTiming{
             PetscReal StatePartitioningTime;
             PetscReal MatrixGenerationTime;
@@ -34,8 +34,8 @@ namespace cme{
 
             MPI_Comm comm = MPI_COMM_NULL;
 
-            PartitioningType partioning_type;
-            ODESolverType odes_type;
+            PartitioningType partioning_type = Naive;
+            ODESolverType odes_type = CVODE_BDF;
 
             arma::Row<Int> fsp_size;
             arma::Row<Real> fsp_expasion_factors;
@@ -79,6 +79,7 @@ namespace cme{
             void SetVerbosityLevel(int verbosity_level);
             void SetInitProbabilities(arma::Mat<Int> &_init_states, arma::Col<PetscReal> &_init_probs);
             void SetLogging(PetscBool logging);
+            void SetFromOptions();
 
             void SetUp();
 

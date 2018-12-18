@@ -6,7 +6,7 @@
 #include "FiniteStateSubsetNaive.h"
 
 namespace cme {
-    namespace petsc {
+    namespace parallel {
         void FiniteStateSubsetNaive::GenerateStatesAndOrdering() {
             PetscInt ierr;
             PetscLayout layout_without_sinks;

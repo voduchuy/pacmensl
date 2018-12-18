@@ -27,7 +27,7 @@
 #endif
 
 namespace cme{
-    namespace petsc{
+    namespace parallel{
         class CVODEFSP : public FiniteProblemSolver{
         protected:
             void* cvode_mem = nullptr;

@@ -17,7 +17,7 @@
 #include "FiniteStateSubsetNaive.h"
 
 namespace cme {
-    namespace petsc {
+    namespace parallel {
         using PropFun = std::function<PetscReal(PetscInt *, PetscInt)>;
         using TcoefFun = std::function<arma::Row<PetscReal>(PetscReal t)>;
         using Real = PetscReal;

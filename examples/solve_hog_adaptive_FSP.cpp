@@ -21,7 +21,7 @@ using std::endl;
 void petscvec_to_file(MPI_Comm comm, Vec x, const char *filename);
 
 using namespace hog1p_cme;
-using namespace cme::petsc;
+using namespace cme::parallel;
 
 int main(int argc, char *argv[]) {
     int ierr, myRank, num_procs;
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         FiniteStateSubset& state_set = fsp.GetStateSubset();
         std::vector<arma::Col<PetscReal>> marginals(FSPSize.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i) {
-            marginals[i] = cme::petsc::marginal(state_set, P, i);
+            marginals[i] = cme::parallel::marginal(state_set, P, i);
         }
 
         MPI_Comm_rank(PETSC_COMM_WORLD, &myRank);

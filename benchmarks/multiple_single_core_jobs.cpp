@@ -23,7 +23,7 @@ using std::endl;
 void petscvec_to_file(MPI_Comm comm, Vec x, const char *filename);
 
 using namespace hog1p_cme;
-using namespace cme::petsc;
+using namespace cme::parallel;
 
 int main(int argc, char *argv[]) {
     PetscMPIInt ierr, myRank, num_procs;

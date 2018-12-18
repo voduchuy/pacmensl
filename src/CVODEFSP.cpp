@@ -7,7 +7,7 @@
 #include "CVODEFSP.h"
 
 namespace cme{
-    namespace petsc{
+    namespace parallel{
 
         CVODEFSP::CVODEFSP(MPI_Comm _comm, int lmm, int iter) : FiniteProblemSolver(_comm)
         {
@@ -102,7 +102,7 @@ namespace cme{
             Vec* udotdata = N_VGetVector_Petsc(udot);
             PetscReal usum;
             VecNorm(*udata, NORM_1,&usum);
-            ((cme::petsc::FiniteProblemSolver*) FPS)->RHSEval(t, *udata, *udotdata);
+            ((cme::parallel::FiniteProblemSolver*) FPS)->RHSEval(t, *udata, *udotdata);
             VecNorm(*udotdata, NORM_1,&usum);
             return 0;
         }
@@ -111,7 +111,7 @@ namespace cme{
         CVODEFSP::cvode_jac(N_Vector v, N_Vector Jv, realtype t, N_Vector u, N_Vector fu, void *FPS_ptr, N_Vector tmp) {
             Vec* vdata = N_VGetVector_Petsc(v);
             Vec* Jvdata = N_VGetVector_Petsc(Jv);
-            ((cme::petsc::FiniteProblemSolver*) FPS_ptr)->RHSEval(t, *vdata, *Jvdata);
+            ((cme::parallel::FiniteProblemSolver*) FPS_ptr)->RHSEval(t, *vdata, *Jvdata);
             return 0;
         }
 

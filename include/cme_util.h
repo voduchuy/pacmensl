@@ -11,6 +11,8 @@
 #include <petscsys.h>
 #include <petscconf.h>
 #include <cassert>
+#include <mpi.h>
+#include <zoltan.h>
 
 namespace cme {
 /*
@@ -148,4 +150,10 @@ namespace cme {
         i2 = i1 + job_dist(rank);
         return std::make_pair(i1, i2);
     }
+
+/*! Initialize and finalize Parallel context
+ *
+ */
+    int ParaFSP_init(int *argc, char ***argv, const char* help);
+    int ParaFSP_finalize();
 }

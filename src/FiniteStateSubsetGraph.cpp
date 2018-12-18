@@ -7,7 +7,7 @@
 #include "FiniteStateSubsetGraph.h"
 
 namespace cme{
-    namespace petsc{
+    namespace parallel{
         void FiniteStateSubsetGraph::GenerateStatesAndOrdering() {
             // This can only be done after the stoichiometry has been set
             if (stoich_set == 0){

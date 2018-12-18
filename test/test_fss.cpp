@@ -15,7 +15,7 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"FiniteStateSubsetGraph.h"
 #include"FiniteStateSubsetHyperGraph.h"
 
-using namespace cme::petsc;
+using namespace cme::parallel;
 
 int main(int argc, char *argv[]) {
     int ierr;

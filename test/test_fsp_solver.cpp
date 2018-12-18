@@ -11,7 +11,7 @@ static char help[] = "Test interface to CVODE for solving the CME of the toggle 
 #include "FSPSolver.h"
 #include "models/toggle_model.h"
 
-using namespace cme::petsc;
+using namespace cme::parallel;
 
 int main(int argc, char *argv[]) {
     std::string model_name = "toggle_switch";
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         FiniteStateSubset& state_set = fsp.GetStateSubset();
         std::vector<arma::Col<PetscReal>> marginals(fsp_size.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i) {
-            marginals[i] = cme::petsc::marginal(state_set, P, i);
+            marginals[i] = cme::parallel::marginal(state_set, P, i);
         }
 
         MPI_Comm_rank(PETSC_COMM_WORLD, &rank);

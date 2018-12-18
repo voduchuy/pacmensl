@@ -16,9 +16,10 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"FiniteStateSubset.h"
 #include"FiniteStateSubsetNaive.h"
 #include"FiniteStateSubsetGraph.h"
+#include"FiniteStateSubsetHyperGraph.h"
 #include"MatrixSet.h"
 
-using namespace cme::petsc;
+using namespace cme::parallel;
 
 int main(int argc, char *argv[]) {
     int ierr;
@@ -28,14 +29,39 @@ int main(int argc, char *argv[]) {
     CHKERRQ(ierr);
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+
+    // Read options for fsp
+    char opt[100];
+    PetscBool opt_set;
+    PartitioningType fsp_par_type = Naive;
+    ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
+    CHKERRQ(ierr);
+    if (opt_set) {
+        fsp_par_type = str2part(std::string(opt));
+        PetscPrintf(PETSC_COMM_WORLD, "Partitioning with option %s \n", opt);
+    }
+
     double Q_sum;
     {
-
-        FiniteStateSubset *fsp = new FiniteStateSubsetNaive(PETSC_COMM_WORLD);
+        FiniteStateSubset *fsp;
+        switch (fsp_par_type){
+            case Graph:
+                fsp = new FiniteStateSubsetGraph(PETSC_COMM_WORLD);
+                break;
+            case HyperGraph:
+                fsp = new FiniteStateSubsetHyperGraph(PETSC_COMM_WORLD);
+                break;
+            case Naive:
+                fsp = new FiniteStateSubsetNaive(PETSC_COMM_WORLD);
+                break;
+            default:
+                fsp = new FiniteStateSubsetNaive(PETSC_COMM_WORLD);
+                break;
+        }
         fsp->SetSize(fsp_size);
         fsp->SetStoichiometry(toggle_cme::SM);
         fsp->GenerateStatesAndOrdering();
-        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
+        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with hypergraph partitioning.\n");
 
         MatrixSet A(PETSC_COMM_WORLD);
         A.GenerateMatrices(*fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);

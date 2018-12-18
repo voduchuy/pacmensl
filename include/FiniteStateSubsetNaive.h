@@ -8,7 +8,7 @@
 #include "FiniteStateSubset.h"
 
 namespace cme{
-    namespace petsc{
+    namespace parallel{
         class FiniteStateSubsetNaive: public FiniteStateSubset{
         public:
             explicit FiniteStateSubsetNaive(MPI_Comm new_comm): FiniteStateSubset(new_comm) { partitioning_type = Naive;};

@@ -7,7 +7,7 @@
 #include "FSPSolver.h"
 
 namespace cme {
-    namespace petsc {
+    namespace parallel {
         FSPSolver::FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type) {
             MPI_Comm_dup(_comm, &comm);
             partioning_type = _part_type;
@@ -316,6 +316,44 @@ namespace cme {
 
         FiniteProblemSolverPerfInfo FSPSolver::GetSolverPerfInfo() {
             return ode_solver->GetAvgPerfInfo();
+        }
+
+        void FSPSolver::SetFromOptions() {
+            PetscErrorCode ierr;
+            char opt[100];
+            PetscMPIInt num_procs;
+            PetscBool opt_set;
+
+            MPI_Comm_size(comm, &num_procs);
+
+            ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
+            CHKERRABORT(comm, ierr);
+            if (opt_set) {
+                partioning_type = str2part(std::string(opt));
+            }
+            if (num_procs == 1){
+                partioning_type = Naive;
+            }
+
+            ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_verbosity", opt, 100, &opt_set);
+            CHKERRABORT(comm, ierr);
+            if (opt_set) {
+                if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
+                    verbosity = 1;
+                }
+                if (strcmp(opt, "2") == 0) {
+                    verbosity = 2;
+                }
+            }
+
+            ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set);
+            CHKERRABORT(comm, ierr);
+            if (opt_set) {
+                if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
+                    log_fsp_events = PETSC_TRUE;
+                }
+            }
+
         }
 
     }

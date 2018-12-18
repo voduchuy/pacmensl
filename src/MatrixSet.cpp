@@ -4,11 +4,8 @@
 #include "MatrixSet.h"
 #include "cme_util.h"
 
-using std::cout;
-using std::endl;
-
 namespace cme {
-    namespace petsc {
+    namespace parallel {
 
         MatrixSet::MatrixSet(MPI_Comm _comm) {
             MPI_Comm_dup(_comm, &comm);
@@ -93,48 +90,48 @@ namespace cme {
             CHKERRABORT(comm, ierr);
 
             // Find the nnz per row of diagonal and off-diagonal matrices
-            irnz.resize(n_local_states, n_reactions);
-            irnz_off.resize(n_local_states, n_reactions);
-            to_sinks.resize(n_local_states, n_reactions);
-            out_indices.resize(n_local_states*n_reactions);
-            mat_vals.resize(n_local_states, n_reactions);
-            mat_vals_sinks.resize(n_local_states, n_reactions);
-            d_nnz.resize(n_rows_local, n_reactions);
-            o_nnz.resize(n_rows_local, n_reactions);
+            irnz.set_size(n_local_states, n_reactions);
+            irnz_off.set_size(n_local_states, n_reactions);
+            to_sinks.set_size(n_local_states, n_reactions);
+            out_indices.set_size(n_local_states*n_reactions);
+            mat_vals.set_size(n_local_states, n_reactions);
+            mat_vals_sinks.set_size(n_local_states, n_reactions);
+            d_nnz.set_size(n_rows_local, n_reactions);
+            o_nnz.set_size(n_rows_local, n_reactions);
             d_nnz.fill(1);
             o_nnz.zeros();
             int out_count = 0;
             irnz_off.fill(-1);
-            for (auto i{0}; i < n_reactions; ++i){
-                can_reach_X = my_X - arma::repmat(SM.col(i), 1, my_X.n_cols);
-                fsp.State2Petsc(can_reach_X, irnz.colptr(i));
+            for (auto i_reaction{0}; i_reaction < n_reactions; ++i_reaction){
+                can_reach_X = my_X - arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
+                fsp.State2Petsc(can_reach_X, irnz.colptr(i_reaction));
                 // Count nnz for rows that represent CME states
-                for (auto j{0}; j < n_local_states; ++j){
-                    if (irnz(j, i) >= own_start && irnz(j, i) < own_end){
-                        d_nnz(j, i) += 1;
-                        mat_vals(j, i) = prop(can_reach_X.colptr(j), i);
+                for (auto i_state{0}; i_state < n_local_states; ++i_state){
+                    if (irnz(i_state, i_reaction) >= own_start && irnz(i_state, i_reaction) < own_end){
+                        d_nnz(i_state, i_reaction) += 1;
+                        mat_vals(i_state, i_reaction) = prop(can_reach_X.colptr(i_state), i_reaction);
                     }
-                    else if (irnz(j, i) >= 0){
-                        irnz_off(j, i) = irnz(j, i);
-                        irnz(j, i) = -1;
-                        o_nnz(j, i) += 1;
-                        out_indices(out_count) = irnz(j, i);
-                        out_count++;
-                        mat_vals(j, i) = prop(can_reach_X.colptr(j), i);
+                    else if (irnz(i_state, i_reaction) >= 0){
+                        irnz_off(i_state, i_reaction) = irnz(i_state, i_reaction);
+                        irnz(i_state, i_reaction) = -1;
+                        mat_vals(i_state, i_reaction) = prop(can_reach_X.colptr(i_state), i_reaction);
+                        o_nnz(i_state, i_reaction) += 1;
+                        out_indices(out_count) = irnz_off(i_state, i_reaction);
+                        out_count+=1;
                     }
                 }
                 // Count nnz for rows that represent sink states
-                reachable_from_X = my_X + arma::repmat(SM.col(i), 1, my_X.n_cols);
-                fsp.State2Petsc(reachable_from_X, to_sinks.colptr(i));
+                reachable_from_X = my_X + arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
+                fsp.State2Petsc(reachable_from_X, to_sinks.colptr(i_reaction));
 
-                for (auto j{0}; j < n_local_states; ++j){
-                    if (to_sinks(j, i) < -1){ // state j can reach a sink state
-                        d_nnz(n_rows_local + (1 + to_sinks(j,i)), i) += 1;
-                        to_sinks(j, i) = own_end + (1+to_sinks(j,i));
-                        mat_vals_sinks(j, i) = prop(my_X.colptr(j), i);
+                for (auto i_state{0}; i_state < n_local_states; ++i_state){
+                    if (to_sinks(i_state, i_reaction) < -1){ // state i_state can reach a sink state
+                        d_nnz(n_rows_local + (1 + to_sinks(i_state,i_reaction)), i_reaction) += 1;
+                        to_sinks(i_state, i_reaction) = own_end + (1+to_sinks(i_state,i_reaction));
+                        mat_vals_sinks(i_state, i_reaction) = prop(my_X.colptr(i_state), i_reaction);
                     }
                     else{
-                        to_sinks(j, i) = -1;
+                        to_sinks(i_state, i_reaction) = -1;
                     }
                 }
             }
@@ -153,8 +150,17 @@ namespace cme {
             delete[] my_global_indices;
 
             // Create mapping from local ghost vec to global indices and the scatter context for matrix action
-            out_indices = arma::unique(out_indices);
-            lvec_length = PetscInt(out_indices.n_elem);
+            out_indices.resize(out_count);
+            arma::Row<Int> out_indices2 = arma::unique(out_indices);
+            out_count = 0;
+            for (auto i{0}; i < out_indices2.n_elem; ++i){
+                if (out_indices2[i] < own_start || out_indices2[i] >= own_end){
+                    out_indices(out_count) = out_indices2[i];
+                    out_count +=1;
+                }
+            }
+
+            lvec_length = PetscInt(out_count);
             ierr = VecCreateSeq(PETSC_COMM_SELF, lvec_length, &lvec);
             CHKERRABORT(comm, ierr);
             ierr = VecSetUp(lvec);
@@ -190,50 +196,52 @@ namespace cme {
             CHKERRABORT(comm, ierr);
             ierr = ISGlobalToLocalMappingApply(local2global_lvec, IS_GTOLM_MASK, n_local_states*n_reactions, irnz_off.memptr(), NULL, irnz_off.memptr());
             CHKERRABORT(comm, ierr);
+
             ierr = ISLocalToGlobalMappingDestroy(&local2global_lvec);
             CHKERRABORT(comm, ierr);
             ierr = ISLocalToGlobalMappingDestroy(&local2global_rows);
             CHKERRABORT(comm, ierr);
-            for (auto i{0}; i < n_reactions; ++i){
-                ierr = MatCreate(PETSC_COMM_SELF, &diag_mats[i]);
+            for (auto i_reaction{0}; i_reaction < n_reactions; ++i_reaction){
+                ierr = MatCreate(PETSC_COMM_SELF, &diag_mats[i_reaction]);
                 CHKERRABORT(comm, ierr);
-                ierr = MatSetType(diag_mats[i], MATSEQAIJ);
+                ierr = MatSetType(diag_mats[i_reaction], MATSEQAIJ);
                 CHKERRABORT(comm, ierr);
-                ierr = MatSetSizes(diag_mats[i], n_rows_local, n_rows_local, n_rows_local, n_rows_local);
+                ierr = MatSetSizes(diag_mats[i_reaction], n_rows_local, n_rows_local, n_rows_local, n_rows_local);
                 CHKERRABORT(comm, ierr);
-                ierr = MatSetUp(diag_mats[i]);
+                ierr = MatSetUp(diag_mats[i_reaction]);
                 CHKERRABORT(comm, ierr);
-                ierr = MatSeqAIJSetPreallocation(diag_mats[i], NULL, d_nnz.colptr(i));
-                CHKERRABORT(comm, ierr);
-
-                ierr = MatCreate(PETSC_COMM_SELF, &offdiag_mats[i]);
-                CHKERRABORT(comm, ierr);
-                ierr = MatSetType(offdiag_mats[i], MATSEQAIJ);
-                CHKERRABORT(comm, ierr);
-                ierr = MatSetSizes(offdiag_mats[i], n_rows_local, lvec_length, n_rows_local, lvec_length);
-                CHKERRABORT(comm, ierr);
-                ierr = MatSetUp(offdiag_mats[i]);
-                CHKERRABORT(comm, ierr);
-                ierr = MatSeqAIJSetPreallocation(offdiag_mats[i], NULL, o_nnz.colptr(i));
+                ierr = MatSeqAIJSetPreallocation(diag_mats[i_reaction], NULL, d_nnz.colptr(i_reaction));
                 CHKERRABORT(comm, ierr);
 
-                for (auto j{0}; j < n_local_states; ++j){
-                    PetscReal diag_val = prop(my_X.colptr(j), i);
-                    ierr = MatSetValue(diag_mats[i], j, j, diag_val, INSERT_VALUES);
+                ierr = MatCreate(PETSC_COMM_SELF, &offdiag_mats[i_reaction]);
+                CHKERRABORT(comm, ierr);
+                ierr = MatSetType(offdiag_mats[i_reaction], MATSEQAIJ);
+                CHKERRABORT(comm, ierr);
+                ierr = MatSetSizes(offdiag_mats[i_reaction], n_rows_local, lvec_length, n_rows_local, lvec_length);
+                CHKERRABORT(comm, ierr);
+                ierr = MatSetUp(offdiag_mats[i_reaction]);
+                CHKERRABORT(comm, ierr);
+                ierr = MatSeqAIJSetPreallocation(offdiag_mats[i_reaction], NULL, o_nnz.colptr(i_reaction));
+                CHKERRABORT(comm, ierr);
+
+                for (auto i_state{0}; i_state < n_local_states; ++i_state){
+                    PetscReal diag_val = -1.0*prop(my_X.colptr(i_state), i_reaction);
+
+                    ierr = MatSetValue(diag_mats[i_reaction], i_state, i_state, diag_val, INSERT_VALUES);
                     CHKERRABORT(comm, ierr);
-                    ierr = MatSetValue(diag_mats[i], j, irnz(j, i), mat_vals(j, i), INSERT_VALUES);
+                    ierr = MatSetValue(diag_mats[i_reaction], i_state, irnz(i_state, i_reaction), mat_vals(i_state, i_reaction), INSERT_VALUES);
                     CHKERRABORT(comm, ierr);
-                    ierr = MatSetValue(diag_mats[i], to_sinks(j, i), j, mat_vals_sinks(j, i), INSERT_VALUES);
+                    ierr = MatSetValue(diag_mats[i_reaction], to_sinks(i_state, i_reaction), i_state, mat_vals_sinks(i_state, i_reaction), INSERT_VALUES);
                     CHKERRABORT(comm, ierr);
 
-                    ierr = MatSetValue(offdiag_mats[i], j, irnz_off(j, i), mat_vals(j, i), INSERT_VALUES);
+                    ierr = MatSetValue(offdiag_mats[i_reaction], i_state, irnz_off(i_state, i_reaction), mat_vals(i_state, i_reaction), INSERT_VALUES);
                     CHKERRABORT(comm, ierr);
                 }
 
-                ierr = MatAssemblyBegin(diag_mats[i], MAT_FINAL_ASSEMBLY); CHKERRABORT(comm, ierr);
-                ierr = MatAssemblyEnd(diag_mats[i], MAT_FINAL_ASSEMBLY); CHKERRABORT(comm, ierr);
-                ierr = MatAssemblyBegin(offdiag_mats[i], MAT_FINAL_ASSEMBLY); CHKERRABORT(comm, ierr);
-                ierr = MatAssemblyEnd(offdiag_mats[i], MAT_FINAL_ASSEMBLY); CHKERRABORT(comm, ierr);
+                ierr = MatAssemblyBegin(diag_mats[i_reaction], MAT_FINAL_ASSEMBLY); CHKERRABORT(comm, ierr);
+                ierr = MatAssemblyEnd(diag_mats[i_reaction], MAT_FINAL_ASSEMBLY); CHKERRABORT(comm, ierr);
+                ierr = MatAssemblyBegin(offdiag_mats[i_reaction], MAT_FINAL_ASSEMBLY); CHKERRABORT(comm, ierr);
+                ierr = MatAssemblyEnd(offdiag_mats[i_reaction], MAT_FINAL_ASSEMBLY); CHKERRABORT(comm, ierr);
             }
         }
 

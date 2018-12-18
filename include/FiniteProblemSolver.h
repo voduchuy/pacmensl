@@ -9,7 +9,7 @@
 #include "FiniteStateSubset.h"
 
 namespace cme{
-    namespace petsc{
+    namespace parallel{
         enum ODESolverType {Magnus4, CVODE_BDF};
 
         struct FiniteProblemSolverPerfInfo{

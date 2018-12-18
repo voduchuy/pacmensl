@@ -9,7 +9,7 @@
 #include "cme_util.h"
 
 namespace cme {
-    namespace petsc {
+    namespace parallel {
         enum PartitioningType {
             Naive, Graph, HyperGraph, NotSet
         };
@@ -74,25 +74,9 @@ namespace cme {
             virtual void GenerateStatesAndOrdering() {};
 
             friend arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
-
-            // Interface to Zoltan
-            friend int zoltan_num_obj(void *fss_data, int *ierr);
-
-            friend void zoltan_obj_list(void *fss_data, int num_gid_entries, int num_lid_entries,
-                                        ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts,
-                                        int *ierr);
-
-            friend void zoltan_hg_size_cs(void *fss_data, int *num_lists, int *num_pins, int *format, int *ierr);
         };
 
         arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
-
-        int zoltan_num_obj(void *fss_data, int *ierr);
-
-        void zoltan_obj_list(void *fss_data, int num_gid_entries, int num_lid_entries,
-                                    ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts,
-                                    int *ierr);
-
 
         /*!
          * Helper functions to convert back and forth between partitioning options and string

@@ -7,12 +7,12 @@
 
 #include "FiniteProblemSolver.h"
 
-void cme::petsc::FiniteProblemSolver::SetPrintIntermediateSteps(int iprint) {
+void cme::parallel::FiniteProblemSolver::SetPrintIntermediateSteps(int iprint) {
     print_intermediate = iprint;
 }
 
 namespace cme{
-    namespace petsc{
+    namespace parallel{
 
         FiniteProblemSolver::FiniteProblemSolver(MPI_Comm new_comm) {
             MPI_Comm_dup(new_comm, &comm);

@@ -6,7 +6,7 @@
 
 
 namespace cme {
-    namespace petsc {
+    namespace parallel {
         void FiniteStateSubsetHyperGraph::GenerateStatesAndOrdering() {
             // This can only be done after the stoichiometry has been set
             if (stoich_set == 0) {
@@ -15,6 +15,8 @@ namespace cme {
             }
 
             PetscErrorCode ierr;
+
+            PetscLogEventBegin(generate_hg_event, 0, 0, 0, 0);
             // Create the hypergraph data
             PetscInt local_start_tmp, local_end_tmp, n_local_tmp, nnz, i_here;
             arma::Col<PetscInt> x((size_t) n_species);
@@ -40,19 +42,17 @@ namespace cme {
                                                     __FILE__, __LINE__);
 
             nnz = 0;
-            local_states.resize(x.n_elem, n_local_tmp);
             n_local_states = n_local_tmp;
             for (PetscInt i = 0; i < n_local_tmp; ++i) {
                 i_here = i + local_start_tmp;
                 x = ind2sub_nd(fsp_size, i_here);
-                local_states.col(i) = x;
                 // Find indices of states connected to x
                 brx = arma::repmat(x, 1, stoichiometry.n_cols) - stoichiometry;
                 irx = sub2ind_nd(fsp_size, brx);
 
-                vtx_gid[i] = i_here;
-                vtx_edge_ptr[i] = nnz;
-                pin_gid[nnz] = i_here;
+                vtx_gid[i] = (ZOLTAN_ID_TYPE) i_here;
+                vtx_edge_ptr[i] = (int) nnz;
+                pin_gid[nnz] = (ZOLTAN_ID_TYPE) i_here;
                 nnz++;
                 for (PetscInt j = 0; j < stoichiometry.n_cols; ++j) {
                     if (irx.at(j) > 0) {
@@ -66,7 +66,9 @@ namespace cme {
             hg_data.vtx_edge_ptr = vtx_edge_ptr;
             hg_data.pin_gid = pin_gid;
             hg_data.vtx_gid = vtx_gid;
+            PetscLogEventEnd(generate_hg_event, 0, 0, 0, 0);
 
+            PetscLogEventBegin(call_zoltan_event, 0, 0, 0, 0);
             // Use Zoltan to create partitioning, then wrap with processor_id, then proceed as usual
             IS processor_id, global_numbering;
             int zoltan_err;
@@ -99,12 +101,14 @@ namespace cme {
             Zoltan_Free((void **) &vtx_gid, __FILE__, __LINE__);
             Zoltan_Free((void **) &pin_gid, __FILE__, __LINE__);
             delete[] vtx_edge_ptr;
-            Zoltan_LB_Free_Data(&import_global_ids, &import_local_ids, &import_procs, &export_global_ids,
-                                &export_local_ids,
-                                &export_procs);
+            Zoltan_LB_Free_Part(&import_global_ids, &import_local_ids, &import_procs, &import_to_part);
+            Zoltan_LB_Free_Part(&export_global_ids, &export_local_ids, &export_procs, &export_to_part);
             ierr = PetscLayoutDestroy(&vec_layout);
             CHKERRABORT(comm, ierr);
 
+            PetscLogEventEnd(call_zoltan_event, 0, 0, 0, 0);
+
+            PetscLogEventBegin(generate_ao_event, 0, 0, 0, 0);
             // Figure out how many states each processor own by reducing the proc_id_array
             PetscMPIInt my_rank, comm_size;
             MPI_Comm_size(comm, &comm_size);
@@ -131,13 +135,13 @@ namespace cme {
             const PetscInt *proc_id_array, *global_numbering_array;
             CHKERRABORT(comm, ISGetIndices(processor_id, &proc_id_array));
             CHKERRABORT(comm, ISGetIndices(global_numbering, &global_numbering_array));
-            std::vector<PetscInt> corrected_global_numbering(local_end_tmp - local_start_tmp + n_species);
+            std::vector<PetscInt> corrected_global_numbering(n_local_tmp + n_species);
             for (PetscInt i{0}; i < local_end_tmp - local_start_tmp; ++i) {
                 corrected_global_numbering.at(i) =
                         global_numbering_array[i] + proc_id_array[i] * ((PetscInt) fsp_size.n_elem);
             }
 
-            std::vector<PetscInt> fsp_indices(local_end_tmp - local_start_tmp + n_species);
+            std::vector<PetscInt> fsp_indices(n_local_tmp + n_species);
             for (PetscInt i = 0; i < local_end_tmp - local_start_tmp; ++i) {
                 fsp_indices.at(i) = local_start_tmp + i;
             }
@@ -154,10 +158,10 @@ namespace cme {
 
             // Create the AO object that maps from lexicographic ordering to Petsc Vec ordering
             IS fsp_is, petsc_is;
-            ierr = ISCreateGeneral(comm, local_end_tmp - local_start_tmp + n_species, &fsp_indices[0],
+            ierr = ISCreateGeneral(comm, n_local_tmp + n_species, &fsp_indices[0],
                                    PETSC_COPY_VALUES, &fsp_is);
             CHKERRABORT(comm, ierr);
-            ierr = ISCreateGeneral(comm, local_end_tmp - local_start_tmp + n_species, &corrected_global_numbering[0],
+            ierr = ISCreateGeneral(comm, n_local_tmp + n_species, &corrected_global_numbering[0],
                                    PETSC_COPY_VALUES, &petsc_is);
             CHKERRABORT(comm, ierr);
             ierr = AOCreate(comm, &lex2petsc);
@@ -172,6 +176,7 @@ namespace cme {
             CHKERRABORT(comm, ierr);
             ierr = ISDestroy(&petsc_is);
             CHKERRABORT(comm, ierr);
+            PetscLogEventEnd(generate_ao_event, 0, 0, 0, 0);
 
             // Generate local states
             std::vector<PetscInt> petsc_local_indices((size_t) n_local_states);
@@ -192,14 +197,38 @@ namespace cme {
             Zoltan_Set_Param(zoltan, "LB_APPROACH", "PARTITION");
             Zoltan_Set_Param(zoltan, "RETURN_LISTS", "PARTS");
             Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "0");
-            Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0"); /* use Zoltan default vertex weights */
-            Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");/* use Zoltan default hyperedge weights */
+            Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0"); // use Zoltan default vertex weights
+            Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
+
+            Zoltan_Set_Num_Obj_Fn(zoltan, &zoltan_num_obj, &this->hg_data);
+            Zoltan_Set_Obj_List_Fn(zoltan, &zoltan_obj_list, &this->hg_data);
             Zoltan_Set_HG_Size_CS_Fn(zoltan, &zoltan_get_hypergraph_size, (void *) &this->hg_data);
             Zoltan_Set_HG_CS_Fn(zoltan, &zoltan_get_hypergraph, (void *) &this->hg_data);
+
+            PetscLogEventRegister("Generate Hypergraph data", 0, &generate_hg_event);
+            PetscLogEventRegister("Call Zoltan_LB", 0, &call_zoltan_event);
+            PetscLogEventRegister("Generate AO", 0, &generate_ao_event);
         }
 
         FiniteStateSubsetHyperGraph::~FiniteStateSubsetHyperGraph() {
             Zoltan_Destroy(&zoltan);
+        }
+
+        // Interface to HyperGraph
+        int zoltan_num_obj(void *data, int *ierr) {
+            *ierr = 0;
+            return ((FiniteStateSubsetHyperGraph::HyperGraphData*) data)->num_local_vertices;
+        }
+
+        void zoltan_obj_list(void *data, int num_gid_entries, int num_lid_entries,
+                             ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim,
+                             float *obj_wgts, int *ierr) {
+            auto hg_data = (FiniteStateSubsetHyperGraph::HyperGraphData*) data;
+            local_ids = nullptr;
+            for (int i{0}; i < hg_data->num_local_vertices; ++i) {
+                global_id[i] = hg_data->vtx_gid[i];
+            }
+            *ierr = 0;
         }
 
         void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr) {

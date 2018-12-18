@@ -26,7 +26,7 @@ using std::cout;
 using std::endl;
 
 using namespace hog1p_cme;
-using namespace cme::petsc;
+using namespace cme::parallel;
 
 int main(int argc, char *argv[]) {
 
