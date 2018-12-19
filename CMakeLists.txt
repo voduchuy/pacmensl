@@ -76,6 +76,7 @@ foreach ( LIB ${MY_LIBRARIES} )
 endforeach()
 
 target_link_libraries(MatrixSet FiniteStateSubset ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+target_link_libraries( FiniteStateSubsetGraph FiniteStateSubset)
 target_link_libraries( FiniteStateSubsetHyperGraph FiniteStateSubset)
 target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetHyperGraph FiniteStateSubsetGraph FiniteStateSubsetNaive ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 target_link_libraries(CVODEFSP FiniteProblemSolver)

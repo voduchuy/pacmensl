@@ -68,16 +68,14 @@ namespace cme {
             CHKERRABORT(comm, ISDestroy(&fsp_is));
             CHKERRABORT(comm, ISDestroy(&petsc_is));
 
-//            ierr = AOCreateBasic(comm, local_size_without_sinks + n_species, &fsp_indices[0], &petsc_indices[0], &lex2petsc);
-
             // Generate the local states
-            arma::Row<PetscInt> petsc_local_indices(n_local_states);
+            arma::Row<PetscInt> petsc_local_indices((size_t) n_local_states);
             CHKERRABORT(comm, PetscLayoutGetRange(vec_layout, &petsc_local_indices[0], &petsc_local_indices[n_local_states-1]));
             for (PetscInt i{0}; i < n_local_states; ++i){
                 petsc_local_indices[i] = petsc_local_indices[0] + i;
             }
             CHKERRABORT(comm, AOPetscToApplication(lex2petsc, n_local_states, &petsc_local_indices[0]));
-            local_states = ind2sub_nd<arma::Mat<PetscInt>>(fsp_size, petsc_local_indices);
+            local_states = ind2sub_nd<arma::Mat<PetscInt>,arma::Row<PetscInt>,arma::Row<PetscInt>>(fsp_size, petsc_local_indices);
 
             ierr = PetscLayoutDestroy(&layout_without_sinks);
             CHKERRABORT(comm, ierr);

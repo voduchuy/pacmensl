@@ -13,6 +13,7 @@
 #include <cassert>
 #include <mpi.h>
 #include <zoltan.h>
+#include <parmetis.h>
 
 namespace cme {
 /*

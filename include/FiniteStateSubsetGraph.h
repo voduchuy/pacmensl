@@ -11,7 +11,7 @@ namespace cme{
     namespace parallel{
         class FiniteStateSubsetGraph: public FiniteStateSubset{
         public:
-            explicit FiniteStateSubsetGraph(MPI_Comm new_comm): FiniteStateSubset(new_comm) {partitioning_type = Graph;};
+            explicit FiniteStateSubsetGraph(MPI_Comm new_comm);;
             void GenerateStatesAndOrdering() override;
         };
     }

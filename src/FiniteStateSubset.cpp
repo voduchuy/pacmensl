@@ -16,6 +16,13 @@ namespace cme {
             fsp_size.resize(0);
             n_states_global = 0;
             stoichiometry.resize(0);
+
+            Zoltan_Set_Num_Obj_Fn(zoltan, &zoltan_num_obj, (void *) &this->adj_data);
+            Zoltan_Set_Obj_List_Fn(zoltan, &zoltan_obj_list, (void *) &this->adj_data);
+            Zoltan_Set_Num_Edges_Fn(zoltan, &zoltan_num_edges, (void *) &this->adj_data);
+            Zoltan_Set_Edge_List_Fn(zoltan, &zoltan_edge_list, (void *) &this->adj_data);
+            Zoltan_Set_HG_Size_CS_Fn(zoltan, &zoltan_get_hypergraph_size, (void *) &this->adj_data);
+            Zoltan_Set_HG_CS_Fn(zoltan, &zoltan_get_hypergraph, (void *) &this->adj_data);
         };
 
         void FiniteStateSubset::SetStoichiometry(arma::Mat<PetscInt> SM) {
@@ -36,13 +43,43 @@ namespace cme {
 
         arma::Row<PetscInt> FiniteStateSubset::State2Petsc(arma::Mat<PetscInt> state) {
             arma::Row<PetscInt> lex_indices = cme::sub2ind_nd(fsp_size, state);
+            std::vector<PetscBool> negative(lex_indices.n_elem);
+            for (auto i{0}; i < negative.size(); ++i){
+                if (lex_indices(i) < 0){
+                    negative.at(i) = PETSC_TRUE;
+                    lex_indices.at(i) = 0;
+                }
+                else{
+                    negative.at(i) = PETSC_FALSE;
+                }
+            }
             CHKERRABORT(comm, AOApplicationToPetsc(lex2petsc, (PetscInt) lex_indices.n_elem, &lex_indices[0]));
+            for (auto i{0}; i < negative.size(); ++i){
+                if (negative.at(i)){
+                    lex_indices(i) = -1;
+                }
+            }
             return lex_indices;
         }
 
         void FiniteStateSubset::State2Petsc(arma::Mat<PetscInt> state, PetscInt *indx) {
             cme::sub2ind_nd(fsp_size, state, indx);
+            std::vector<PetscBool> negative(state.n_cols);
+            for (auto i{0}; i < negative.size(); ++i){
+                if (indx[i] < 0){
+                    negative.at(i) = PETSC_TRUE;
+                    indx[i] = 0;
+                }
+                else{
+                    negative.at(i) = PETSC_FALSE;
+                }
+            }
             CHKERRABORT(comm, AOApplicationToPetsc(lex2petsc, (PetscInt) state.n_cols, indx));
+            for (auto i{0}; i < negative.size(); ++i){
+                if (negative.at(i)){
+                    indx[i] = -1;
+                }
+            }
         }
 
         FiniteStateSubset::~FiniteStateSubset() {
@@ -144,6 +181,82 @@ namespace cme {
             return n_states_global;
         }
 
+        // Interface to Zoltan
+        int zoltan_num_obj(void *data, int *ierr) {
+            *ierr = 0;
+            return ((FiniteStateSubset::AdjacencyData *) data)->num_local_states;
+        }
+
+        void zoltan_obj_list(void *data, int num_gid_entries, int num_lid_entries,
+                             ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id, int wgt_dim,
+                             float *obj_wgts, int *ierr) {
+            auto adj_data = (FiniteStateSubset::AdjacencyData *) data;
+            for (int i{0}; i < adj_data->num_local_states; ++i) {
+                global_id[i] = adj_data->states_gid[i];
+                local_id[i] = (ZOLTAN_ID_TYPE) i;
+            }
+            *ierr = ZOLTAN_OK;
+        }
+
+        void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr) {
+            auto *hg_data = (FiniteStateSubset::AdjacencyData *) data;
+            *num_lists = hg_data->num_local_states;
+            *num_pins = hg_data->num_reachable_states_rows;
+            *format = ZOLTAN_COMPRESSED_VERTEX;
+            *ierr = ZOLTAN_OK;
+        }
+
+        void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vertices, int num_pins, int format,
+                                   ZOLTAN_ID_PTR vtx_gid, int *vtx_edge_ptr, ZOLTAN_ID_PTR pin_gid, int *ierr) {
+            auto hg_data = (FiniteStateSubset::AdjacencyData *) data;
+
+            if ((num_vertices != hg_data->num_local_states) || (num_pins != hg_data->num_reachable_states_rows) ||
+                (format != ZOLTAN_COMPRESSED_VERTEX)) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+
+            for (int i{0}; i < num_vertices; ++i) {
+                vtx_gid[i] = hg_data->states_gid[i];
+                vtx_edge_ptr[i] = hg_data->rows_edge_ptr[i];
+            }
+
+            for (int i{0}; i < num_pins; ++i) {
+                pin_gid[i] = hg_data->reachable_states_rows_gid[i];
+            }
+            *ierr = ZOLTAN_OK;
+        }
+
+        int zoltan_num_edges(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
+                             ZOLTAN_ID_PTR local_id, int *ierr) {
+            auto g_data = (FiniteStateSubset::AdjacencyData *) data;
+            if ((num_gid_entries != 1) || (num_lid_entries != 1)){
+                *ierr = ZOLTAN_FATAL;
+                return -1;
+            }
+            ZOLTAN_ID_TYPE indx = *local_id;
+            *ierr = ZOLTAN_OK;
+            return g_data->num_edges[indx];
+        }
+
+        void zoltan_edge_list(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
+                              ZOLTAN_ID_PTR local_id, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs, int wgt_dim,
+                              float *ewgts, int *ierr) {
+            auto g_data = (FiniteStateSubset::AdjacencyData *) data;
+            if ((num_gid_entries != 1) || (num_lid_entries != 1)){
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            ZOLTAN_ID_TYPE indx = *local_id;
+            int k = 0;
+            for (auto i = g_data->rows_edge_ptr[indx]; i < g_data->rows_edge_ptr[indx+1]; ++i){
+                nbor_global_id[k] = g_data->reachable_states_rows_gid[i];
+//                nbor_procs[k] = g_data->reachable_states_rows_proc[i];
+                k++;
+            }
+            *ierr = ZOLTAN_OK;
+        }
+
         std::string part2str(PartitioningType part) {
             switch (part) {
                 case Naive:
@@ -166,5 +279,6 @@ namespace cme {
                 return HyperGraph;
             }
         }
+
     }
 }

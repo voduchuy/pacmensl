@@ -61,11 +61,11 @@ namespace cme {
                     }
                 }
             }
-            hg_data.num_local_vertices = n_local_tmp;
-            hg_data.num_local_pins = nnz;
-            hg_data.vtx_edge_ptr = vtx_edge_ptr;
-            hg_data.pin_gid = pin_gid;
-            hg_data.vtx_gid = vtx_gid;
+            adj_data.num_local_states = n_local_tmp;
+            adj_data.num_reachable_states_rows = nnz;
+            adj_data.rows_edge_ptr = vtx_edge_ptr;
+            adj_data.reachable_states_rows_gid = pin_gid;
+            adj_data.states_gid = vtx_gid;
             PetscLogEventEnd(generate_hg_event, 0, 0, 0, 0);
 
             PetscLogEventBegin(call_zoltan_event, 0, 0, 0, 0);
@@ -200,11 +200,6 @@ namespace cme {
             Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0"); // use Zoltan default vertex weights
             Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
 
-            Zoltan_Set_Num_Obj_Fn(zoltan, &zoltan_num_obj, &this->hg_data);
-            Zoltan_Set_Obj_List_Fn(zoltan, &zoltan_obj_list, &this->hg_data);
-            Zoltan_Set_HG_Size_CS_Fn(zoltan, &zoltan_get_hypergraph_size, (void *) &this->hg_data);
-            Zoltan_Set_HG_CS_Fn(zoltan, &zoltan_get_hypergraph, (void *) &this->hg_data);
-
             PetscLogEventRegister("Generate Hypergraph data", 0, &generate_hg_event);
             PetscLogEventRegister("Call Zoltan_LB", 0, &call_zoltan_event);
             PetscLogEventRegister("Generate AO", 0, &generate_ao_event);
@@ -212,51 +207,6 @@ namespace cme {
 
         FiniteStateSubsetHyperGraph::~FiniteStateSubsetHyperGraph() {
             Zoltan_Destroy(&zoltan);
-        }
-
-        // Interface to HyperGraph
-        int zoltan_num_obj(void *data, int *ierr) {
-            *ierr = 0;
-            return ((FiniteStateSubsetHyperGraph::HyperGraphData*) data)->num_local_vertices;
-        }
-
-        void zoltan_obj_list(void *data, int num_gid_entries, int num_lid_entries,
-                             ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim,
-                             float *obj_wgts, int *ierr) {
-            auto hg_data = (FiniteStateSubsetHyperGraph::HyperGraphData*) data;
-            local_ids = nullptr;
-            for (int i{0}; i < hg_data->num_local_vertices; ++i) {
-                global_id[i] = hg_data->vtx_gid[i];
-            }
-            *ierr = 0;
-        }
-
-        void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr) {
-            FiniteStateSubsetHyperGraph::HyperGraphData *hg_data = (FiniteStateSubsetHyperGraph::HyperGraphData *) data;
-            *num_lists = hg_data->num_local_vertices;
-            *num_pins = hg_data->num_local_pins;
-            *format = ZOLTAN_COMPRESSED_VERTEX;
-            *ierr = 0;
-        }
-
-        void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vertices, int num_pins, int format,
-                                   ZOLTAN_ID_PTR vtx_gid, int *vtx_edge_ptr, ZOLTAN_ID_PTR pin_gid, int *ierr) {
-            auto hg_data = (FiniteStateSubsetHyperGraph::HyperGraphData *) data;
-
-            if ((num_vertices != hg_data->num_local_vertices) || (num_pins != hg_data->num_local_pins) ||
-                (format != ZOLTAN_COMPRESSED_VERTEX)) {
-                *ierr = ZOLTAN_FATAL;
-                return;
-            }
-
-            for (int i{0}; i < num_vertices; ++i) {
-                vtx_gid[i] = hg_data->vtx_gid[i];
-                vtx_edge_ptr[i] = hg_data->vtx_edge_ptr[i];
-            }
-
-            for (int i{0}; i < num_pins; ++i) {
-                pin_gid[i] = hg_data->pin_gid[i];
-            }
         }
     }
 }

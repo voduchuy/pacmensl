@@ -122,7 +122,8 @@ namespace cme {
                 }
                 // Count nnz for rows that represent sink states
                 reachable_from_X = my_X + arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
-                fsp.State2Petsc(reachable_from_X, to_sinks.colptr(i_reaction));
+                cme::sub2ind_nd(fsp.GetFSPSize(), reachable_from_X, to_sinks.colptr(i_reaction));
+//                fsp.State2Petsc(reachable_from_X, to_sinks.colptr(i_reaction));
 
                 for (auto i_state{0}; i_state < n_local_states; ++i_state){
                     if (to_sinks(i_state, i_reaction) < -1){ // state i_state can reach a sink state
