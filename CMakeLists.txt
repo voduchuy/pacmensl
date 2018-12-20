@@ -25,9 +25,6 @@ set(TEST_PROGRAMS
 set(EXAMPLES
         solve_hog_adaptive_FSP
         distribute_states
-        )
-
-set(BENCHMARKS
         benchmark
         multiple_single_core_jobs
         )
@@ -76,6 +73,7 @@ foreach ( LIB ${MY_LIBRARIES} )
 endforeach()
 
 target_link_libraries(MatrixSet FiniteStateSubset ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+target_link_libraries( FiniteStateSubsetNaive FiniteStateSubset)
 target_link_libraries( FiniteStateSubsetGraph FiniteStateSubset)
 target_link_libraries( FiniteStateSubsetHyperGraph FiniteStateSubset)
 target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetHyperGraph FiniteStateSubsetGraph FiniteStateSubsetNaive ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
@@ -92,7 +90,3 @@ foreach ( PROG ${EXAMPLES})
     target_link_libraries(${PROG} ${MY_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 endforeach()
 
-foreach ( PROG ${BENCHMARKS})
-    add_executable(${PROG} ${CMAKE_SOURCE_DIR}/benchmarks/${PROG}.cpp)
-    target_link_libraries(${PROG} ${MY_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-endforeach()

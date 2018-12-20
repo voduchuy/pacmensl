@@ -84,13 +84,10 @@ namespace cme {
                     }
                     // Get local states correspoinding to the current solution
                     arma::Mat<PetscInt> states_old = fsp->GetLocalStates();
-                    // Reset the fsp object
-                    fsp->Destroy();
-                    fsp->SetSize(fsp_size);
                     if (log_fsp_events) {
                         CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
                     }
-                    fsp->GenerateStatesAndOrdering();
+                    fsp->ExpandToNewFSPSize(fsp_size);
                     if (log_fsp_events) {
                         CHKERRABORT(comm, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
                     }
@@ -331,7 +328,7 @@ namespace cme {
             if (opt_set) {
                 partioning_type = str2part(std::string(opt));
             }
-            if (num_procs == 1){
+            if (num_procs == 1) {
                 partioning_type = Naive;
             }
 

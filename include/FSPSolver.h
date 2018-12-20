@@ -17,9 +17,9 @@
 #include"CVODEFSP.h"
 #include"cme_util.h"
 
-namespace cme{
-    namespace parallel{
-        struct FSPSolverComponentTiming{
+namespace cme {
+    namespace parallel {
+        struct FSPSolverComponentTiming {
             PetscReal StatePartitioningTime;
             PetscReal MatrixGenerationTime;
             PetscReal ODESolveTime;
@@ -52,7 +52,7 @@ namespace cme{
             PropFun propensity;
             TcoefFun t_fun;
 
-            std::function<void (PetscReal, Vec, Vec)> tmatvec;
+            std::function<void(PetscReal, Vec, Vec)> tmatvec;
             arma::Mat<Int> init_states;
 
             arma::Col<PetscReal> init_probs;
@@ -70,22 +70,35 @@ namespace cme{
             explicit FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
 
             void SetInitFSPSize(arma::Row<Int> &_fsp_size);
+
             void SetFinalTime(PetscReal t);
+
             void SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors);
+
             void SetFSPTolerance(PetscReal _fsp_tol);
+
             void SetStoichiometry(arma::Mat<Int> &stoich);
+
             void SetPropensity(PropFun _prop);
+
             void SetTimeFunc(TcoefFun _t_fun);
+
             void SetVerbosityLevel(int verbosity_level);
+
             void SetInitProbabilities(arma::Mat<Int> &_init_states, arma::Col<PetscReal> &_init_probs);
+
             void SetLogging(PetscBool logging);
+
             void SetFromOptions();
 
             void SetUp();
 
-            Vec& GetP();
-            FiniteStateSubset& GetStateSubset();
+            Vec &GetP();
+
+            FiniteStateSubset &GetStateSubset();
+
             FSPSolverComponentTiming GetAvgComponentTiming();
+
             FiniteProblemSolverPerfInfo GetSolverPerfInfo();
 
             void Solve();

@@ -73,7 +73,7 @@ namespace cme {
         }
     };
 
-    template<typename IntMatT, typename IntVecT1, typename IntVecT2>
+    template<typename IntVecT1 = arma::Row<PetscInt>, typename IntVecT2 = arma::Row<PetscInt>, typename IntMatT = arma::Mat<PetscInt>>
     IntMatT ind2sub_nd(const IntVecT1 &nmax, const IntVecT2 &indx) {
         auto N = nmax.size();
         auto nst = indx.size();
@@ -93,11 +93,11 @@ namespace cme {
     };
 
     template arma::Mat<PetscInt>
-    ind2sub_nd<arma::Mat<PetscInt>, arma::Row<PetscInt>, arma::Row<PetscInt>>(const arma::Row<PetscInt> &nmax,
+    ind2sub_nd< arma::Row<PetscInt>, arma::Row<PetscInt>, arma::Mat<PetscInt>>(const arma::Row<PetscInt> &nmax,
                                                                               const arma::Row<PetscInt> &indx);
 
     template arma::Mat<PetscInt>
-    ind2sub_nd<arma::Mat<PetscInt>, arma::Row<PetscInt>, std::vector<PetscInt>>(const arma::Row<PetscInt> &nmax,
+    ind2sub_nd<arma::Row<PetscInt>, std::vector<PetscInt>, arma::Mat<PetscInt>>(const arma::Row<PetscInt> &nmax,
                                                                                 const std::vector<PetscInt> &indx);
 
     template<typename intT>

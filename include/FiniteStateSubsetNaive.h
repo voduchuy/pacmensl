@@ -7,13 +7,16 @@
 
 #include "FiniteStateSubset.h"
 
-namespace cme{
-    namespace parallel{
-        class FiniteStateSubsetNaive: public FiniteStateSubset{
+namespace cme {
+    namespace parallel {
+        class FiniteStateSubsetNaive : public FiniteStateSubset {
         public:
-            explicit FiniteStateSubsetNaive(MPI_Comm new_comm): FiniteStateSubset(new_comm) { partitioning_type = Naive;};
+            explicit FiniteStateSubsetNaive(MPI_Comm new_comm) : FiniteStateSubset(
+                    new_comm) { partitioning_type = Naive; };
 
             void GenerateStatesAndOrdering() override;
+
+            void ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) override;
         };
     }
 }

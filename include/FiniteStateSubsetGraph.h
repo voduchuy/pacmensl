@@ -7,16 +7,20 @@
 
 #include "FiniteStateSubset.h"
 
-namespace cme{
-    namespace parallel{
-        class FiniteStateSubsetGraph: public FiniteStateSubset{
+namespace cme {
+    namespace parallel {
+        class FiniteStateSubsetGraph : public FiniteStateSubset {
+            inline void generate_graph_data(arma::Mat<PetscInt>& local_states_tmp);
+            inline void free_graph_data();
         public:
             explicit FiniteStateSubsetGraph(MPI_Comm new_comm);;
+
             void GenerateStatesAndOrdering() override;
+
+            void ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) override;
         };
     }
 }
-
 
 
 #endif //PARALLEL_FSP_FINITESTATESUBSETPARMETIS_H

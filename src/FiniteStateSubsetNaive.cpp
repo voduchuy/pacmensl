@@ -3,6 +3,8 @@
 //
 
 
+#include <FiniteStateSubsetNaive.h>
+
 #include "FiniteStateSubsetNaive.h"
 
 namespace cme {
@@ -75,11 +77,21 @@ namespace cme {
                 petsc_local_indices[i] = petsc_local_indices[0] + i;
             }
             CHKERRABORT(comm, AOPetscToApplication(lex2petsc, n_local_states, &petsc_local_indices[0]));
-            local_states = ind2sub_nd<arma::Mat<PetscInt>,arma::Row<PetscInt>,arma::Row<PetscInt>>(fsp_size, petsc_local_indices);
+            local_states = ind2sub_nd(fsp_size, petsc_local_indices);
 
             ierr = PetscLayoutDestroy(&layout_without_sinks);
             CHKERRABORT(comm, ierr);
             set_up = 1;
+        }
+
+        void FiniteStateSubsetNaive::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
+            assert(new_fsp_size.n_elem == fsp_size.n_elem);
+            for (auto i{0}; i < fsp_size.n_elem; ++i){
+                assert(new_fsp_size(i) >= fsp_size(i));
+            }
+            SetSize(new_fsp_size);
+            Destroy();
+            GenerateStatesAndOrdering();
         }
     }
 }
