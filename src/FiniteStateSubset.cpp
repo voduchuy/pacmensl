@@ -1,9 +1,11 @@
 //
 // Created by Huy Vo on 12/4/18.
 //
+#include <FiniteStateSubsetGraph.h>
 #include <FiniteStateSubset.h>
 
 #include "FiniteStateSubset.h"
+
 
 namespace cme {
     namespace parallel {
@@ -17,8 +19,12 @@ namespace cme {
             n_states_global = 0;
             stoichiometry.resize(0);
 
+            Zoltan_Set_Param(zoltan, "IMBALANCE_TOL", "1.01");
+
             Zoltan_Set_Num_Obj_Fn(zoltan, &zoltan_num_obj, (void *) &this->adj_data);
             Zoltan_Set_Obj_List_Fn(zoltan, &zoltan_obj_list, (void *) &this->adj_data);
+            Zoltan_Set_Num_Geom_Fn(zoltan, &zoltan_num_geom, (void *) this);
+            Zoltan_Set_Geom_Multi_Fn(zoltan, &zoltan_geom_multi, (void *) this);
             Zoltan_Set_Num_Edges_Fn(zoltan, &zoltan_num_edges, (void *) &this->adj_data);
             Zoltan_Set_Edge_List_Fn(zoltan, &zoltan_edge_list, (void *) &this->adj_data);
             Zoltan_Set_HG_Size_CS_Fn(zoltan, &zoltan_get_hypergraph_size, (void *) &this->adj_data);
@@ -30,7 +36,7 @@ namespace cme {
             stoich_set = 1;
         }
 
-        void FiniteStateSubset::SetSize(arma::Row<PetscInt> &new_fsp_size) {
+        void FiniteStateSubset::SetSize(arma::Row<PetscInt> new_fsp_size) {
             fsp_size = new_fsp_size;
             n_species = (PetscInt) fsp_size.n_elem;
             n_states_global = arma::prod(fsp_size + 1);
@@ -196,6 +202,200 @@ namespace cme {
             *ierr = ZOLTAN_OK;
         }
 
+        int zoltan_num_geom(void *data, int *ierr) {
+            auto fss_data = (FiniteStateSubset*) data;
+            *ierr = ZOLTAN_OK;
+            return fss_data->geom_data.dim;
+        }
+
+        void
+        zoltan_geom_multi(void *data, int num_gid_entries, int num_lid_entries, int num_obj, ZOLTAN_ID_PTR global_ids,
+                          ZOLTAN_ID_PTR local_ids, int num_dim, double *geom_vec, int *ierr) {
+            if ((num_gid_entries != 1) || (num_lid_entries != 1)) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            auto fss_data = (FiniteStateSubset*) data;
+            ZOLTAN_ID_TYPE local_idx;
+            for (auto i{0}; i < num_obj; ++i){
+                local_idx = local_ids[i];
+                for (auto j{0}; j < num_dim; ++j){
+                    geom_vec[num_dim*i + j] = fss_data->geom_data.states_coo[num_dim*local_idx + j];
+                }
+            }
+        }
+
+        void FiniteStateSubset::generate_geometric_data(arma::Row<PetscInt> &fsp_size, arma::Mat<PetscInt> &local_states_tmp) {
+            // Enter state coordinates of the three largest dimensions
+            PetscInt n_local_tmp = local_states_tmp.n_cols;
+            PetscInt dim = local_states_tmp.n_rows < 3 ? local_states_tmp.n_rows : 3;
+            arma::uvec sorted_dims = arma::sort_index(fsp_size,"descend");
+            geom_data.dim = dim;
+            geom_data.states_coo = new double[dim*n_local_tmp];
+            for (auto i {0}; i < n_local_tmp; ++i){
+                for (auto j {0}; j < dim; ++j){
+                    geom_data.states_coo[i*dim + j] = double(1.0*local_states_tmp(sorted_dims(j), i));
+                }
+            }
+        }
+
+        void FiniteStateSubset::free_geometric_data() {
+            geom_data.dim = 0;
+            delete[] geom_data.states_coo;
+        }
+
+        void FiniteStateSubset::generate_graph_data(arma::Mat<PetscInt> &local_states_tmp) {
+            PetscErrorCode ierr;
+
+            auto n_local_tmp = (PetscInt) local_states_tmp.n_cols;
+
+            arma::Col<PetscInt> x((size_t) n_species); // vector to iterate through local states
+            arma::Mat<PetscInt> rx((size_t) n_species, (size_t) stoichiometry.n_cols); // states reachable from x
+            arma::Row<PetscInt> irx;
+
+            adj_data.states_gid = (ZOLTAN_ID_PTR) Zoltan_Malloc(n_local_tmp * sizeof(ZOLTAN_ID_TYPE), __FILE__,
+                                                                __LINE__);
+            adj_data.num_edges = new int[n_local_tmp];
+
+            adj_data.rows_edge_ptr = new int[n_local_tmp + 1];
+
+            adj_data.reachable_states_rows_gid = (ZOLTAN_ID_PTR) Zoltan_Malloc(
+                    2 * (1 + stoichiometry.n_cols) * n_local_tmp * sizeof(ZOLTAN_ID_TYPE),
+                    __FILE__, __LINE__);
+
+            adj_data.reachable_states_rows_proc = new int[2 * n_local_tmp * (1 + stoichiometry.n_cols)];
+
+            adj_data.num_local_states = n_local_tmp;
+
+            adj_data.num_reachable_states_rows = 0;
+            for (auto i = 0; i < n_local_tmp; ++i) {
+                x = local_states_tmp.col(i);
+                sub2ind_nd<PetscInt, ZOLTAN_ID_TYPE>(fsp_size, x, &adj_data.states_gid[i]);
+
+                adj_data.num_edges[i] = 0;
+                // Find indices of states connected to x on its row
+                rx = repmat(x, 1, stoichiometry.n_cols) - stoichiometry;
+                irx = sub2ind_nd(fsp_size, rx);
+                irx = unique(irx);
+                adj_data.rows_edge_ptr[i] = (int) adj_data.num_reachable_states_rows;
+
+                for (PetscInt j = 0; j < irx.n_elem; ++j) {
+                    if (irx.at(j) > 0) {
+                        adj_data.reachable_states_rows_gid[adj_data.num_reachable_states_rows] = (ZOLTAN_ID_TYPE) irx.at(
+                                j);
+                        adj_data.num_reachable_states_rows++;
+                        adj_data.num_edges[i]++;
+                    }
+                }
+            }
+            adj_data.rows_edge_ptr[n_local_tmp] = adj_data.num_reachable_states_rows;
+
+            // Figure out which processors own the neighbors, this requires communication via Petsc's AO
+            PetscMPIInt num_procs; // NOTE TO SELF: ALWAYS PAY ATTENTION TO INTEROPERABILITY BETWEEN MPI AND PETSC
+
+            const PetscInt *procs_start;
+            AO lex2petsc_tmp;
+            PetscLayout vec_layout_tmp;
+            arma::Row<PetscInt> local_idxs = sub2ind_nd(fsp_size, local_states_tmp);
+            arma::Row<PetscInt> reachable_states_idxs;
+
+            ierr = AOCreateMemoryScalable(comm, n_local_tmp, &local_idxs[0], NULL, &lex2petsc_tmp);
+            CHKERRABORT(comm, ierr);
+
+            MPI_Comm_size(comm, &num_procs);
+            ierr = PetscLayoutCreate(comm, &vec_layout_tmp);
+            CHKERRABORT(comm, ierr);
+            ierr = PetscLayoutSetLocalSize(vec_layout_tmp, n_local_tmp);
+            CHKERRABORT(comm, ierr);
+            ierr = PetscLayoutSetUp(vec_layout_tmp);
+            CHKERRABORT(comm, ierr);
+            ierr = PetscLayoutGetRanges(vec_layout_tmp, &procs_start);
+            CHKERRABORT(comm, ierr);
+
+
+            reachable_states_idxs.set_size((size_t) adj_data.num_reachable_states_rows);
+            for (auto i{0}; i < adj_data.num_reachable_states_rows; ++i) {
+                reachable_states_idxs(i) = (PetscInt) adj_data.reachable_states_rows_gid[i];
+            }
+            ierr = AOApplicationToPetsc(lex2petsc_tmp, adj_data.num_reachable_states_rows, &reachable_states_idxs[0]);
+            CHKERRABORT(comm, ierr);
+            for (auto i{0}; i < adj_data.num_reachable_states_rows; ++i) {
+                for (auto j{0}; j < num_procs; ++j) {
+                    if ((procs_start[j] <= reachable_states_idxs[i]) &&
+                        (procs_start[j + 1] > reachable_states_idxs[i])) {
+                        adj_data.reachable_states_rows_proc[i] = (int) j;
+                    }
+                }
+            }
+
+            AODestroy(&lex2petsc_tmp);
+            PetscLayoutDestroy(&vec_layout_tmp);
+        }
+
+        void FiniteStateSubset::free_graph_data() {
+            delete[] adj_data.num_edges;
+            Zoltan_Free((void **) &adj_data.states_gid, __FILE__, __LINE__);
+            Zoltan_Free((void **) &adj_data.reachable_states_rows_gid, __FILE__, __LINE__);
+            delete[] adj_data.rows_edge_ptr;
+            delete[] adj_data.reachable_states_rows_proc;
+        }
+
+        void FiniteStateSubset::generate_hypergraph_data(arma::Mat<PetscInt> &local_states_tmp) {
+            PetscErrorCode ierr;
+
+            auto n_local_tmp = (PetscInt) local_states_tmp.n_cols;
+
+            arma::Col<PetscInt> x((size_t) n_species); // vector to iterate through local states
+            arma::Mat<PetscInt> rx((size_t) n_species, (size_t) stoichiometry.n_cols); // states reachable from x
+            arma::Row<PetscInt> irx;
+
+            adj_data.states_gid = (ZOLTAN_ID_PTR) Zoltan_Malloc(n_local_tmp * sizeof(ZOLTAN_ID_TYPE), __FILE__,
+                                                                __LINE__);
+            adj_data.num_edges = new int[n_local_tmp];
+
+            adj_data.rows_edge_ptr = new int[n_local_tmp + 1];
+
+            adj_data.reachable_states_rows_gid = (ZOLTAN_ID_PTR) Zoltan_Malloc(
+                    (1 + stoichiometry.n_cols) * n_local_tmp * sizeof(ZOLTAN_ID_TYPE),
+                    __FILE__, __LINE__);
+
+            adj_data.num_local_states = n_local_tmp;
+
+            adj_data.num_reachable_states_rows = 0;
+            for (auto i = 0; i < n_local_tmp; ++i) {
+                x = local_states_tmp.col(i);
+                sub2ind_nd<PetscInt, ZOLTAN_ID_TYPE>(fsp_size, x, &adj_data.states_gid[i]);
+
+                adj_data.num_edges[i] = 0;
+                // Find indices of states connected to x on its row
+                rx = repmat(x, 1, stoichiometry.n_cols) - stoichiometry;
+                irx = sub2ind_nd(fsp_size, rx);
+                irx = unique(irx);
+                // Add diagonal entries
+                adj_data.rows_edge_ptr[i] = (int) adj_data.num_reachable_states_rows;
+                adj_data.reachable_states_rows_gid[adj_data.num_reachable_states_rows] = adj_data.states_gid[i];
+                adj_data.num_reachable_states_rows++;
+                adj_data.num_edges[i]++;
+                // Add off-diagonal entries
+                for (PetscInt j = 0; j < irx.n_elem; ++j) {
+                    if (irx.at(j) > 0) {
+                        adj_data.reachable_states_rows_gid[adj_data.num_reachable_states_rows] = (ZOLTAN_ID_TYPE) irx.at(
+                                j);
+                        adj_data.num_reachable_states_rows++;
+                        adj_data.num_edges[i]++;
+                    }
+                }
+            }
+            adj_data.rows_edge_ptr[n_local_tmp] = adj_data.num_reachable_states_rows;
+        }
+
+        void FiniteStateSubset::free_hypergraph_data() {
+            delete[] adj_data.num_edges;
+            Zoltan_Free((void **) &adj_data.states_gid, __FILE__, __LINE__);
+            Zoltan_Free((void **) &adj_data.reachable_states_rows_gid, __FILE__, __LINE__);
+            delete[] adj_data.rows_edge_ptr;
+        }
+
         void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr) {
             auto *hg_data = (FiniteStateSubset::AdjacencyData *) data;
             *num_lists = hg_data->num_local_states;
@@ -252,11 +452,6 @@ namespace cme {
                 nbor_procs[k] = g_data->reachable_states_rows_proc[i];
                 k++;
             }
-            for (auto i = g_data->cols_edge_ptr[indx]; i < g_data->cols_edge_ptr[indx + 1]; ++i) {
-                nbor_global_id[k] = g_data->reachable_states_cols_gid[i];
-                nbor_procs[k] = g_data->reachable_states_cols_proc[i];
-                k++;
-            }
             *ierr = ZOLTAN_OK;
         }
 
@@ -296,7 +491,7 @@ namespace cme {
             ierr = AOPetscToApplication(lex2petsc, n_local_states, &petsc_local_indices[0]);
             CHKERRABORT(comm, ierr);
 
-            local_states = ind2sub_nd<arma::Mat<PetscInt>>(fsp_size, petsc_local_indices);
+            local_states = ind2sub_nd(fsp_size, petsc_local_indices);
         }
 
         arma::Mat<PetscInt> FiniteStateSubset::get_my_naive_local_states() {
@@ -304,20 +499,21 @@ namespace cme {
 
             PetscInt local_start_tmp, local_end_tmp, n_local_tmp;
             arma::Row<PetscInt> range_tmp;
-            ierr = PetscLayoutCreate(comm, &vec_layout);
+            PetscLayout vec_layout_tmp;
+            ierr = PetscLayoutCreate(comm, &vec_layout_tmp);
             CHKERRABORT(comm, ierr);
-            ierr = PetscLayoutSetSize(vec_layout, n_states_global);
+            ierr = PetscLayoutSetSize(vec_layout_tmp, n_states_global);
             CHKERRABORT(comm, ierr);
-            ierr = PetscLayoutSetUp(vec_layout);
+            ierr = PetscLayoutSetUp(vec_layout_tmp);
             CHKERRABORT(comm, ierr);
-            ierr = PetscLayoutGetRange(vec_layout, &local_start_tmp, &local_end_tmp);
+            ierr = PetscLayoutGetRange(vec_layout_tmp, &local_start_tmp, &local_end_tmp);
             CHKERRABORT(comm, ierr);
             n_local_tmp = local_end_tmp - local_start_tmp;
             range_tmp.set_size(n_local_tmp);
             for (auto i{0}; i < n_local_tmp; ++i) {
                 range_tmp(i) = local_start_tmp + i;
             }
-            ierr = PetscLayoutDestroy(&vec_layout);
+            ierr = PetscLayoutDestroy(&vec_layout_tmp);
             CHKERRABORT(comm, ierr);
 
             return ind2sub_nd(fsp_size, range_tmp);
@@ -331,12 +527,13 @@ namespace cme {
             // Copy Zoltan's result to Petsc IS
             //
             IS processor_id, global_numbering;
-            ierr = ISCreateGeneral(comm, (PetscInt) num_export, export_procs, PETSC_COPY_VALUES, &processor_id);
+            PetscInt *export_procs_petsc = new PetscInt[n_local_tmp];
+            for (auto i{0}; i < n_local_tmp; ++i){
+                export_procs_petsc[i] = (PetscInt) export_procs[i];
+            }
+            ierr = ISCreateGeneral(comm, (PetscInt) num_export, export_procs_petsc, PETSC_COPY_VALUES, &processor_id);
             CHKERRABORT(comm, ierr);
             ierr = ISPartitioningToNumbering(processor_id, &global_numbering);
-            CHKERRABORT(comm, ierr);
-
-            ierr = PetscLayoutDestroy(&vec_layout);
             CHKERRABORT(comm, ierr);
 
             //
@@ -370,8 +567,10 @@ namespace cme {
 
             // Adjust global numbering to add sink states
             const PetscInt *proc_id_array, *global_numbering_array;
-            CHKERRABORT(comm, ISGetIndices(processor_id, &proc_id_array));
-            CHKERRABORT(comm, ISGetIndices(global_numbering, &global_numbering_array));
+            ierr = ISGetIndices(processor_id, &proc_id_array);
+            CHKERRABORT(comm, ierr);
+            ierr = ISGetIndices(global_numbering, &global_numbering_array);
+            CHKERRABORT(comm, ierr);
             std::vector<PetscInt> corrected_global_numbering(n_local_tmp + n_species);
             for (PetscInt i{0}; i < n_local_tmp; ++i) {
                 corrected_global_numbering.at(i) =
@@ -380,7 +579,7 @@ namespace cme {
 
             std::vector<PetscInt> fsp_indices(n_local_tmp + n_species);
             for (PetscInt i = 0; i < n_local_tmp; ++i) {
-                fsp_indices.at(i) = adj_data.states_gid[i];
+                fsp_indices.at(i) = (PetscInt) adj_data.states_gid[i];
             }
 
             for (PetscInt i = 0; i < n_species; ++i) {
@@ -388,10 +587,14 @@ namespace cme {
                 fsp_indices[n_local_tmp + n_species - i - 1] =
                         n_states_global + my_rank * n_species + i;
             }
-            CHKERRABORT(comm, ISRestoreIndices(processor_id, &proc_id_array));
-            CHKERRABORT(comm, ISRestoreIndices(global_numbering, &global_numbering_array));
-            CHKERRABORT(comm, ISDestroy(&processor_id));
-            CHKERRABORT(comm, ISDestroy(&global_numbering));
+            ierr = ISRestoreIndices(processor_id, &proc_id_array);
+            CHKERRABORT(comm, ierr);
+            ierr = ISRestoreIndices(global_numbering, &global_numbering_array);
+            CHKERRABORT(comm, ierr);
+            ierr = ISDestroy(&processor_id);
+            CHKERRABORT(comm, ierr);
+            ierr = ISDestroy(&global_numbering);
+            CHKERRABORT(comm, ierr);
 
             IS fsp_is, petsc_is;
             ierr = ISCreateGeneral(comm, n_local_tmp + n_species, &fsp_indices[0],
@@ -419,10 +622,14 @@ namespace cme {
             switch (part) {
                 case Naive:
                     return std::string("naive");
+                case RCB:
+                    return std::string("rcb");
                 case Graph:
                     return std::string("graph");
                 case HyperGraph:
                     return std::string("hyper_graph");
+                case Hierarch:
+                    return std::string("hierarch");
                 default:
                     return std::string("naive");
             }
@@ -431,12 +638,15 @@ namespace cme {
         PartitioningType str2part(std::string str) {
             if (str == "naive" || str == "Naive" || str == "NAIVE") {
                 return Naive;
+            } else if (str == "rcb" || str == "RCB" || str == "RcB" || str == "Geometric" || str == "coo") {
+                return RCB;
             } else if (str == "graph" || str == "Graph" || str == "GRAPH") {
                 return Graph;
+            } else if (str == "hierarch" || str == "Hierarch" || str == "HIERARCH" || str == "artantis" || str == "Artantis") {
+                return Hierarch;
             } else {
                 return HyperGraph;
             }
         }
-
     }
 }

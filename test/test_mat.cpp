@@ -17,6 +17,8 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"FiniteStateSubsetNaive.h"
 #include"FiniteStateSubsetGraph.h"
 #include"FiniteStateSubsetHyperGraph.h"
+#include"FiniteStateSubsetHierarch.h"
+#include"FiniteStateSubsetRCB.h"
 #include"MatrixSet.h"
 
 using namespace cme::parallel;
@@ -48,11 +50,17 @@ int main(int argc, char *argv[]) {
             case Graph:
                 fsp = new FiniteStateSubsetGraph(PETSC_COMM_WORLD);
                 break;
+            case RCB:
+                fsp = new FiniteStateSubsetRCB(PETSC_COMM_WORLD);
+                break;
             case HyperGraph:
                 fsp = new FiniteStateSubsetHyperGraph(PETSC_COMM_WORLD);
                 break;
             case Naive:
                 fsp = new FiniteStateSubsetNaive(PETSC_COMM_WORLD);
+                break;
+            case Hierarch:
+                fsp = new FiniteStateSubsetHierarch(PETSC_COMM_WORLD);
                 break;
             default:
                 fsp = new FiniteStateSubsetNaive(PETSC_COMM_WORLD);

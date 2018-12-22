@@ -1,4 +1,4 @@
-static char help[] = "Timing the time to solve hog1p model to time 5 min.\n\n";
+static char help[] = "Solve larger CMEs to benchmark multiple-node performance.\n\n";
 
 #include<iomanip>
 #include <petscmat.h>
@@ -46,8 +46,8 @@ int main(int argc, char *argv[]) {
                 std::string model_name = "hog1p";
                 Row<PetscInt> FSPSize({3, 3, 3, 3, 3}); // Size of the FSP
                 arma::Row<PetscReal> expansion_factors = {0.0, 0.5, 0.5, 0.5, 0.5};
-                PetscReal t_final = 60.00 * 3;
-                PetscReal fsp_tol = 1.0e-2;
+                PetscReal t_final = 60.00 * 5;
+                PetscReal fsp_tol = 1.0e-3;
                 arma::Mat<PetscInt> X0 = {0, 0, 0, 0, 0};
                 X0 = X0.t();
                 arma::Col<PetscReal> p0 = {1.0};
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
                         model_name = "transcr_reg_6d";
                         FSPSize = {10, 6, 1, 2, 1, 1}; // Size of the FSP
                         expansion_factors = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
-                        t_final = 300.0;
+                        t_final = 360.0;
                         fsp_tol = 1.0e-6;
                         X0 = {2, 6, 0, 2, 0, 0};
                         X0 = X0.t();
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
                     } else if (strcmp(opt, "hog3d") == 0) {
                         model_name = "hog3d";
                         FSPSize = {3, 10, 10}; // Size of the FSP
-                        expansion_factors = {0.0, 0.5, 0.5};
+                        expansion_factors = {0.0, 0.25, 0.25};
                         t_final = 60.00 * 15;
                         fsp_tol = 1.0e-6;
                         X0 = {0, 0, 0};
@@ -117,9 +117,9 @@ int main(int argc, char *argv[]) {
                 if (opt_set) {
                     fsp_par_type = str2part(std::string(opt));
                 }
-                if (num_procs == 1) {
-                    fsp_par_type = Naive;
-                }
+//                if (num_procs == 1) {
+//                    fsp_par_type = Naive;
+//                }
 
                 ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_output_marginal", opt, 100, &opt_set);
                 CHKERRQ(ierr);

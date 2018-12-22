@@ -2,16 +2,16 @@
 // Created by Huy Vo on 12/4/18.
 //
 
-#ifndef PARALLEL_FSP_FINITESTATESUBSETPARMETIS_H
-#define PARALLEL_FSP_FINITESTATESUBSETPARMETIS_H
+#ifndef PARALLEL_FSP_FINITESTATESUBSETRCB_H
+#define PARALLEL_FSP_FINITESTATESUBSETRCB_H
 
 #include "FiniteStateSubset.h"
 
 namespace cme {
     namespace parallel {
-        class FiniteStateSubsetGraph : public FiniteStateSubset {
+        class FiniteStateSubsetRCB : public FiniteStateSubset {
         public:
-            explicit FiniteStateSubsetGraph(MPI_Comm new_comm);;
+            explicit FiniteStateSubsetRCB(MPI_Comm new_comm);;
 
             void GenerateStatesAndOrdering() override;
 
@@ -21,4 +21,4 @@ namespace cme {
 }
 
 
-#endif //PARALLEL_FSP_FINITESTATESUBSETPARMETIS_H
+#endif //PARALLEL_FSP_FINITESTATESUBSETRCB_H

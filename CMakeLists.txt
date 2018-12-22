@@ -8,6 +8,8 @@ set(MY_LIBRARIES
         FiniteStateSubsetNaive
         FiniteStateSubsetGraph
         FiniteStateSubsetHyperGraph
+        FiniteStateSubsetHierarch
+        FiniteStateSubsetRCB
         MatrixSet
         FiniteProblemSolver
         CVODEFSP
@@ -25,7 +27,8 @@ set(TEST_PROGRAMS
 set(EXAMPLES
         solve_hog_adaptive_FSP
         distribute_states
-        benchmark
+        benchmark_intranode
+        benchmark_multi_node
         multiple_single_core_jobs
         )
 
@@ -39,6 +42,7 @@ set(EXT_LIBRARIES
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_CXX_COMPILER mpicxx )
 set(CMAKE_CXX_FLAGS " -g -std=c++11 -O3")
@@ -76,7 +80,9 @@ target_link_libraries(MatrixSet FiniteStateSubset ${PETSC_LIBRARIES} ${EXT_LIBRA
 target_link_libraries( FiniteStateSubsetNaive FiniteStateSubset)
 target_link_libraries( FiniteStateSubsetGraph FiniteStateSubset)
 target_link_libraries( FiniteStateSubsetHyperGraph FiniteStateSubset)
-target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetHyperGraph FiniteStateSubsetGraph FiniteStateSubsetNaive ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+target_link_libraries( FiniteStateSubsetHierarch FiniteStateSubset)
+target_link_libraries( FiniteStateSubsetRCB FiniteStateSubset)
+target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetHyperGraph FiniteStateSubsetGraph FiniteStateSubsetNaive FiniteStateSubsetHierarch FiniteStateSubsetRCB ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 target_link_libraries(CVODEFSP FiniteProblemSolver)
 target_link_libraries(FSPSolver FiniteStateSubset FiniteProblemSolver MatrixSet CVODEFSP ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 

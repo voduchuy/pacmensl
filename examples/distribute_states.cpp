@@ -91,19 +91,9 @@ int main(int argc, char *argv[]) {
         ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
         CHKERRQ(ierr);
         if (opt_set) {
-            if (strcmp(opt, "Naive") == 0) {
-                fsp_par_type = Naive;
-                part_option = "naive";
-                PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with natural ordering.\n");
-            }
-            else if (strcmp(opt, "HyperGraph") == 0){
-                fsp_par_type = HyperGraph;
-                part_option = "hyper_graph";
-                PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with hypergraph.\n");
-            }
-            else {
-                PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with Graph.\n");
-            }
+            fsp_par_type = str2part(opt);
+            part_option = part2str(fsp_par_type);
+            PetscPrintf(PETSC_COMM_WORLD, "FSP is partitionined with %s. \n", part_option.c_str());
         }
         else{
             PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with Graph.\n");
@@ -113,8 +103,14 @@ int main(int argc, char *argv[]) {
         if (fsp_par_type == Graph){
             state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetGraph(comm));
         }
+        else if (fsp_par_type == RCB){
+            state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetRCB(comm));
+        }
         else if (fsp_par_type == HyperGraph){
             state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetHyperGraph(comm));
+        }
+        else if (fsp_par_type == Hierarch){
+            state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetHierarch(comm));
         }
         else{
             state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetNaive(comm));
@@ -123,6 +119,7 @@ int main(int argc, char *argv[]) {
         state_set->SetSize(FSPSize);
 
         state_set->GenerateStatesAndOrdering();
+        state_set->ExpandToNewFSPSize(2*FSPSize);
 
         local_states = state_set->GetLocalStates();
         local_states = local_states.t();

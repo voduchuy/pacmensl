@@ -12,8 +12,10 @@
 #include"FiniteProblemSolver.h"
 #include"FiniteStateSubset.h"
 #include"FiniteStateSubsetNaive.h"
+#include"FiniteStateSubsetRCB.h"
 #include"FiniteStateSubsetGraph.h"
 #include"FiniteStateSubsetHyperGraph.h"
+#include"FiniteStateSubsetHierarch.h"
 #include"CVODEFSP.h"
 #include"cme_util.h"
 

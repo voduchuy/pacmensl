@@ -14,6 +14,8 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"FiniteStateSubsetNaive.h"
 #include"FiniteStateSubsetGraph.h"
 #include"FiniteStateSubsetHyperGraph.h"
+#include"FiniteStateSubsetHierarch.h"
+#include"FiniteStateSubsetRCB.h"
 
 using namespace cme::parallel;
 
@@ -22,15 +24,13 @@ int main(int argc, char *argv[]) {
     arma::Row<PetscInt> fsp_size = {1, 1, 1, 1, 1};
     float ver;
 
-    MPI_Init(&argc, &argv);
-    ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
-    Zoltan_Initialize(argc, argv, &ver);
+    cme::ParaFSP_init(&argc, &argv, help);
+
     MPI_Comm comm;
     MPI_Comm_dup(MPI_COMM_WORLD, &comm);
     CHKERRQ(ierr);
     {
         FiniteStateSubset *fsp = new FiniteStateSubsetNaive(comm);
-
         fsp->SetSize(fsp_size);
         fsp->GenerateStatesAndOrdering();
         arma::Mat<PetscInt> local_states = fsp->GetLocalStates();
@@ -39,6 +39,13 @@ int main(int argc, char *argv[]) {
         delete fsp;
 
         MPI_Barrier(comm);
+
+        fsp = new FiniteStateSubsetRCB(comm);
+        fsp->SetSize(fsp_size);
+        fsp->SetStoichiometry(hog1p_cme::SM);
+        fsp->GenerateStatesAndOrdering();
+        fsp->PrintAO();
+        delete fsp;
 
         fsp = new FiniteStateSubsetGraph(comm);
         fsp->SetSize(fsp_size);
@@ -53,9 +60,16 @@ int main(int argc, char *argv[]) {
         fsp->GenerateStatesAndOrdering();
         fsp->PrintAO();
         delete fsp;
+
+        fsp = new FiniteStateSubsetHierarch(comm);
+        fsp->SetSize(fsp_size);
+        fsp->SetStoichiometry(hog1p_cme::SM);
+        fsp->GenerateStatesAndOrdering();
+        fsp->PrintAO();
+        delete fsp;
     }
-    ierr = PetscFinalize();
     CHKERRQ(ierr);
     MPI_Comm_free(&comm);
-    MPI_Finalize();
+
+    cme::ParaFSP_finalize();
 }

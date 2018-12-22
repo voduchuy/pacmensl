@@ -201,11 +201,17 @@ namespace cme {
                 case Naive:
                     fsp = new FiniteStateSubsetNaive(comm);
                     break;
+                case RCB:
+                    fsp = new FiniteStateSubsetRCB(comm);
+                    break;
                 case Graph:
                     fsp = new FiniteStateSubsetGraph(comm);
                     break;
                 case HyperGraph:
                     fsp = new FiniteStateSubsetHyperGraph(comm);
+                    break;
+                case Hierarch:
+                    fsp = new FiniteStateSubsetHierarch(comm);
                     break;
                 default:
                     throw std::runtime_error("FSP Setup: requested partitioning type not supported.\n");

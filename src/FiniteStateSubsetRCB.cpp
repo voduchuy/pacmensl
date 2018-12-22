@@ -2,25 +2,21 @@
 // Created by Huy Vo on 12/4/18.
 //
 
-#include "FiniteStateSubsetGraph.h"
+#include <FiniteStateSubsetRCB.h>
 
 namespace cme {
     namespace parallel {
-        FiniteStateSubsetGraph::FiniteStateSubsetGraph(MPI_Comm new_comm) : FiniteStateSubset(new_comm) {
-            partitioning_type = Graph;
-            Zoltan_Set_Param(zoltan, "LB_METHOD", "GRAPH");
-            Zoltan_Set_Param(zoltan, "GRAPH_PACKAGE", "Parmetis");
-            Zoltan_Set_Param(zoltan, "PARMETIS_METHOD", "PartGeomKway");
+        FiniteStateSubsetRCB::FiniteStateSubsetRCB(MPI_Comm new_comm) : FiniteStateSubset(new_comm) {
+            partitioning_type = RCB;
+            Zoltan_Set_Param(zoltan, "LB_METHOD", "RCB");
             Zoltan_Set_Param(zoltan, "RETURN_LISTS", "PARTS");
             Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "0");
             Zoltan_Set_Param(zoltan, "IMBALANCE_TOL", "1.01");
             Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0"); // use Zoltan default vertex weights
             Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
-            Zoltan_Set_Param(zoltan, "CHECK_GRAPH", "0");
-            Zoltan_Set_Param(zoltan, "GRAPH_SYMMETRIZE", "TRANSPOSE");
         }
 
-        void FiniteStateSubsetGraph::GenerateStatesAndOrdering() {
+        void FiniteStateSubsetRCB::GenerateStatesAndOrdering() {
             PetscErrorCode ierr;
             // This can only be done after the stoichiometry has been set
             if (stoich_set == 0) {
@@ -35,22 +31,19 @@ namespace cme {
             arma::Mat<PetscInt> local_states_tmp = get_my_naive_local_states();
 
             //
-            // Generate Graph data
+            // Generate Geometrical data
             //
-            PetscPrintf(comm, "Generate data...");
             generate_geometric_data(fsp_size, local_states_tmp);
             generate_graph_data(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with Petsc's IS
             //
-            PetscPrintf(comm, "Call partitioner...");
             call_zoltan_partitioner();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
-            PetscPrintf(comm, "Compute ordering...");
             compute_petsc_ordering_from_zoltan();
 
             // Generate local states
@@ -61,7 +54,7 @@ namespace cme {
             free_zoltan_part_variables();
         }
 
-        void FiniteStateSubsetGraph::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
+        void FiniteStateSubsetRCB::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
             PetscErrorCode ierr;
             assert(new_fsp_size.n_elem == fsp_size.n_elem);
             for (auto i{0}; i < fsp_size.n_elem; ++i) {
@@ -77,13 +70,6 @@ namespace cme {
 
             if (lex2petsc) AODestroy(&lex2petsc);
             if (vec_layout) PetscLayoutDestroy(&vec_layout);
-
-            //
-            // Switch Zoltan to Refine mode
-            //
-            Zoltan_Set_Param(zoltan, "PARMETIS_METHOD", "AdaptiveRepart");
-            Zoltan_Set_Param(zoltan, "LB_APPROACH", "REPARTITION");
-//            Zoltan_Set_Param(zoltan, "LB_APPROACH", "REFINE");
 
             //
             // Explore for new states that satisfy the new FSP bounds
