@@ -237,7 +237,7 @@ namespace cme {
                     Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
                     Zoltan_Set_Param(zz, "CHECK_GRAPH", "0");
                     Zoltan_Set_Param(zz, "GRAPH_SYMMETRIZE", "NONE");
-                    Zoltan_Set_Param(zz, "GRAPH_BUILD_TYPE", "FAST");
+                    Zoltan_Set_Param(zz, "GRAPH_BUILD_TYPE", "FAST_NO_DUP");
                     if (repart){
                         Zoltan_Set_Param(zz, "PARMETIS_METHOD", "AdaptiveRepart");
                         Zoltan_Set_Param(zz, "LB_APPROACH", "REPARTITION");
