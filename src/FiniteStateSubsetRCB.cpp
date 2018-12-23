@@ -33,25 +33,25 @@ namespace cme {
             //
             // Generate Geometrical data
             //
-            generate_geometric_data(fsp_size, local_states_tmp);
-            generate_graph_data(local_states_tmp);
+            GenerateGeomData(fsp_size, local_states_tmp);
+            GenerateGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with Petsc's IS
             //
-            call_zoltan_partitioner();
+            CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
-            compute_petsc_ordering_from_zoltan();
+            ComputePetscOrderingFromZoltan();
 
             // Generate local states
-            get_local_states_from_ao();
+            LocalStatesFromAO();
 
-            free_graph_data();
-            free_geometric_data();
-            free_zoltan_part_variables();
+            FreeGraphData();
+            FreeGeomData();
+            FreeZoltanParts();
         }
 
         void FiniteStateSubsetRCB::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
@@ -107,27 +107,27 @@ namespace cme {
             //
             // Create the graph data
             //
-            generate_geometric_data(new_fsp_size, local_states_tmp);
-            generate_graph_data(local_states_tmp);
+            GenerateGeomData(new_fsp_size, local_states_tmp);
+            GenerateGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with processor_id, then proceed as usual
             //
-            call_zoltan_partitioner();
+            CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
-            compute_petsc_ordering_from_zoltan();
+            ComputePetscOrderingFromZoltan();
 
             //
             // Generate local states
             //
-            get_local_states_from_ao();
+            LocalStatesFromAO();
 
-            free_graph_data();
-            free_geometric_data();
-            free_zoltan_part_variables();
+            FreeGraphData();
+            FreeGeomData();
+            FreeZoltanParts();
         }
 
     }

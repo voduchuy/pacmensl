@@ -29,7 +29,7 @@ namespace cme {
             PetscInt n_local_states;
             arma::Mat<PetscInt> local_states;
 
-            void get_local_states_from_ao();
+            void LocalStatesFromAO();
 
             PetscLayout vec_layout = nullptr;
             AO lex2petsc = nullptr;
@@ -38,31 +38,35 @@ namespace cme {
 
             // This data is needed for partitioning algorithms
             struct AdjacencyData {
+                AO lex2zoltan; // Store ordering from FSP states' natural indexing to Zoltan's indexing
+
                 int num_local_states;
-                int num_reachable_states_rows; // Number of nz entries on the rows of the FSP matrix corresponding to local states
                 ZOLTAN_ID_PTR states_gid;
-                ZOLTAN_ID_PTR reachable_states_rows_gid; // Global indices of nz entries on the rows corresponding to local states
-                int *reachable_states_rows_proc; // Processors that own the reachable states
-                int *rows_edge_ptr;
+
                 int *num_edges; // Number of states that share information with each local states
+
+                int num_reachable_states; // Number of nz entries on the rows of the FSP matrix corresponding to local states
+                ZOLTAN_ID_PTR reachable_states; // Global indices of nz entries on the rows corresponding to local states
+                int *reachable_states_proc; // Processors that own the reachable states
+                int *edge_ptr;
             } adj_data;
 
-            void generate_graph_data(arma::Mat<PetscInt> &local_states_tmp);
+            void GenerateGraphData(arma::Mat<PetscInt> &local_states_tmp);
 
-            void free_graph_data();
+            void FreeGraphData();
 
-            void generate_hypergraph_data(arma::Mat<PetscInt> &local_states_tmp);
+            void GenerateHyperGraphData(arma::Mat<PetscInt> &local_states_tmp);
 
-            void free_hypergraph_data();
+            void FreeHyperGraphData();
 
             struct GeomData {
                 int dim;
                 double *states_coo;
             } geom_data;
 
-            void generate_geometric_data(arma::Row<PetscInt> &fsp_size, arma::Mat<PetscInt> &local_states_tmp);
+            void GenerateGeomData(arma::Row<PetscInt> &fsp_size, arma::Mat<PetscInt> &local_states_tmp);
 
-            void free_geometric_data();
+            void FreeGeomData();
 
             // These variables are needed for partitioning with Zoltan
             Zoltan_Struct *zoltan;
@@ -72,11 +76,11 @@ namespace cme {
             ZOLTAN_ID_PTR import_global_ids, import_local_ids, export_global_ids, export_local_ids;
             int *import_procs, *import_to_part, *export_procs, *export_to_part;
 
-            void call_zoltan_partitioner();
+            void CallZoltanLoadBalancing();
 
-            void compute_petsc_ordering_from_zoltan();
+            void ComputePetscOrderingFromZoltan();
 
-            void free_zoltan_part_variables();
+            void FreeZoltanParts();
 
             /* Zoltan interface functions */
             friend int zoltan_num_obj(void *fss_data, int *ierr);

@@ -19,6 +19,7 @@ namespace cme {
             Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "0");
             Zoltan_Set_Param(zoltan, "PHG_REPART_MULTIPLIER", "1000");
             Zoltan_Set_Param(zoltan, "PHG_RANDOMIZE_INPUT", "1");
+            Zoltan_Set_Param(zoltan, "GRAPH_BUILD_TYPE", "FAST_NO_DUP");
             Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0"); // use Zoltan default vertex weights
             Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
         }
@@ -44,27 +45,27 @@ namespace cme {
             //
             // Create the hypergraph data
             //
-            generate_geometric_data(fsp_size, local_states_tmp);
-            generate_hypergraph_data(local_states_tmp);
+            GenerateGeomData(fsp_size, local_states_tmp);
+            GenerateHyperGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with processor_id, then proceed as usual
             //
-            call_zoltan_partitioner();
+            CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
-            compute_petsc_ordering_from_zoltan();
+            ComputePetscOrderingFromZoltan();
 
             //
             // Generate local states
             //
-            get_local_states_from_ao();
+            LocalStatesFromAO();
 
-            free_hypergraph_data();
-            free_geometric_data();
-            free_zoltan_part_variables();
+            FreeHyperGraphData();
+            FreeGeomData();
+            FreeZoltanParts();
         }
 
         void FiniteStateSubsetHyperGraph::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
@@ -126,27 +127,27 @@ namespace cme {
             //
             // Create the hypergraph data
             //
-            generate_geometric_data(fsp_size, local_states_tmp);
-            generate_hypergraph_data(local_states_tmp);
+            GenerateGeomData(fsp_size, local_states_tmp);
+            GenerateHyperGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with processor_id, then proceed as usual
             //
-            call_zoltan_partitioner();
+            CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
-            compute_petsc_ordering_from_zoltan();
+            ComputePetscOrderingFromZoltan();
 
             //
             // Generate local states
             //
-            get_local_states_from_ao();
+            LocalStatesFromAO();
 
-            free_hypergraph_data();
-            free_geometric_data();
-            free_zoltan_part_variables();
+            FreeHyperGraphData();
+            FreeGeomData();
+            FreeZoltanParts();
         }
     }
 }

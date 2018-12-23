@@ -17,7 +17,8 @@ namespace cme {
             Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0"); // use Zoltan default vertex weights
             Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
             Zoltan_Set_Param(zoltan, "CHECK_GRAPH", "0");
-            Zoltan_Set_Param(zoltan, "GRAPH_SYMMETRIZE", "TRANSPOSE");
+            Zoltan_Set_Param(zoltan, "GRAPH_SYMMETRIZE", "NONE");
+            Zoltan_Set_Param(zoltan, "GRAPH_BUILD_TYPE", "FAST_NO_DUP");
         }
 
         void FiniteStateSubsetGraph::GenerateStatesAndOrdering() {
@@ -38,27 +39,27 @@ namespace cme {
             // Generate Graph data
             //
             PetscPrintf(comm, "Generate data...");
-            generate_geometric_data(fsp_size, local_states_tmp);
-            generate_graph_data(local_states_tmp);
+            GenerateGeomData(fsp_size, local_states_tmp);
+            GenerateGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with Petsc's IS
             //
             PetscPrintf(comm, "Call partitioner...");
-            call_zoltan_partitioner();
+            CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
             PetscPrintf(comm, "Compute ordering...");
-            compute_petsc_ordering_from_zoltan();
+            ComputePetscOrderingFromZoltan();
 
             // Generate local states
-            get_local_states_from_ao();
+            LocalStatesFromAO();
 
-            free_graph_data();
-            free_geometric_data();
-            free_zoltan_part_variables();
+            FreeGraphData();
+            FreeGeomData();
+            FreeZoltanParts();
         }
 
         void FiniteStateSubsetGraph::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
@@ -83,7 +84,6 @@ namespace cme {
             //
             Zoltan_Set_Param(zoltan, "PARMETIS_METHOD", "AdaptiveRepart");
             Zoltan_Set_Param(zoltan, "LB_APPROACH", "REPARTITION");
-//            Zoltan_Set_Param(zoltan, "LB_APPROACH", "REFINE");
 
             //
             // Explore for new states that satisfy the new FSP bounds
@@ -121,27 +121,27 @@ namespace cme {
             //
             // Create the graph data
             //
-            generate_geometric_data(new_fsp_size, local_states_tmp);
-            generate_graph_data(local_states_tmp);
+            GenerateGeomData(new_fsp_size, local_states_tmp);
+            GenerateGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with processor_id, then proceed as usual
             //
-            call_zoltan_partitioner();
+            CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
-            compute_petsc_ordering_from_zoltan();
+            ComputePetscOrderingFromZoltan();
 
             //
             // Generate local states
             //
-            get_local_states_from_ao();
+            LocalStatesFromAO();
 
-            free_graph_data();
-            free_geometric_data();
-            free_zoltan_part_variables();
+            FreeGraphData();
+            FreeGeomData();
+            FreeZoltanParts();
         }
 
     }

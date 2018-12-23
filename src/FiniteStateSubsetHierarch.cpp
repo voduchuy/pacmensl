@@ -28,6 +28,8 @@ namespace cme {
             // Initialize hierarchical data
             //
             // Split processors based on shared memory
+            PetscMPIInt my_global_rank;
+            MPI_Comm_rank(comm, &my_global_rank);
             MPI_Info mpi_info;
             MPI_Info_create(&mpi_info);
             MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, 0, mpi_info, &my_node);
@@ -51,10 +53,11 @@ namespace cme {
             // Broadcast my node rank to the others in my node group
             MPI_Bcast(&my_node_rank, 1, MPI_INT, 0, my_node);
 
-            std::cout << "My node has rank " << my_node_rank << "\n";
-
             my_part[0] = my_node_rank;
             my_part[1] = my_intranode_rank;
+
+            PetscSynchronizedPrintf(comm, "Processor %d has level 0 part %d and level 1 part %d \n", my_global_rank, my_node_rank, my_intranode_rank);
+            PetscSynchronizedFlush(comm, PETSC_STDOUT);
 
             repart = PETSC_FALSE;
             MPI_Comm_free(&node_leader);
@@ -82,25 +85,25 @@ namespace cme {
             //
             // Generate Graph data
             //
-            generate_graph_data(local_states_tmp);
-            generate_geometric_data(fsp_size, local_states_tmp);
+            GenerateGraphData(local_states_tmp);
+            GenerateGeomData(fsp_size, local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with Petsc's IS
             //
-            call_zoltan_partitioner();
+            CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
-            compute_petsc_ordering_from_zoltan();
+            ComputePetscOrderingFromZoltan();
 
             // Generate local states
-            get_local_states_from_ao();
+            LocalStatesFromAO();
 
-            free_graph_data();
-            free_geometric_data();
-            free_zoltan_part_variables();
+            FreeGraphData();
+            FreeGeomData();
+            FreeZoltanParts();
         }
 
         void FiniteStateSubsetHierarch::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
@@ -160,27 +163,27 @@ namespace cme {
             //
             // Create the graph data
             //
-            generate_graph_data(local_states_tmp);
-            generate_geometric_data(new_fsp_size, local_states_tmp);
+            GenerateGraphData(local_states_tmp);
+            GenerateGeomData(new_fsp_size, local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with processor_id, then proceed as usual
             //
-            call_zoltan_partitioner();
+            CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
-            compute_petsc_ordering_from_zoltan();
+            ComputePetscOrderingFromZoltan();
 
             //
             // Generate local states
             //
-            get_local_states_from_ao();
+            LocalStatesFromAO();
 
-            free_graph_data();
-            free_geometric_data();
-            free_zoltan_part_variables();
+            FreeGraphData();
+            FreeGeomData();
+            FreeZoltanParts();
         }
 
         int zoltan_hier_num_levels(void *data, int *ierr) {
@@ -214,14 +217,14 @@ namespace cme {
         }
 
         void FiniteStateSubsetHierarch::set_zoltan_parameters(int level, Zoltan_Struct *zz) {
-            Zoltan_Set_Num_Obj_Fn(zz, &zoltan_num_obj, (void *) &this->adj_data);
-            Zoltan_Set_Obj_List_Fn(zz, &zoltan_obj_list, (void *) &this->adj_data);
-            Zoltan_Set_Num_Geom_Fn(zz, &zoltan_num_geom, (void *) this);
-            Zoltan_Set_Geom_Multi_Fn(zz, &zoltan_geom_multi, (void *) this);
-            Zoltan_Set_Num_Edges_Fn(zz, &zoltan_num_edges, (void *) &this->adj_data);
-            Zoltan_Set_Edge_List_Fn(zz, &zoltan_edge_list, (void *) &this->adj_data);
-            Zoltan_Set_HG_Size_CS_Fn(zz, &zoltan_get_hypergraph_size, (void *) &this->adj_data);
-            Zoltan_Set_HG_CS_Fn(zz, &zoltan_get_hypergraph, (void *) &this->adj_data);
+//            Zoltan_Set_Num_Obj_Fn(zz, &zoltan_num_obj, (void *) &this->adj_data);
+//            Zoltan_Set_Obj_List_Fn(zz, &zoltan_obj_list, (void *) &this->adj_data);
+//            Zoltan_Set_Num_Geom_Fn(zz, &zoltan_num_geom, (void *) this);
+//            Zoltan_Set_Geom_Multi_Fn(zz, &zoltan_geom_multi, (void *) this);
+//            Zoltan_Set_Num_Edges_Fn(zz, &zoltan_num_edges, (void *) &this->adj_data);
+//            Zoltan_Set_Edge_List_Fn(zz, &zoltan_edge_list, (void *) &this->adj_data);
+//            Zoltan_Set_HG_Size_CS_Fn(zz, &zoltan_get_hypergraph_size, (void *) &this->adj_data);
+//            Zoltan_Set_HG_CS_Fn(zz, &zoltan_get_hypergraph, (void *) &this->adj_data);
             switch (level) {
                 case 0: // Hypergraph partitioning for inter-node level
                     Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
@@ -233,12 +236,13 @@ namespace cme {
                     Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0"); // use Zoltan default vertex weights
                     Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
                     Zoltan_Set_Param(zz, "CHECK_GRAPH", "0");
-                    Zoltan_Set_Param(zz, "GRAPH_SYMMETRIZE", "TRANSPOSE");
-                    if (repart) {
+                    Zoltan_Set_Param(zz, "GRAPH_SYMMETRIZE", "NONE");
+                    Zoltan_Set_Param(zz, "GRAPH_BUILD_TYPE", "FAST");
+                    if (repart){
                         Zoltan_Set_Param(zz, "PARMETIS_METHOD", "AdaptiveRepart");
                         Zoltan_Set_Param(zz, "LB_APPROACH", "REPARTITION");
-                    } else {
-                    Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
+                    }else{
+                        Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
                     }
                     break;
                 case 1: // RCB for intra-node level
