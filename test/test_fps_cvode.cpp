@@ -3,10 +3,10 @@
 //
 static char help[] = "Test interface to CVODE for solving the CME of the toggle model.\n\n";
 
-#include "cme_util.h"
-#include "MatrixSet.h"
-#include "FiniteProblemSolver.h"
-#include "CVODEFSP.h"
+#include "util/cme_util.h"
+#include "Matrix/MatrixSet.h"
+#include "FPSolver/FiniteProblemSolver.h"
+#include "FPSolver/CVODEFSP.h"
 #include "models/toggle_model.h"
 
 using namespace cme::parallel;

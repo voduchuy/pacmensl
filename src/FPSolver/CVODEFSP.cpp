@@ -1,7 +1,7 @@
 //
 // Created by Huy Vo on 12/6/18.
 //
-#include <CVODEFSP.h>
+#include <FPSolver/CVODEFSP.h>
 
 #include "FiniteProblemSolver.h"
 #include "CVODEFSP.h"
@@ -36,6 +36,8 @@ namespace cme{
             CHKERRABORT(comm, petsc_err);
             petsc_err = VecCopy(*solution, *solution_tmp_dat);
             CHKERRABORT(comm, petsc_err);
+
+            // Set CVODE startiing time to the current timepoint
             t_now_tmp = t_now;
 
             // Initialize cvode

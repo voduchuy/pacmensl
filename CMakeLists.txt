@@ -2,19 +2,32 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
 PROJECT(Parallel_FSP)
 
-set(MY_LIBRARIES
+set(UTIL_LIBS
         cme_util
+        )
+
+set(FSS_LIBS
         FiniteStateSubset
+        FiniteStateSubsetZoltanQuery
         FiniteStateSubsetNaive
         FiniteStateSubsetGraph
         FiniteStateSubsetHyperGraph
         FiniteStateSubsetHierarch
         FiniteStateSubsetRCB
+        )
+
+set(MAT_LIBS
         MatrixSet
+        )
+
+set(SOLVER_LIBS
         FiniteProblemSolver
         CVODEFSP
+        )
+
+set(FSP_LIBRARIES
         FSPSolver
-        )# KExpv Magnus4 Magnus4FSP  )
+        )
 
 set(TEST_PROGRAMS
         test_fss
@@ -25,10 +38,8 @@ set(TEST_PROGRAMS
         )
 
 set(EXAMPLES
-        solve_hog_adaptive_FSP
         distribute_states
-        benchmark_intranode
-        benchmark_multi_node
+        benchmark
         multiple_single_core_jobs
         )
 
@@ -45,7 +56,7 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_CXX_COMPILER mpicxx )
-set(CMAKE_CXX_FLAGS " -g -std=c++11 -O3")
+set(CMAKE_CXX_FLAGS " -g -std=c++11")
 
 FIND_PACKAGE(PETSc)
 INCLUDE_DIRECTORIES(${PETSC_INCLUDES})
@@ -71,28 +82,38 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-foreach ( LIB ${MY_LIBRARIES} )
-  add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/${LIB}.cpp ${CMAKE_SOURCE_DIR}/include/${LIB}.h)
-  target_link_libraries(${LIB} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+foreach( LIB ${UTIL_LIBS})
+    add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/util/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/util/${LIB}.h)
+    target_link_libraries(${LIB}  ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 endforeach()
 
-target_link_libraries(MatrixSet FiniteStateSubset ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-target_link_libraries( FiniteStateSubsetNaive FiniteStateSubset)
-target_link_libraries( FiniteStateSubsetGraph FiniteStateSubset)
-target_link_libraries( FiniteStateSubsetHyperGraph FiniteStateSubset)
-target_link_libraries( FiniteStateSubsetHierarch FiniteStateSubset)
-target_link_libraries( FiniteStateSubsetRCB FiniteStateSubset)
-target_link_libraries(FiniteProblemSolver FiniteStateSubset FiniteStateSubsetHyperGraph FiniteStateSubsetGraph FiniteStateSubsetNaive FiniteStateSubsetHierarch FiniteStateSubsetRCB ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-target_link_libraries(CVODEFSP FiniteProblemSolver)
-target_link_libraries(FSPSolver FiniteStateSubset FiniteProblemSolver MatrixSet CVODEFSP ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+foreach( LIB ${FSS_LIBS})
+    add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/FSS/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/FSS/${LIB}.h)
+    target_link_libraries(${LIB} ${UTIL_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+endforeach()
+
+foreach( LIB ${MAT_LIBS})
+    add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/Matrix/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/Matrix/${LIB}.h)
+    target_link_libraries(${LIB} ${UTIL_LIBS} ${FSS_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+endforeach()
+
+foreach( LIB ${SOLVER_LIBS})
+    add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/FPSolver/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/FPSolver/${LIB}.h)
+    target_link_libraries(${LIB} ${UTIL_LIBS} ${FSS_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+endforeach()
+
+foreach ( LIB ${FSP_LIBRARIES} )
+  add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/FSP/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/FSP/${LIB}.h)
+  target_link_libraries(${LIB} ${FSS_LIBS} ${MAT_LIBS} ${SOLVER_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+endforeach()
 
 foreach ( PROG ${TEST_PROGRAMS})
   add_executable(${PROG} ${CMAKE_SOURCE_DIR}/test/${PROG}.cpp)
-  target_link_libraries(${PROG} ${MY_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+  target_link_libraries(${PROG} ${FSP_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 endforeach()
 
 foreach ( PROG ${EXAMPLES})
     add_executable(${PROG} ${CMAKE_SOURCE_DIR}/examples/${PROG}.cpp)
-    target_link_libraries(${PROG} ${MY_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+    target_link_libraries(${PROG} ${FSP_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 endforeach()
 

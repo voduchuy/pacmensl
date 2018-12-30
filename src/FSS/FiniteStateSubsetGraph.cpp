@@ -2,21 +2,26 @@
 // Created by Huy Vo on 12/4/18.
 //
 
-#include <FiniteStateSubsetRCB.h>
+#include "FiniteStateSubsetGraph.h"
 
 namespace cme {
     namespace parallel {
-        FiniteStateSubsetRCB::FiniteStateSubsetRCB(MPI_Comm new_comm) : FiniteStateSubset(new_comm) {
-            partitioning_type = RCB;
-            Zoltan_Set_Param(zoltan, "LB_METHOD", "RCB");
+        FiniteStateSubsetGraph::FiniteStateSubsetGraph(MPI_Comm new_comm) : FiniteStateSubset(new_comm) {
+            partitioning_type = Graph;
+            Zoltan_Set_Param(zoltan, "LB_METHOD", "GRAPH");
+            Zoltan_Set_Param(zoltan, "GRAPH_PACKAGE", "Parmetis");
+            Zoltan_Set_Param(zoltan, "PARMETIS_METHOD", "PartGeomKway");
             Zoltan_Set_Param(zoltan, "RETURN_LISTS", "PARTS");
-            Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "0");
-            Zoltan_Set_Param(zoltan, "IMBALANCE_TOL", "1.01");
-            Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0"); // use Zoltan default vertex weights
-            Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
+            Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "4");
+            Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "1");
+            Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");
+            Zoltan_Set_Param(zoltan, "CHECK_GRAPH", "0");
+            Zoltan_Set_Param(zoltan, "GRAPH_SYMMETRIZE", "NONE");
+            Zoltan_Set_Param(zoltan, "GRAPH_BUILD_TYPE", "FAST_NO_DUP");
+            Zoltan_Set_Param(zoltan, "PARMETIS_ITR", "1000");
         }
 
-        void FiniteStateSubsetRCB::GenerateStatesAndOrdering() {
+        void FiniteStateSubsetGraph::GenerateStatesAndOrdering() {
             PetscErrorCode ierr;
             // This can only be done after the stoichiometry has been set
             if (stoich_set == 0) {
@@ -28,22 +33,25 @@ namespace cme {
             //
             // Initial temporary partitioning based on lexicographic ordering
             //
-            arma::Mat<PetscInt> local_states_tmp = get_my_naive_local_states();
+            arma::Mat<PetscInt> local_states_tmp = compute_my_naive_local_states();
 
             //
-            // Generate Geometrical data
+            // Generate Graph data
             //
+            PetscPrintf(comm, "Generate data...");
             GenerateGeomData(fsp_size, local_states_tmp);
             GenerateGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with Petsc's IS
             //
+            PetscPrintf(comm, "Call partitioner...");
             CallZoltanLoadBalancing();
 
             //
             // Convert Zoltan's output to Petsc ordering and layout
             //
+            PetscPrintf(comm, "Compute ordering...");
             ComputePetscOrderingFromZoltan();
 
             // Generate local states
@@ -54,7 +62,7 @@ namespace cme {
             FreeZoltanParts();
         }
 
-        void FiniteStateSubsetRCB::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
+        void FiniteStateSubsetGraph::ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {
             PetscErrorCode ierr;
             assert(new_fsp_size.n_elem == fsp_size.n_elem);
             for (auto i{0}; i < fsp_size.n_elem; ++i) {
@@ -72,13 +80,24 @@ namespace cme {
             if (vec_layout) PetscLayoutDestroy(&vec_layout);
 
             //
+            // Switch Zoltan to Refine mode
+            //
+            if (repart_approach == Repartition){
+                Zoltan_Set_Param(zoltan, "PARMETIS_METHOD", "AdaptiveRepart");
+                Zoltan_Set_Param(zoltan, "LB_APPROACH", "REPARTITION");
+            }
+            else{
+                Zoltan_Set_Param(zoltan, "LB_APPROACH", zoltan_part_opt.c_str());
+            }
+
+            //
             // Explore for new states that satisfy the new FSP bounds
             //
             PetscInt n_new_states;
             arma::Mat<PetscInt> new_candidates, local_states_tmp;
             arma::Row<PetscInt> is_new_states;
 
-            new_candidates = get_my_naive_local_states();
+            new_candidates = compute_my_naive_local_states();
             is_new_states.set_size(new_candidates.n_cols);
 
             n_new_states = 0;

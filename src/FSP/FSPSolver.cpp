@@ -2,7 +2,7 @@
 // Created by Huy Vo on 5/29/18.
 //
 
-#include <FSPSolver.h>
+#include <FSP/FSPSolver.h>
 
 #include "FSPSolver.h"
 
@@ -221,6 +221,7 @@ namespace cme {
             if (log_fsp_events) {
                 CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
             }
+            fsp->SetRepartApproach(repart_approach);
             fsp->GenerateStatesAndOrdering();
             if (log_fsp_events) {
                 CHKERRABORT(comm, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
@@ -336,6 +337,12 @@ namespace cme {
             }
             if (num_procs == 1) {
                 partioning_type = Naive;
+            }
+
+            ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
+            CHKERRABORT(comm, ierr);
+            if (opt_set) {
+                repart_approach = str2partapproach(std::string(opt));
             }
 
             ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_verbosity", opt, 100, &opt_set);

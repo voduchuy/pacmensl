@@ -5,8 +5,8 @@
 #ifndef PARALLEL_FSP_FINITEPROBLEMSOLVER_H
 #define PARALLEL_FSP_FINITEPROBLEMSOLVER_H
 
-#include "cme_util.h"
-#include "FiniteStateSubset.h"
+#include "util/cme_util.h"
+#include "FSS/FiniteStateSubset.h"
 
 namespace cme{
     namespace parallel{

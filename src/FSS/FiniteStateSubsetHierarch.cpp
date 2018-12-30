@@ -2,8 +2,8 @@
 // Created by Huy Vo on 12/4/18.
 //
 
-#include <FiniteStateSubsetGraph.h>
-#include <FiniteStateSubsetHierarch.h>
+#include <FSS/FiniteStateSubsetGraph.h>
+#include <FSS/FiniteStateSubsetHierarch.h>
 
 
 #include "FiniteStateSubsetGraph.h"
@@ -19,6 +19,8 @@ namespace cme {
             Zoltan_Set_Param(zoltan, "HIER_DEBUG_LEVEL", "0");
             Zoltan_Set_Param(zoltan, "RETURN_LISTS", "PARTS");
             Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "0");
+            Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "0");
+            Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");
 
             Zoltan_Set_Hier_Num_Levels_Fn(zoltan, &zoltan_hier_num_levels, (void*) this);
             Zoltan_Set_Hier_Method_Fn(zoltan, &zoltan_hier_method, (void*) this);
@@ -80,7 +82,7 @@ namespace cme {
             //
             // Initial temporary partitioning based on lexicographic ordering
             //
-            arma::Mat<PetscInt> local_states_tmp = get_my_naive_local_states();
+            arma::Mat<PetscInt> local_states_tmp = compute_my_naive_local_states();
 
             //
             // Generate Graph data
@@ -134,7 +136,7 @@ namespace cme {
             arma::Mat<PetscInt> new_candidates, local_states_tmp;
             arma::Row<PetscInt> is_new_states;
 
-            new_candidates = get_my_naive_local_states();
+            new_candidates = compute_my_naive_local_states();
             is_new_states.set_size(new_candidates.n_cols);
 
             n_new_states = 0;
@@ -217,39 +219,36 @@ namespace cme {
         }
 
         void FiniteStateSubsetHierarch::set_zoltan_parameters(int level, Zoltan_Struct *zz) {
-//            Zoltan_Set_Num_Obj_Fn(zz, &zoltan_num_obj, (void *) &this->adj_data);
-//            Zoltan_Set_Obj_List_Fn(zz, &zoltan_obj_list, (void *) &this->adj_data);
-//            Zoltan_Set_Num_Geom_Fn(zz, &zoltan_num_geom, (void *) this);
-//            Zoltan_Set_Geom_Multi_Fn(zz, &zoltan_geom_multi, (void *) this);
-//            Zoltan_Set_Num_Edges_Fn(zz, &zoltan_num_edges, (void *) &this->adj_data);
-//            Zoltan_Set_Edge_List_Fn(zz, &zoltan_edge_list, (void *) &this->adj_data);
-//            Zoltan_Set_HG_Size_CS_Fn(zz, &zoltan_get_hypergraph_size, (void *) &this->adj_data);
-//            Zoltan_Set_HG_CS_Fn(zz, &zoltan_get_hypergraph, (void *) &this->adj_data);
             switch (level) {
                 case 0: // Hypergraph partitioning for inter-node level
                     Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
                     Zoltan_Set_Param(zz, "GRAPH_PACKAGE", "Parmetis");
                     Zoltan_Set_Param(zz, "PARMETIS_METHOD", "PartGeomKway");
                     Zoltan_Set_Param(zz, "RETURN_LISTS", "PARTS");
-                    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
-                    Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.01");
-                    Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0"); // use Zoltan default vertex weights
-                    Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
+                    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "4");
+                    Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "1");
+                    Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "1");
                     Zoltan_Set_Param(zz, "CHECK_GRAPH", "0");
                     Zoltan_Set_Param(zz, "GRAPH_SYMMETRIZE", "NONE");
                     Zoltan_Set_Param(zz, "GRAPH_BUILD_TYPE", "FAST_NO_DUP");
+                    Zoltan_Set_Param(zz, "PARMETIS_ITR", "1000");
                     if (repart){
-                        Zoltan_Set_Param(zz, "PARMETIS_METHOD", "AdaptiveRepart");
-                        Zoltan_Set_Param(zz, "LB_APPROACH", "REPARTITION");
+                        if (repart_approach == Repartition){
+                            Zoltan_Set_Param(zz, "PARMETIS_METHOD", "AdaptiveRepart");
+                            Zoltan_Set_Param(zz, "LB_APPROACH", "REPARTITION");
+                        }else{
+                            Zoltan_Set_Param(zz, "LB_APPROACH", zoltan_part_opt.c_str());
+                        }
                     }else{
                         Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
                     }
                     break;
                 case 1: // RCB for intra-node level
                     Zoltan_Set_Param(zz, "LB_METHOD", "RCB");
-                    Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.01");
                     Zoltan_Set_Param(zz, "RETURN_LISTS", "PARTS");
                     Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
+                    Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
+                    Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "0");
                     break;
                 default:
                     break;

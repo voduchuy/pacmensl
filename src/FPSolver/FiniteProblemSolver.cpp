@@ -2,8 +2,8 @@
 // Created by Huy Vo on 12/6/18.
 //
 
-#include <CVODEFSP.h>
-#include <FiniteProblemSolver.h>
+#include <FPSolver/CVODEFSP.h>
+#include <FPSolver/FiniteProblemSolver.h>
 
 #include "FiniteProblemSolver.h"
 

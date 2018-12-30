@@ -9,10 +9,10 @@ static char help[] = "Generate Finite State Subset and output to files.\n\n";
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>
-#include <cme_util.h>
+#include <util/cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include "FSPSolver.h"
+#include "FSP/FSPSolver.h"
 #include "models/toggle_model.h"
 #include "models/hog1p_5d_model.h"
 #include "models/transcription_regulation_6d_model.h"

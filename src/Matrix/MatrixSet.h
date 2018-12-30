@@ -11,10 +11,10 @@
 #include <petscmat.h>
 #include <petscis.h>
 #include <petscao.h>
-#include "cme_util.h"
-#include "FiniteStateSubset.h"
-#include "FiniteStateSubsetGraph.h"
-#include "FiniteStateSubsetNaive.h"
+#include "util/cme_util.h"
+#include "FSS/FiniteStateSubset.h"
+#include "FSS/FiniteStateSubsetGraph.h"
+#include "FSS/FiniteStateSubsetNaive.h"
 
 namespace cme {
     namespace parallel {

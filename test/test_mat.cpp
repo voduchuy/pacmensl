@@ -12,14 +12,14 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<petscao.h>
 #include<armadillo>
 #include"models/toggle_model.h"
-#include"cme_util.h"
-#include"FiniteStateSubset.h"
-#include"FiniteStateSubsetNaive.h"
-#include"FiniteStateSubsetGraph.h"
-#include"FiniteStateSubsetHyperGraph.h"
-#include"FiniteStateSubsetHierarch.h"
-#include"FiniteStateSubsetRCB.h"
-#include"MatrixSet.h"
+#include"util/cme_util.h"
+#include"FSS/FiniteStateSubset.h"
+#include"FSS/FiniteStateSubsetNaive.h"
+#include"FSS/FiniteStateSubsetGraph.h"
+#include"FSS/FiniteStateSubsetHyperGraph.h"
+#include"FSS/FiniteStateSubsetHierarch.h"
+#include"FSS/FiniteStateSubsetRCB.h"
+#include"Matrix/MatrixSet.h"
 
 using namespace cme::parallel;
 

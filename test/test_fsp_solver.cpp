@@ -7,8 +7,8 @@
 //
 static char help[] = "Test interface to CVODE for solving the CME of the toggle model.\n\n";
 
-#include "cme_util.h"
-#include "FSPSolver.h"
+#include "util/cme_util.h"
+#include "FSP/FSPSolver.h"
 #include "models/toggle_model.h"
 
 using namespace cme::parallel;

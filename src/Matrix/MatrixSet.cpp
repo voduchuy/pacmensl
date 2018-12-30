@@ -1,8 +1,8 @@
 
-#include <MatrixSet.h>
+#include <Matrix/MatrixSet.h>
 
-#include "MatrixSet.h"
-#include "cme_util.h"
+#include "Matrix/MatrixSet.h"
+#include "util/cme_util.h"
 
 namespace cme {
     namespace parallel {

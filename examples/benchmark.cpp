@@ -1,13 +1,13 @@
-static char help[] = "Solve larger CMEs to benchmark multiple-node performance.\n\n";
+static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 
 #include<iomanip>
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>
-#include <cme_util.h>
+#include <util/cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include "FSPSolver.h"
+#include "FSP/FSPSolver.h"
 #include "models/toggle_model.h"
 #include "models/hog1p_5d_model.h"
 #include "models/transcription_regulation_6d_model.h"
@@ -41,13 +41,14 @@ int main(int argc, char *argv[]) {
                 MPI_Comm_size(comm, &num_procs);
                 PetscPrintf(comm, "\n ================ \n");
 
-                std::string part_option;
+                std::string part_type;
+                std::string part_approach;
                 // Default problem
                 std::string model_name = "hog1p";
-                Row<PetscInt> FSPSize({3, 3, 3, 3, 3}); // Size of the FSP
+                Row<PetscInt> FSPSize({3, 9, 9, 9, 9}); // Size of the FSP
                 arma::Row<PetscReal> expansion_factors = {0.0, 0.5, 0.5, 0.5, 0.5};
-                PetscReal t_final = 60.00 * 5;
-                PetscReal fsp_tol = 1.0e-3;
+                PetscReal t_final = 60.00 * 3;
+                PetscReal fsp_tol = 1.0e-1;
                 arma::Mat<PetscInt> X0 = {0, 0, 0, 0, 0};
                 X0 = X0.t();
                 arma::Col<PetscReal> p0 = {1.0};
@@ -57,6 +58,7 @@ int main(int argc, char *argv[]) {
 
                 // Default options
                 PartitioningType fsp_par_type = Graph;
+                PartitioningApproach fsp_repart_approach = FromScratch;
                 ODESolverType fsp_odes_type = CVODE_BDF;
                 PetscBool output_marginal = PETSC_FALSE;
                 PetscBool fsp_log_events = PETSC_FALSE;
@@ -71,8 +73,8 @@ int main(int argc, char *argv[]) {
                         model_name = "transcr_reg_6d";
                         FSPSize = {10, 6, 1, 2, 1, 1}; // Size of the FSP
                         expansion_factors = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
-                        t_final = 360.0;
-                        fsp_tol = 1.0e-6;
+                        t_final = 300.0;
+                        fsp_tol = 1.0e-4;
                         X0 = {2, 6, 0, 2, 0, 0};
                         X0 = X0.t();
                         p0 = {1.0};
@@ -80,23 +82,10 @@ int main(int argc, char *argv[]) {
                         t_fun = six_species_cme::t_fun;
                         propensity = six_species_cme::propensity;
                         PetscPrintf(PETSC_COMM_WORLD, "Problem: Transcription regulation with 6 species.\n");
-                    } else if (strcmp(opt, "toggle") == 0) {
-                        model_name = "toggle";
-                        FSPSize = {20, 20}; // Size of the FSP
-                        expansion_factors = {0.5, 0.5};
-                        t_final = 14 * 3600;
-                        fsp_tol = 1.0e-6;
-                        X0 = {0, 0};
-                        X0 = X0.t();
-                        p0 = {1.0};
-                        stoich_mat = toggle_cme::SM;
-                        t_fun = toggle_cme::t_fun;
-                        propensity = toggle_cme::propensity;
-                        PetscPrintf(PETSC_COMM_WORLD, "Problem: Toggle switch with 2 species.\n");
                     } else if (strcmp(opt, "hog3d") == 0) {
                         model_name = "hog3d";
                         FSPSize = {3, 10, 10}; // Size of the FSP
-                        expansion_factors = {0.0, 0.25, 0.25};
+                        expansion_factors = {0.0, 0.5, 0.5};
                         t_final = 60.00 * 15;
                         fsp_tol = 1.0e-6;
                         X0 = {0, 0, 0};
@@ -117,9 +106,12 @@ int main(int argc, char *argv[]) {
                 if (opt_set) {
                     fsp_par_type = str2part(std::string(opt));
                 }
-//                if (num_procs == 1) {
-//                    fsp_par_type = Naive;
-//                }
+
+                ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
+                CHKERRQ(ierr);
+                if (opt_set) {
+                    fsp_repart_approach = str2partapproach(std::string(opt));
+                }
 
                 ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_output_marginal", opt, 100, &opt_set);
                 CHKERRQ(ierr);
@@ -138,8 +130,10 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
-                part_option = part2str(fsp_par_type);
+                part_type = part2str(fsp_par_type);
+                part_approach = partapproach2str(fsp_repart_approach);
                 PetscPrintf(comm, "Partitiniong option %s \n", part2str(fsp_par_type).c_str());
+                PetscPrintf(comm, "Repartitoning option %s \n", partapproach2str(fsp_repart_approach).c_str());
 
                 PetscReal tic, tic1, solver_time, total_time;
 
@@ -176,7 +170,8 @@ int main(int argc, char *argv[]) {
                     if (myRank == 0) {
                         {
                             std::string filename =
-                                    model_name + "_time_" + std::to_string(num_procs) + "_" + part_option + ".dat";
+                                    model_name + "_time_" + std::to_string(num_procs) + "_" + part_type +
+                                    "_" + part_approach + ".dat";
                             std::ofstream file;
                             file.open(filename, std::ios_base::app);
                             file << solver_time << "\n";
@@ -189,8 +184,8 @@ int main(int argc, char *argv[]) {
                         FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
                         if (myRank == 0) {
                             std::string filename =
-                                    model_name + "_time_breakdown_" + std::to_string(num_procs) + "_" + part_option +
-                                    ".dat";
+                                    model_name + "_time_breakdown_" + std::to_string(num_procs) + "_" + part_type +
+                                    "_" + part_approach + ".dat";
                             std::ofstream file;
                             file.open(filename);
                             file << "Component, Average processor time (sec), Percentage \n";
@@ -215,7 +210,8 @@ int main(int argc, char *argv[]) {
                             file.close();
 
                             filename =
-                                    model_name + "_perf_info_" + std::to_string(num_procs) + "_" + part_option + ".dat";
+                                    model_name + "_perf_info_" + std::to_string(num_procs) + "_" + part_type +
+                                    "_" + part_approach + ".dat";
                             file.open(filename);
                             file << "Model time, ODEs size, Average processor time (sec) \n";
                             for (auto i{0}; i < perf_info.n_step; ++i) {
@@ -243,7 +239,7 @@ int main(int argc, char *argv[]) {
                                         model_name + "_marginal_" + std::to_string(i) + "_" +
                                         std::to_string(num_procs) +
                                         "_" +
-                                        part_option + ".dat";
+                                        part_type + "_" + part_approach + ".dat";
                                 marginals[i].save(filename, arma::raw_ascii);
                             }
                         }

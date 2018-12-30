@@ -3,7 +3,7 @@
 //
 
 
-#include <FiniteStateSubsetNaive.h>
+#include <FSS/FiniteStateSubsetNaive.h>
 
 #include "FiniteStateSubsetNaive.h"
 
