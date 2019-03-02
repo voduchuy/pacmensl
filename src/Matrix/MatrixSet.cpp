@@ -3,6 +3,8 @@
 
 #include "Matrix/MatrixSet.h"
 #include "util/cme_util.h"
+#include "MatrixSet.h"
+
 
 namespace cme {
     namespace parallel {
@@ -266,6 +268,10 @@ namespace cme {
             if (work) VecDestroy(&work);
             if (lvec) VecDestroy(&lvec);
             if (action_ctx) VecScatterDestroy(&action_ctx);
+        }
+
+        PetscInt MatrixSet::GetLocalGhostLength() {
+            return lvec_length;
         }
     }
 }

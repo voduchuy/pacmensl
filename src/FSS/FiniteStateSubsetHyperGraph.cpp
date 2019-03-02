@@ -4,9 +4,6 @@
 
 #include <FSS/FiniteStateSubsetHyperGraph.h>
 
-#include "FiniteStateSubsetHyperGraph.h"
-
-
 namespace cme {
     namespace parallel {
         FiniteStateSubsetHyperGraph::FiniteStateSubsetHyperGraph(MPI_Comm new_comm) : FiniteStateSubset(new_comm) {
@@ -15,9 +12,12 @@ namespace cme {
             Zoltan_Set_Param(zoltan, "HYPERGRAPH_PACKAGE", "PHG");
             Zoltan_Set_Param(zoltan, "CHECK_HYPERGRAPH", "0");
             Zoltan_Set_Param(zoltan, "RETURN_LISTS", "PARTS");
-            Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "4");
-            Zoltan_Set_Param(zoltan, "PHG_REPART_MULTIPLIER", "1000");
+            Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "0");
+            Zoltan_Set_Param(zoltan, "PHG_REPART_MULTIPLIER", "10000");
             Zoltan_Set_Param(zoltan, "PHG_RANDOMIZE_INPUT", "1");
+            Zoltan_Set_Param(zoltan, "PHG_COARSENING_METHOD", "L-IPM");
+            Zoltan_Set_Param(zoltan, "PHG_COARSEPARTITION_METHOD", "GREEDY");
+            Zoltan_Set_Param(zoltan, "PHG_REFINEMENT_QUALITY", "0.8");
             Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "1");
             Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");// use Zoltan default hyperedge weights
         }

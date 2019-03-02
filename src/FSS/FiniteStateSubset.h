@@ -15,7 +15,7 @@ namespace cme {
             Naive, RCB, Graph, HyperGraph, Hierarch, NotSet
         };
 
-        enum PartitioningApproach{
+        enum PartitioningApproach {
             FromScratch, Repartition, Refine
         };
 
@@ -53,7 +53,8 @@ namespace cme {
             PetscLayout vec_layout = nullptr;
             AO lex2petsc = nullptr;
 
-            arma::Mat<PetscInt> compute_my_naive_local_states(); ///< Compute the local states owned by the processor in the naive partitioning. This is used as the initial guess for the partitioning algorithms.
+            arma::Mat<PetscInt>
+            compute_my_naive_local_states(); ///< Compute the local states owned by the processor in the naive partitioning. This is used as the initial guess for the partitioning algorithms.
 
             /// Struct to stores data for graph/hypergraph partitioning algorithms
             /**
@@ -142,6 +143,13 @@ namespace cme {
                                               int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr,
                                               ZOLTAN_ID_PTR pin_gid, int *ierr);
 
+            friend int zoltan_obj_size(
+                    void *data,
+                    int num_gid_entries,
+                    int num_lid_entries,
+                    ZOLTAN_ID_PTR global_id,
+                    ZOLTAN_ID_PTR local_id,
+                    int *ierr);
 
             friend arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
 

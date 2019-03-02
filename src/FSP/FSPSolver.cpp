@@ -82,7 +82,7 @@ namespace cme {
                         }
                         PetscPrintf(comm, "\n ------------- \n");
                     }
-                    // Get local states correspoinding to the current solution
+                    // Get local states corresponding to the current solution
                     arma::Mat<PetscInt> states_old = fsp->GetLocalStates();
                     if (log_fsp_events) {
                         CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));

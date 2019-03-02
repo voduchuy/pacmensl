@@ -12,13 +12,13 @@ namespace cme {
             Zoltan_Set_Param(zoltan, "GRAPH_PACKAGE", "Parmetis");
             Zoltan_Set_Param(zoltan, "PARMETIS_METHOD", "PartGeomKway");
             Zoltan_Set_Param(zoltan, "RETURN_LISTS", "PARTS");
-            Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "4");
+            Zoltan_Set_Param(zoltan, "DEBUG_LEVEL", "0");
             Zoltan_Set_Param(zoltan, "OBJ_WEIGHT_DIM", "1");
-            Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "0");
+            Zoltan_Set_Param(zoltan, "EDGE_WEIGHT_DIM", "1");
             Zoltan_Set_Param(zoltan, "CHECK_GRAPH", "0");
             Zoltan_Set_Param(zoltan, "GRAPH_SYMMETRIZE", "NONE");
             Zoltan_Set_Param(zoltan, "GRAPH_BUILD_TYPE", "FAST_NO_DUP");
-            Zoltan_Set_Param(zoltan, "PARMETIS_ITR", "1000");
+            Zoltan_Set_Param(zoltan, "PARMETIS_ITR", "10000");
         }
 
         void FiniteStateSubsetGraph::GenerateStatesAndOrdering() {

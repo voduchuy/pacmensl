@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
                 std::string model_name = "hog1p";
                 Row<PetscInt> FSPSize({3, 9, 9, 9, 9}); // Size of the FSP
                 arma::Row<PetscReal> expansion_factors = {0.0, 0.5, 0.5, 0.5, 0.5};
-                PetscReal t_final = 60.00 * 3;
+                PetscReal t_final = 60.00 * 5;
                 PetscReal fsp_tol = 1.0e-1;
                 arma::Mat<PetscInt> X0 = {0, 0, 0, 0, 0};
                 X0 = X0.t();

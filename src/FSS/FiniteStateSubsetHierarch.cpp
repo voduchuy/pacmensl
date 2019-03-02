@@ -87,8 +87,8 @@ namespace cme {
             //
             // Generate Graph data
             //
-            GenerateGraphData(local_states_tmp);
             GenerateGeomData(fsp_size, local_states_tmp);
+            GenerateGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with Petsc's IS
@@ -165,8 +165,8 @@ namespace cme {
             //
             // Create the graph data
             //
-            GenerateGraphData(local_states_tmp);
             GenerateGeomData(new_fsp_size, local_states_tmp);
+            GenerateGraphData(local_states_tmp);
 
             //
             // Use Zoltan to create partitioning, then wrap with processor_id, then proceed as usual
@@ -220,12 +220,12 @@ namespace cme {
 
         void FiniteStateSubsetHierarch::set_zoltan_parameters(int level, Zoltan_Struct *zz) {
             switch (level) {
-                case 0: // Hypergraph partitioning for inter-node level
+                case 0: // graph partitioning for inter-node level
                     Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
                     Zoltan_Set_Param(zz, "GRAPH_PACKAGE", "Parmetis");
                     Zoltan_Set_Param(zz, "PARMETIS_METHOD", "PartGeomKway");
                     Zoltan_Set_Param(zz, "RETURN_LISTS", "PARTS");
-                    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "4");
+                    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
                     Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "1");
                     Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "1");
                     Zoltan_Set_Param(zz, "CHECK_GRAPH", "0");

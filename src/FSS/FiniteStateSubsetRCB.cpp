@@ -127,6 +127,5 @@ namespace cme {
             FreeGeomData();
             FreeZoltanParts();
         }
-
     }
 }

@@ -2,8 +2,6 @@
 // Created by Huy Vo on 12/4/18.
 //
 #include <FSS/FiniteStateSubset.h>
-#include "FiniteStateSubset.h"
-
 
 namespace cme {
     namespace parallel {
@@ -19,7 +17,7 @@ namespace cme {
             /// Set up Zoltan
             zoltan = Zoltan_Create(comm);
             // This imbalance tolerance is universal for all methods
-            Zoltan_Set_Param(zoltan, "IMBALANCE_TOL", "1.1");
+            Zoltan_Set_Param(zoltan, "IMBALANCE_TOL", "1.01");
 
             // Register query functions to zoltan
             Zoltan_Set_Num_Obj_Fn(zoltan, &zoltan_num_obj, (void *) &this->adj_data);
@@ -30,6 +28,7 @@ namespace cme {
             Zoltan_Set_Edge_List_Fn(zoltan, &zoltan_edge_list, (void *) &this->adj_data);
             Zoltan_Set_HG_Size_CS_Fn(zoltan, &zoltan_get_hypergraph_size, (void *) &this->adj_data);
             Zoltan_Set_HG_CS_Fn(zoltan, &zoltan_get_hypergraph, (void *) &this->adj_data);
+            Zoltan_Set_Obj_Size_Fn(zoltan, &zoltan_obj_size, (void *) this);
 
             /// Register event logging
             ierr = PetscLogEventRegister("Generate graph data", 0, &generate_graph_data);
@@ -261,12 +260,11 @@ namespace cme {
             CHKERRABORT(comm, ierr);
 
             auto n_local_tmp = (PetscInt) local_states_tmp.n_cols;
+            auto n_reactions = (PetscInt) stoichiometry.n_cols;
 
-            arma::Col<PetscInt> x((size_t) n_species); // vector to iterate through local states
-            arma::Mat<PetscInt> rx((size_t) n_species, (size_t) 2*stoichiometry.n_cols); // states reachable from x
-            arma::Row<PetscInt> irx(2*stoichiometry.n_cols), irx1(stoichiometry.n_cols), irx2(stoichiometry.n_cols), cc;
-            arma::Row<float> wrx(2*stoichiometry.n_cols);
-            arma::uvec ia(stoichiometry.n_cols), ib(stoichiometry.n_cols), ic, id;
+            arma::Mat<PetscInt> RX((size_t) n_species,
+                                   (size_t) n_local_tmp); // states connected to local_states_tmp
+            arma::Row<PetscInt> irx(n_local_tmp);
 
             adj_data.states_gid = new PetscInt[n_local_tmp];
 
@@ -274,61 +272,18 @@ namespace cme {
 
             adj_data.num_edges = new int[n_local_tmp];
 
-            adj_data.edge_ptr = new int[n_local_tmp + 1];
+            adj_data.edge_ptr = new int[n_local_tmp];
 
             adj_data.reachable_states = new PetscInt[2 * n_local_tmp * (1 + stoichiometry.n_cols)];
-
-            adj_data.reachable_states_proc = new int[2 * n_local_tmp * (1 + stoichiometry.n_cols)];
 
             adj_data.edge_weights = new float[2 * n_local_tmp * (1 + stoichiometry.n_cols)];
 
             adj_data.num_local_states = n_local_tmp;
 
             adj_data.num_reachable_states = 0;
-            for (auto i = 0; i < n_local_tmp; ++i) {
-                x = local_states_tmp.col(i);
-                sub2ind_nd<PetscInt, PetscInt>(fsp_size, x, &adj_data.states_gid[i]);
 
-                adj_data.num_edges[i] = 0;
-                // Find indices of states connected to x via a reaction
-                for (auto j{0}; j < stoichiometry.n_cols; ++j){
-                    rx.col(j) = x - stoichiometry.col(j);
-                    rx.col(stoichiometry.n_cols + j) = x + stoichiometry.col(j);
-                }
-                sub2ind_nd(fsp_size, rx, &irx[0]);
-
-                irx1 = irx(
-                        arma::span(0,
-                                   stoichiometry.n_cols - 1)); // indices of nonzero entries on row x of the FSP matrix
-                irx2 = irx(arma::span(stoichiometry.n_cols, 2 * stoichiometry.n_cols - 1));
-
-                // Compute edge weights
-                wrx.fill(0.0f);
-                ib = find_unique(irx);
-                arma::intersect(cc, ic, id, irx.elem(ib).t(), irx1);
-                wrx.elem(ib.elem(ic)) += 1.0f;
-                arma::intersect(cc, ic, id, irx.elem(ib).t(), irx2);
-                wrx.elem(ib.elem(ic)) += 1.0f;
-
-                // Enter vertex's weight
-                ia = find_unique(irx1);
-                adj_data.states_weights[i] =
-                        (float) 2.0f * stoichiometry.n_cols + 1.0f * stoichiometry.n_cols + 1.0f * ia.n_elem;
-
-                // Enter edges and their weights
-                adj_data.edge_ptr[i] = (int) adj_data.num_reachable_states;
-                for (PetscInt j = 0; j < ib.n_elem; ++j) {
-                    if (irx.at(ib(j)) >= 0) {
-                        adj_data.reachable_states[adj_data.num_reachable_states] = irx.at(
-                                ib(j));
-                        adj_data.edge_weights[adj_data.num_reachable_states] = (float) wrx.at(ib(j));
-                        adj_data.num_reachable_states++;
-                        adj_data.num_edges[i]++;
-                    }
-                }
-            }
-            adj_data.edge_ptr[n_local_tmp] = adj_data.num_reachable_states;
-
+            // Lexicographic indices of the local states
+            sub2ind_nd(fsp_size, local_states_tmp, &adj_data.states_gid[0]);
             //
             // Renumbering the graph vertices for fast graph building
             //
@@ -338,10 +293,91 @@ namespace cme {
             ierr = AOApplicationToPetsc(adj_data.lex2zoltan, adj_data.num_local_states, &adj_data.states_gid[0]);
             CHKERRABORT(comm, ierr);
 
-            ierr = AOApplicationToPetsc(adj_data.lex2zoltan, adj_data.num_reachable_states,
-                                        &adj_data.reachable_states[0]);
-            CHKERRABORT(comm, ierr);
+            // Initialize graph data
+            for (auto i = 0; i < n_local_tmp; ++i) {
+                adj_data.edge_ptr[i] = i * 2 * (1 + n_reactions);
+                adj_data.num_edges[i] = 0;
+                adj_data.edge_weights[i] = 0.0f;
+                adj_data.states_weights[i] =
+                        (float) 2.0f * n_reactions + 1.0f *
+                                                     n_reactions; // Each state's weight will be added with the number of edges connected to the state in the loop below
+            }
+            // Enter edges and weights
+            PetscInt e_ptr, edge_loc;
+            arma::uvec i_neg;
+            for (auto reaction = 0; reaction < n_reactions; ++reaction) {
+                // Edges corresponding to the rows of the CME
+                RX = local_states_tmp - arma::repmat(stoichiometry.col(reaction), 1, n_local_tmp);
+                sub2ind_nd(fsp_size, RX, &irx[0]);
 
+                // Convert to Zoltan numbering
+                i_neg = arma::find(irx < 0);
+                irx.elem(i_neg).fill(0);
+                ierr = AOApplicationToPetsc(adj_data.lex2zoltan, n_local_tmp, &irx[0]);
+                CHKERRABORT(comm, ierr);
+                irx.elem(i_neg).fill(-1);
+
+                for (auto i = 0; i < n_local_tmp; ++i) {
+                    if (irx(i) >= 0) {
+                        e_ptr = adj_data.edge_ptr[i];
+                        // Is the edge (i, irx(i)) already entered?
+                        edge_loc = -1;
+                        for (auto j = 0; j < adj_data.num_edges[i]; ++j) {
+                            if (irx(i) == adj_data.reachable_states[e_ptr + j]) {
+                                edge_loc = j;
+                                break;
+                            }
+                        }
+                        // If the edge already exists, add value
+                        if (edge_loc >= 0 && adj_data.edge_weights[e_ptr + edge_loc] < 2.0f) {
+                            adj_data.edge_weights[e_ptr + edge_loc] += 1.0f;
+                        }
+                        else {// otherwise add this new edge
+                            adj_data.num_edges[i] += 1;
+                            adj_data.states_weights[i] +=
+                                    1.0f;
+                            adj_data.num_reachable_states ++;
+                            adj_data.reachable_states[e_ptr + adj_data.num_edges[i] - 1] = irx(i);
+                            adj_data.edge_weights[e_ptr + adj_data.num_edges[i] - 1] = 1.0f; // Edges on the row count toward the vertex weight
+                        }
+                    }
+                }
+
+                // Edges corresponding to the columns of the CME
+                RX = local_states_tmp + arma::repmat(stoichiometry.col(reaction), 1, n_local_tmp);
+                sub2ind_nd(fsp_size, RX, &irx[0]);
+
+                // Convert to Zoltan numbering
+                i_neg = arma::find(irx < 0);
+                irx.elem(i_neg).fill(0);
+                ierr = AOApplicationToPetsc(adj_data.lex2zoltan, n_local_tmp, &irx[0]);
+                CHKERRABORT(comm, ierr);
+                irx.elem(i_neg).fill(-1);
+
+                for (auto i = 0; i < n_local_tmp; ++i) {
+                    if (irx(i) >= 0) {
+                        e_ptr = adj_data.edge_ptr[i];
+                        // Is the edge (i, irx(i)) already entered?
+                        edge_loc = -1;
+                        for (auto j = 0; j < adj_data.num_edges[i]; ++j) {
+                            if (irx(i) == adj_data.reachable_states[e_ptr + j]) {
+                                edge_loc = j;
+                                break;
+                            }
+                        }
+                        // If the edge already exists, add value
+                        if (edge_loc >= 0 && adj_data.edge_weights[e_ptr + edge_loc] < 2.0f) {
+                            adj_data.edge_weights[e_ptr + edge_loc] += 1.0f;
+                        }
+                        else {// otherwise add this new edge
+                            adj_data.num_edges[i] += 1;
+                            adj_data.reachable_states[e_ptr + adj_data.num_edges[i] - 1] = irx(i);
+                            adj_data.edge_weights[e_ptr + adj_data.num_edges[i] - 1] = 1.0f;
+                            adj_data.num_reachable_states ++;
+                        }
+                    }
+                }
+            }
             ierr = PetscLogEventEnd(generate_graph_data, 0, 0, 0, 0);
             CHKERRABORT(comm, ierr);
         }
@@ -350,7 +386,6 @@ namespace cme {
             delete[] adj_data.num_edges;
             Zoltan_Free((void **) &adj_data.states_gid, __FILE__, __LINE__);
             Zoltan_Free((void **) &adj_data.reachable_states, __FILE__, __LINE__);
-            delete[] adj_data.reachable_states_proc;
             delete[] adj_data.edge_ptr;
             delete[] adj_data.states_weights;
             delete[] adj_data.edge_weights;

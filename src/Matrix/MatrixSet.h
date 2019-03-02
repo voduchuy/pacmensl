@@ -23,7 +23,11 @@ namespace cme {
         using Real = PetscReal;
         using Int = PetscInt;
 
-        /* Distributed data type for the truncated CME operator on a hyper-rectangle */
+
+        /// Distributed data type for the truncated CME operator on a hyper-rectangle
+        /**
+         *
+         **/
         class MatrixSet {
 
         protected:
@@ -44,8 +48,7 @@ namespace cme {
             Vec lvec; ///< Local vector to receive scattered data from the input vec
             PetscInt lvec_length; ///< Number of ghost entries owned by the local process
             VecScatter action_ctx; ///< Scatter context for computing matrix action
-            ISLocalToGlobalMapping lvec2global; ///< Mapping between local vector and global input vec
-            Vec xx, yy, zz; // Local portion of the vectors
+            Vec xx, yy, zz; ///< Local portion of the vectors
 
             TcoefFun t_fun = NULL;
 
@@ -59,6 +62,8 @@ namespace cme {
             void Destroy();
 
             void Action(PetscReal t, Vec x, Vec y);
+
+            PetscInt GetLocalGhostLength();
 
             ~MatrixSet();
         };

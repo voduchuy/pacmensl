@@ -36,6 +36,14 @@ namespace cme {
         void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vtx_edge, int num_pins,
                                    int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr, ZOLTAN_ID_PTR pin_gid,
                                    int *ierr);
+
+        int zoltan_obj_size(
+                void *data,
+                int num_gid_entries,
+                int num_lid_entries,
+                ZOLTAN_ID_PTR global_id,
+                ZOLTAN_ID_PTR local_id,
+                int *ierr);
     }
 }
 

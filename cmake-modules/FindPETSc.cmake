@@ -238,7 +238,7 @@ show :
   else ()
     set (PETSC_LIBRARY_VEC "NOTFOUND" CACHE INTERNAL "Cleared" FORCE) # There is no libpetscvec
     petsc_find_library (SINGLE petsc)
-    # Debian 9/Ubuntu 16.04 uses _real and _complex extensions when using libraries in /usr/lib/petsc.
+    # Debian 9/Ubuntu 16.04 uses _real and _complex extensions when using libraries in /usr/lib/parallel.
     if (NOT PETSC_LIBRARY_SINGLE)
       petsc_find_library (SINGLE petsc_real)
     endif()

@@ -4,6 +4,7 @@
 #include <FSS/FiniteStateSubset.h>
 #include <FSS/FiniteStateSubsetZoltanQuery.h>
 #include "FiniteStateSubset.h"
+#include "FiniteStateSubsetZoltanQuery.h"
 
 
 namespace cme {
@@ -105,18 +106,26 @@ namespace cme {
             }
             ZOLTAN_ID_TYPE indx = *local_id;
             int k = 0;
-            for (auto i = g_data->edge_ptr[indx]; i < g_data->edge_ptr[indx + 1]; ++i) {
-                nbor_global_id[k] = (ZOLTAN_ID_TYPE) g_data->reachable_states[i];
+            int edge_ptr = g_data->edge_ptr[indx];
+            for (auto i = 0; i <  g_data->num_edges[indx]; ++i) {
+                nbor_global_id[k] = (ZOLTAN_ID_TYPE) g_data->reachable_states[edge_ptr + i];
                 k++;
             }
             if (wgt_dim == 1){
                 k = 0;
-                for (auto i = g_data->edge_ptr[indx]; i < g_data->edge_ptr[indx + 1]; ++i) {
-                    ewgts[k] = g_data->edge_weights[i];
+                for (auto i = 0; i <  g_data->num_edges[indx]; ++i){
+                    ewgts[k] = g_data->edge_weights[edge_ptr + i];
                     k++;
                 }
             }
             *ierr = ZOLTAN_OK;
+        }
+
+        int zoltan_obj_size(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
+                            ZOLTAN_ID_PTR local_id, int *ierr) {
+            *ierr = ZOLTAN_OK;
+            // The only things that migrate in our current version are the entries of the solution vector
+            return (int) sizeof(PetscReal);
         }
     }
 }
