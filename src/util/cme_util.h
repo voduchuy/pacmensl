@@ -15,6 +15,13 @@
 #include <zoltan.h>
 #include <parmetis.h>
 
+#define ZOLTANCHKERRABORT(comm, ierr){\
+            if (zoltan_err == ZOLTAN_FATAL){\
+                PetscPrintf(comm, "Zoltan Fatal in %s at line %d\n", __FILE__, __LINE__);\
+                MPI_Abort(comm, -1);\
+            }\
+}\
+
 namespace cme {
 /*
    The following functions mimic the similar MATLAB functions. Armadillo only supports up to 3 dimensions, thus the neccesity of writing our own code.
