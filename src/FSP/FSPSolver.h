@@ -11,11 +11,6 @@
 #include"Matrix/MatrixSet.h"
 #include"FPSolver/FiniteProblemSolver.h"
 #include"FSS/FiniteStateSubset.h"
-#include"FSS/FiniteStateSubsetNaive.h"
-#include"FSS/FiniteStateSubsetRCB.h"
-#include"FSS/FiniteStateSubsetGraph.h"
-#include"FSS/FiniteStateSubsetHyperGraph.h"
-#include"FSS/FiniteStateSubsetHierarch.h"
 #include"FPSolver/CVODEFSP.h"
 #include"util/cme_util.h"
 
@@ -36,7 +31,7 @@ namespace cme {
 
             MPI_Comm comm = MPI_COMM_NULL;
 
-            PartitioningType partioning_type = Naive;
+            PartitioningType partioning_type = Graph;
             PartitioningApproach repart_approach = FromScratch;
             ODESolverType odes_type = CVODE_BDF;
 

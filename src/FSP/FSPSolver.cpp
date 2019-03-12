@@ -52,7 +52,7 @@ namespace cme {
                 ode_solver->SetPrintIntermediateSteps(1);
             }
 
-            arma::Row<PetscInt> to_expand(fsp->GetNumSpecies());
+            arma::Row<PetscInt> to_expand(fsp->GetNumConstraints());
             while (solver_stat) {
 
                 if (log_fsp_events) {
@@ -87,7 +87,8 @@ namespace cme {
                     if (log_fsp_events) {
                         CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
                     }
-                    fsp->ExpandToNewFSPSize(fsp_size);
+                    fsp->SetShapeBounds(fsp_size);
+                    fsp->GenerateStatesAndOrdering();
                     if (log_fsp_events) {
                         CHKERRABORT(comm, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
                     }
@@ -197,27 +198,10 @@ namespace cme {
                 CHKERRABORT(comm, ierr);
             }
 
-            switch (partioning_type) {
-                case Naive:
-                    fsp = new FiniteStateSubsetNaive(comm);
-                    break;
-                case RCB:
-                    fsp = new FiniteStateSubsetRCB(comm);
-                    break;
-                case Graph:
-                    fsp = new FiniteStateSubsetGraph(comm);
-                    break;
-                case HyperGraph:
-                    fsp = new FiniteStateSubsetHyperGraph(comm);
-                    break;
-                case Hierarch:
-                    fsp = new FiniteStateSubsetHierarch(comm);
-                    break;
-                default:
-                    throw std::runtime_error("FSP Setup: requested partitioning type not supported.\n");
-            }
+            fsp = new FiniteStateSubset(comm, stoich_mat.n_rows);
             fsp->SetStoichiometry(stoich_mat);
-            fsp->SetSize(fsp_size);
+            fsp->SetShapeBounds(fsp_size);
+            fsp->SetInitialStates(init_states);
             if (log_fsp_events) {
                 CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
             }
@@ -336,7 +320,7 @@ namespace cme {
                 partioning_type = str2part(std::string(opt));
             }
             if (num_procs == 1) {
-                partioning_type = Naive;
+                partioning_type = Graph;
             }
 
             ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);

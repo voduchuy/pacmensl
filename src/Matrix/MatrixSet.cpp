@@ -70,8 +70,8 @@ namespace cme {
             n_reactions = PetscInt(SM.n_cols);
             diag_mats.resize(n_reactions);
             offdiag_mats.resize(n_reactions);
-            fsp_size = fsp.GetFSPSize();//fsp_size;
-            n_rows_local = n_local_states + fsp.GetNumSpecies();
+            fsp_bounds = fsp.GetShapeBounds();
+            n_rows_local = n_local_states + PetscInt(fsp_bounds.n_elem);
 
             MPI_Comm_rank(comm, &rank);
 
@@ -94,7 +94,6 @@ namespace cme {
             // Find the nnz per row of diagonal and off-diagonal matrices
             irnz.set_size(n_local_states, n_reactions);
             irnz_off.set_size(n_local_states, n_reactions);
-            to_sinks.set_size(n_local_states, n_reactions);
             out_indices.set_size(n_local_states*n_reactions);
             mat_vals.set_size(n_local_states, n_reactions);
             mat_vals_sinks.set_size(n_local_states, n_reactions);
@@ -104,6 +103,7 @@ namespace cme {
             o_nnz.zeros();
             int out_count = 0;
             irnz_off.fill(-1);
+            to_sinks = fsp.GetReachableStateStatus().t();
             for (auto i_reaction{0}; i_reaction < n_reactions; ++i_reaction){
                 can_reach_X = my_X - arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
                 fsp.State2Petsc(can_reach_X, irnz.colptr(i_reaction));
@@ -123,14 +123,10 @@ namespace cme {
                     }
                 }
                 // Count nnz for rows that represent sink states
-                reachable_from_X = my_X + arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
-                cme::sub2ind_nd(fsp.GetFSPSize(), reachable_from_X, to_sinks.colptr(i_reaction));
-//                fsp.State2Petsc(reachable_from_X, to_sinks.colptr(i_reaction));
-
                 for (auto i_state{0}; i_state < n_local_states; ++i_state){
-                    if (to_sinks(i_state, i_reaction) < -1){ // state i_state can reach a sink state
-                        d_nnz(n_rows_local + (1 + to_sinks(i_state,i_reaction)), i_reaction) += 1;
-                        to_sinks(i_state, i_reaction) = own_end + (1+to_sinks(i_state,i_reaction));
+                    if (to_sinks(i_state, i_reaction) > 0){ // state i_state can reach a sink state
+                        d_nnz(n_rows_local - to_sinks(i_state,i_reaction), i_reaction) += 1;
+                        to_sinks(i_state, i_reaction) = own_end - to_sinks(i_state,i_reaction);
                         mat_vals_sinks(i_state, i_reaction) = prop(my_X.colptr(i_state), i_reaction);
                     }
                     else{

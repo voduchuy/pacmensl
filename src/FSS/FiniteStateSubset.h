@@ -89,6 +89,16 @@ namespace cme {
             /// Variable to store local ids of frontier states
             arma::uvec frontier_lids;
 
+            /// Information for graph/hypergraph-based load-balancing methods
+            /// States that can reach on-processor states via a chemical reaction
+            arma::Mat<PetscInt> local_observable_states;
+            /// Observable states status
+            arma::Mat<PetscInt> local_observable_states_status;
+            /// Number of edges connected to the local states
+            arma::Row<PetscInt> num_local_edges;
+            /// State's weights
+            arma::Row<float> state_weights;
+
             /// Zoltan directory
             /**
              * This is essentially a parallel hash table. We use it to store existing states for fast lookup.
@@ -133,11 +143,17 @@ namespace cme {
 
             /// Check if a state satisfies all constraints
             /**
-             *
+             * Call level: local.
              * @param x
              * @return 0 if x satisfies all constraints; otherwise i+1 where i is the index of the first constraint violated by x.
              */
             inline int CheckConstraints(arma::Col<PetscInt>& x);
+
+            /// Generate local graph/hypergraph data
+            /**
+             * Call level: local.
+             */
+            void GenerateGraphData();
 
             /* Zoltan interface functions */
             friend int zoltan_num_obj(void *fss_data, int *ierr);
@@ -169,15 +185,14 @@ namespace cme {
                                       ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts,
                                       int *ierr);
 
-//            friend int zoltan_num_edges(void *data, int num_gid_entries, int num_lid_entries,
-//                                        ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id, int *ierr);
-//            friend void zoltan_edge_list(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
-//                                         ZOLTAN_ID_PTR local_id, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs,
-//                                         int wgt_dim, float *ewgts, int *ierr);
-//            friend void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr);
-//            friend void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vtx_edge, int num_pins,
-//                                              int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr,
-//                                              ZOLTAN_ID_PTR pin_gid, int *ierr);
+            friend int zoltan_num_edges(void *data, int num_gid_entries, int num_lid_entries,
+                                        ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id, int *ierr);
+            friend void zoltan_get_graph_edges(void *data, int num_gid_entries, int num_lid_entries, int num_obj, ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id,
+                                               int *num_edges, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs, int wgt_dim, float *ewgts, int *ierr);
+            friend void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr);
+            friend void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vtx_edge, int num_pins,
+                                              int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr,
+                                              ZOLTAN_ID_PTR pin_gid, int *ierr);
 
 
             friend arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
@@ -216,17 +231,23 @@ namespace cme {
 
             arma::Row<PetscReal> SinkStatesReduce(Vec P);
 
+            /// Getters
+
             MPI_Comm GetComm();
 
             arma::Row<double> GetShapeBounds();
 
             PetscInt GetNumLocalStates();
 
+            PetscInt GetNumConstraints();
+
             PetscInt GetNumGlobalStates();
 
             PetscInt GetNumSpecies();
 
             PetscInt GetNumReactions();
+
+            arma::Mat<PetscInt> GetReachableStateStatus();
 
             arma::Mat<PetscInt> GetLocalStates();
 

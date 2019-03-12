@@ -9,31 +9,26 @@ set(UTIL_LIBS
 set(FSS_LIBS
         FiniteStateSubset
         FiniteStateSubsetZoltanQuery
-#        FiniteStateSubsetGraph
-#        FiniteStateSubsetHyperGraph
-#        FiniteStateSubsetHierarch
-#        FiniteStateSubsetRCB
         )
 
 set(MAT_LIBS
-#        MatrixSet
+        MatrixSet
         )
 
 set(SOLVER_LIBS
-#        FiniteProblemSolver
-#        CVODEFSP
+        FiniteProblemSolver
+        CVODEFSP
         )
 
 set(FSP_LIBRARIES
-#        FSPSolver
+        FSPSolver
         )
 
 set(TEST_PROGRAMS
         test_fss
-#        test_mat
-#        test_fps_cvode
-#        test_fsp_solver
-#        test_ao
+        test_mat
+        test_fps_cvode
+        test_fsp_solver
         )
 
 set(EXAMPLES
@@ -108,7 +103,7 @@ endforeach()
 
 foreach ( PROG ${TEST_PROGRAMS})
   add_executable(${PROG} ${CMAKE_SOURCE_DIR}/test/${PROG}.cpp)
-  target_link_libraries(${PROG} ${UTIL_LIBS} ${FSS_LIBS} ${FSP_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+  target_link_libraries(${PROG} ${UTIL_LIBS} ${FSS_LIBS} ${MAT_LIBS} ${SOLVER_LIBS} ${FSP_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 endforeach()
 
 foreach ( PROG ${EXAMPLES})

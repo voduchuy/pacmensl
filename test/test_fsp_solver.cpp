@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(PETSC_COMM_WORLD, &num_procs);
 
     // Read options for fsp
-    PartitioningType fsp_par_type = Naive;
+    PartitioningType fsp_par_type = Graph;
     ODESolverType fsp_odes_type = CVODE_BDF;
     char opt[100];
     PetscBool opt_set;

@@ -21,9 +21,12 @@ int main(int argc, char *argv[]) {
     // Begin PETSC context
     {
         arma::Row<PetscInt> fsp_size = {30, 30};
-        FiniteStateSubsetGraph fsp(PETSC_COMM_WORLD);
-        fsp.SetSize(fsp_size);
+        arma::Mat<PetscInt> X0(2, 1);
+        X0.col(0).fill(0);
+        FiniteStateSubset fsp(PETSC_COMM_WORLD, 2);
+        fsp.SetShapeBounds(fsp_size);
         fsp.SetStoichiometry(toggle_cme::SM);
+        fsp.SetInitialStates(X0);
         fsp.GenerateStatesAndOrdering();
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 

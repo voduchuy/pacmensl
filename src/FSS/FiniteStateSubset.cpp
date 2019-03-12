@@ -91,7 +91,6 @@ namespace cme {
         void FiniteStateSubset::SetInitialStates(arma::Mat<PetscInt> X0) {
             PetscErrorCode ierr;
             PetscInt my_rank;
-            int zoltan_err;
             MPI_Comm_rank(comm, &my_rank);
 
             if (X0.n_rows != n_species) {
@@ -99,7 +98,9 @@ namespace cme {
                         "SetInitialStates: number of rows in input array is not the same as the number of species.\n");
             }
 
+            PetscPrintf(comm, "Adding initial states...\n");
             AddStates(X0);
+            PetscPrintf(comm, "Initial states set...\n");
         }
 
         arma::Mat<PetscInt> FiniteStateSubset::GetLocalStates() {
@@ -234,7 +235,6 @@ namespace cme {
                 local_states_status.elem(arma::find(local_states_status == 2)).fill(0);
                 frontier_lids = arma::find(local_states_status == 1);
 
-                // Repartition the state set
                 // Check if the set of frontier states are empty on all processors
                 {
                     int n1, n2;
@@ -242,8 +242,18 @@ namespace cme {
                     MPI_Allreduce(&n1, &n2, 1, MPI_INT, MPI_MAX, comm);
                     frontier_empty = (n2 == 0);
                 }
-//                break;
             }
+            // Repartition the state set
+            LoadBalance();
+            for (int i{0}; i < nstate_local; ++i) {
+                if (local_states_status(i) == -1) {
+                    local_states_status(i) = 1;
+                }
+            }
+            frontier_lids = arma::find(local_states_status == 1);
+            int nfrontier_global, nfrontier_local;
+            nfrontier_local = (int) frontier_lids.n_elem;
+            MPI_Allreduce(&nfrontier_local, &nfrontier_global, 1, MPI_INT, MPI_SUM, comm);
         }
 
         void FiniteStateSubset::DistributeFrontier() {
@@ -277,7 +287,12 @@ namespace cme {
 
             // Update hash table
             auto local_gids = arma::conv_to<arma::Mat<ZOLTAN_ID_TYPE>>::from(local_states);
-            auto lids = arma::regspace<arma::Row<ZOLTAN_ID_TYPE>>(0, nstate_local - 1);
+            arma::Row<ZOLTAN_ID_TYPE> lids;
+            if (nstate_local > 0){
+                lids = arma::regspace<arma::Row<ZOLTAN_ID_TYPE>>(0, nstate_local - 1);
+            } else {
+                lids.set_size(0);
+            }
             zoltan_err = Zoltan_DD_Update(state_directory, &local_gids[0], &lids[0], nullptr, nullptr, nstate_local);
             ZOLTANCHKERRABORT(comm, zoltan_err);
 
@@ -286,7 +301,49 @@ namespace cme {
         }
 
         void FiniteStateSubset::LoadBalance() {
+            GenerateGraphData();
 
+            // Variables to store Zoltan's output
+            int zoltan_err, ierr;
+            int changes, num_gid_entries, num_lid_entries, num_import, num_export;
+            ZOLTAN_ID_PTR import_global_ids, import_local_ids, export_global_ids, export_local_ids;
+            int *import_procs, *import_to_part, *export_procs, *export_to_part;
+
+            zoltan_err = Zoltan_LB_Partition(zoltan_lb, &changes, &num_gid_entries, &num_lid_entries, &num_import,
+                                             &import_global_ids, &import_local_ids,
+                                             &import_procs, &import_to_part, &num_export, &export_global_ids,
+                                             &export_local_ids, &export_procs, &export_to_part);
+            ZOLTANCHKERRABORT(comm, zoltan_err);
+
+            nstate_local = local_states.n_cols;
+            PetscMPIInt nslocal = nstate_local;
+            PetscMPIInt nsglobal;
+            MPI_Allreduce(&nslocal, &nsglobal, 1, MPI_INT, MPI_SUM, comm);
+            nstate_global = nsglobal;
+            frontier_lids = arma::find(local_states_status == 1);
+
+            ierr = PetscLayoutDestroy(&state_layout);
+            CHKERRABORT(comm, ierr);
+            ierr = PetscLayoutCreate(comm, &state_layout);
+            CHKERRABORT(comm, ierr);
+            ierr = PetscLayoutSetLocalSize(state_layout, nstate_local + rhs_constr.n_elem);
+            CHKERRABORT(comm, ierr);
+            ierr = PetscLayoutSetUp(state_layout);
+            CHKERRABORT(comm, ierr);
+
+            // Update hash table
+            auto local_gids = arma::conv_to<arma::Mat<ZOLTAN_ID_TYPE>>::from(local_states);
+            arma::Row<ZOLTAN_ID_TYPE> lids;
+            if (nstate_local > 0){
+                lids = arma::regspace<arma::Row<ZOLTAN_ID_TYPE>>(0, nstate_local - 1);
+            } else {
+                lids.set_size(0);
+            }
+            zoltan_err = Zoltan_DD_Update(state_directory, &local_gids[0], &lids[0], nullptr, nullptr, nstate_local);
+            ZOLTANCHKERRABORT(comm, zoltan_err);
+
+            Zoltan_LB_Free_Part(&import_global_ids, &import_local_ids, &import_procs, &import_to_part);
+            Zoltan_LB_Free_Part(&export_global_ids, &export_local_ids, &export_procs, &export_to_part);
         }
 
         void FiniteStateSubset::AddStates(arma::Mat<PetscInt> &X) {
@@ -299,27 +356,29 @@ namespace cme {
             arma::Mat<ZOLTAN_ID_TYPE> local_gids = arma::conv_to<arma::Mat<ZOLTAN_ID_TYPE>>::from(X);
             arma::Row<int> owner(X.n_cols);
             arma::uvec iselect;
+
             // Probe if states in X are already owned by some processor
             zoltan_err = Zoltan_DD_Find(state_directory, &local_gids[0], nullptr, nullptr, nullptr, X.n_cols,
                                         &owner[0]);
             iselect = arma::find(owner == -1);
             // Shed any states that are already included
             X = X.cols(iselect);
+            MPI_Barrier(comm);
 
             // Add local states to Zoltan directory (only 1 state from 1 processor will be added in case of overlapping)
             local_gids = arma::conv_to<arma::Mat<ZOLTAN_ID_TYPE>>::from(X);
             owner.resize(X.n_cols);
             zoltan_err = Zoltan_DD_Update(state_directory, &local_gids[0], nullptr, nullptr, nullptr, X.n_cols);
             ZOLTANCHKERRABORT(comm, zoltan_err);
+            MPI_Barrier(comm);
 
             // Remove overlaps between processors
             zoltan_err = Zoltan_DD_Find(state_directory, &local_gids[0], nullptr, nullptr, nullptr, X.n_cols,
                                         &owner[0]);
             ZOLTANCHKERRABORT(comm, zoltan_err);
-            if (X.n_cols > 0) {
-                iselect = arma::find(owner == my_rank);
-                X = X.cols(iselect);
-            }
+            MPI_Barrier(comm);
+            iselect = arma::find(owner == my_rank);
+            X = X.cols(iselect);
 
             if (X.n_cols > 0) {
                 // Append X to local states
@@ -337,16 +396,22 @@ namespace cme {
                 local_states_status = arma::join_horiz(local_states_status, X_status);
                 local_reachable_states = arma::join_horiz(local_reachable_states, X_reachable);
                 local_reachable_states_status = arma::join_horiz(local_reachable_states_status, X_reachable_status);
-                nstate_local = local_states.n_cols;
             }
+
+            nstate_local = (PetscInt) local_states.n_cols;
             PetscMPIInt nslocal = nstate_local;
             PetscMPIInt nsglobal;
             MPI_Allreduce(&nslocal, &nsglobal, 1, MPI_INT, MPI_SUM, comm);
             nstate_global = nsglobal;
-
             // Update local ids
             local_gids = arma::conv_to<arma::Mat<ZOLTAN_ID_TYPE>>::from(local_states);
-            auto lids = arma::regspace<arma::Row<ZOLTAN_ID_TYPE>>(0, nstate_local - 1);
+
+            arma::Row<ZOLTAN_ID_TYPE> lids;
+            if (nstate_local > 0){
+            lids = arma::regspace<arma::Row<ZOLTAN_ID_TYPE>>(0, nstate_local - 1);
+            } else {
+                lids.set_size(0);
+            }
             zoltan_err = Zoltan_DD_Update(state_directory, &local_gids[0], &lids[0], nullptr, nullptr, nstate_local);
             ZOLTANCHKERRABORT(comm, zoltan_err);
 
@@ -380,6 +445,27 @@ namespace cme {
             return 0;
         }
 
+        void FiniteStateSubset::GenerateGraphData() {
+            local_observable_states.set_size(n_species * n_reactions, nstate_local);
+            local_observable_states_status.set_size(n_reactions, nstate_local);
+            num_local_edges.set_size(nstate_local);
+            num_local_edges.fill(0);
+            state_weights.set_size(nstate_local);
+            state_weights.fill(4.0f * n_reactions);
+            for (int ir{0}; ir < n_reactions; ++ir) {
+                local_observable_states.rows(arma::span(ir * n_species, (ir + 1) * n_species - 1)) =
+                        local_states - repmat(stoichiometry.col(ir), 1, nstate_local);
+                for (int i{0}; i < nstate_local; ++i) {
+                    arma::Col<PetscInt> x(local_observable_states.colptr(i) + ir * n_species, n_species, false, false);
+                    local_observable_states_status(ir, i) = CheckConstraints(x);
+                    if (local_observable_states_status(ir, i) == 0) {
+                        num_local_edges(i) += 1;
+                        state_weights(i) += 2.0f;
+                    }
+                }
+            }
+        }
+
         void FiniteStateSubset::InitZoltanParameters() {
             // Parameters for state exploration load-balancing
             Zoltan_Set_Param(zoltan_explore, "NUM_GID_ENTRIES", std::to_string(n_species).c_str());
@@ -409,31 +495,28 @@ namespace cme {
             Zoltan_Set_Obj_Size_Fn(zoltan_lb, &zoltan_obj_size, (void *) this);
             Zoltan_Set_Pack_Obj_Multi_Fn(zoltan_lb, &zoltan_pack_states, (void *) this);
             Zoltan_Set_Unpack_Obj_Multi_Fn(zoltan_lb, &zoltan_unpack_states, (void *) this);
-//            Zoltan_Set_Num_Edges_Fn(zoltan_lb, &zoltan_num_edges, (void *) this);
-//            Zoltan_Set_Edge_List_Fn(zoltan_lb, &zoltan_edge_list, (void *) this);
-//            Zoltan_Set_HG_Size_CS_Fn(zoltan_lb, &zoltan_get_hypergraph_size, (void *) this);
-//            Zoltan_Set_HG_CS_Fn(zoltan_lb, &zoltan_get_hypergraph, (void *) this);
+            Zoltan_Set_Num_Edges_Fn(zoltan_lb, &zoltan_num_edges, (void *) this);
+            Zoltan_Set_Edge_List_Multi_Fn(zoltan_lb, &zoltan_get_graph_edges, (void *) this);
+            Zoltan_Set_HG_Size_CS_Fn(zoltan_lb, &zoltan_get_hypergraph_size, (void *) this);
+            Zoltan_Set_HG_CS_Fn(zoltan_lb, &zoltan_get_hypergraph, (void *) this);
 
             switch (partitioning_type) {
                 case Graph:
                     Zoltan_Set_Param(zoltan_lb, "LB_METHOD", "GRAPH");
                     Zoltan_Set_Param(zoltan_lb, "GRAPH_PACKAGE", "Parmetis");
-                    Zoltan_Set_Param(zoltan_lb, "PARMETIS_METHOD", "PartGeomKway");
-                    Zoltan_Set_Param(zoltan_lb, "RETURN_LISTS", "PARTS");
-                    Zoltan_Set_Param(zoltan_lb, "DEBUG_LEVEL", "4");
+                    Zoltan_Set_Param(zoltan_lb, "PARMETIS_METHOD", "PartKway");
+                    Zoltan_Set_Param(zoltan_lb, "DEBUG_LEVEL", "0");
                     Zoltan_Set_Param(zoltan_lb, "OBJ_WEIGHT_DIM", "1");
                     Zoltan_Set_Param(zoltan_lb, "EDGE_WEIGHT_DIM", "0");
                     Zoltan_Set_Param(zoltan_lb, "CHECK_GRAPH", "0");
-                    Zoltan_Set_Param(zoltan_lb, "GRAPH_SYMMETRIZE", "NONE");
-                    Zoltan_Set_Param(zoltan_lb, "GRAPH_BUILD_TYPE", "FAST_NO_DUP");
+                    Zoltan_Set_Param(zoltan_lb, "GRAPH_SYMMETRIZE", "1");
                     Zoltan_Set_Param(zoltan_lb, "PARMETIS_ITR", "1000");
                     break;
                 case HyperGraph:
                     Zoltan_Set_Param(zoltan_lb, "LB_METHOD", "HYPERGRAPH");
                     Zoltan_Set_Param(zoltan_lb, "HYPERGRAPH_PACKAGE", "PHG");
                     Zoltan_Set_Param(zoltan_lb, "CHECK_HYPERGRAPH", "0");
-                    Zoltan_Set_Param(zoltan_lb, "RETURN_LISTS", "PARTS");
-                    Zoltan_Set_Param(zoltan_lb, "DEBUG_LEVEL", "4");
+                    Zoltan_Set_Param(zoltan_lb, "DEBUG_LEVEL", "0");
                     Zoltan_Set_Param(zoltan_lb, "PHG_REPART_MULTIPLIER", "1000");
                     Zoltan_Set_Param(zoltan_lb, "PHG_RANDOMIZE_INPUT", "1");
                     Zoltan_Set_Param(zoltan_lb, "OBJ_WEIGHT_DIM", "1");
@@ -457,6 +540,12 @@ namespace cme {
                 } else {
                     indices(i) = -1;
                 }
+                for (int ii{0}; ii < n_species; ++ii){
+                    if (state(ii, i) < 0){
+                        indices(i) = -1;
+                        break;
+                    }
+                }
             }
             return indices;
         }
@@ -474,6 +563,12 @@ namespace cme {
                     indx[i] = starts[owners[i]] + (PetscInt) lids(i);
                 } else {
                     indx[i] = -1;
+                }
+                for (int ii{0}; ii < n_species; ++ii){
+                    if (state(ii, i) < 0){
+                        indx[i] = -1;
+                        break;
+                    }
                 }
             }
         }
@@ -506,6 +601,13 @@ namespace cme {
             return arma::Row<double>(rhs_constr);
         }
 
+        arma::Mat<PetscInt> FiniteStateSubset::GetReachableStateStatus() {
+            return local_reachable_states_status;
+        }
+
+        PetscInt FiniteStateSubset::GetNumConstraints() {
+            return rhs_constr.n_elem;
+        }
 
         std::string part2str(PartitioningType part) {
             switch (part) {

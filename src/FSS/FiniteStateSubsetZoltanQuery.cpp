@@ -28,7 +28,7 @@ namespace cme {
             }
             if (wgt_dim == 1){
                 for (int i{0}; i < fss_data->nstate_local; ++i){
-                    obj_wgts[i] = 1;
+                    obj_wgts[i] = fss_data->state_weights(i);
                 }
             }
             *ierr = ZOLTAN_OK;
@@ -58,96 +58,93 @@ namespace cme {
             *ierr = ZOLTAN_OK;
         }
 
+        void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr) {
+            auto *hg_data = (FiniteStateSubset *) data;
+            *num_lists = hg_data->nstate_local;
+            *num_pins = (int) arma::sum(hg_data->num_local_edges);
+            *format = ZOLTAN_COMPRESSED_VERTEX;
+            *ierr = ZOLTAN_OK;
+        }
 
-//
-//        int zoltan_num_geom(void *data, int *ierr) {
-//            auto fss_data = (FiniteStateSubset *) data;
-//            *ierr = ZOLTAN_OK;
-//            return fss_data->geom_data.dim;
-//        }
-//
-//        void
-//        zoltan_geom_multi(void *data, int num_gid_entries, int num_lid_entries, int num_obj, ZOLTAN_ID_PTR global_ids,
-//                          ZOLTAN_ID_PTR local_ids, int num_dim, double *geom_vec, int *ierr) {
-//            if ((num_gid_entries != 1) || (num_lid_entries != 1)) {
-//                *ierr = ZOLTAN_FATAL;
-//                return;
-//            }
-//            auto fss_data = (FiniteStateSubset *) data;
-//            ZOLTAN_ID_TYPE local_idx;
-//            for (auto i{0}; i < num_obj; ++i) {
-//                local_idx = local_ids[i];
-//                for (auto j{0}; j < num_dim; ++j) {
-//                    geom_vec[num_dim * i + j] = fss_data->geom_data.states_coo[num_dim * local_idx + j];
-//                }
-//            }
-//        }
-//
-//        void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr) {
-//            auto *hg_data = (FiniteStateSubset::ConnectivityData *) data;
-//            *num_lists = hg_data->num_local_states;
-//            *num_pins = hg_data->num_reachable_states;
-//            *format = ZOLTAN_COMPRESSED_VERTEX;
-//            *ierr = ZOLTAN_OK;
-//        }
-//
-//        void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vertices, int num_pins, int format,
-//                                   ZOLTAN_ID_PTR vtx_gid, int *vtx_edge_ptr, ZOLTAN_ID_PTR pin_gid, int *ierr) {
-//            auto hg_data = (FiniteStateSubset::ConnectivityData *) data;
-//
-//            if ((num_vertices != hg_data->num_local_states) || (num_pins != hg_data->num_reachable_states) ||
-//                (format != ZOLTAN_COMPRESSED_VERTEX)) {
-//                *ierr = ZOLTAN_FATAL;
-//                return;
-//            }
-//
-//            for (int i{0}; i < num_vertices; ++i) {
-//                vtx_gid[i] = (ZOLTAN_ID_TYPE) hg_data->states_gid[i];
-//                vtx_edge_ptr[i] = hg_data->edge_ptr[i];
-//            }
-//
-//            for (int i{0}; i < num_pins; ++i) {
-//                pin_gid[i] = (ZOLTAN_ID_TYPE) hg_data->reachable_states[i];
-//            }
-//            *ierr = ZOLTAN_OK;
-//        }
-//
-//        int zoltan_num_edges(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
-//                             ZOLTAN_ID_PTR local_id, int *ierr) {
-//            auto g_data = (FiniteStateSubset::ConnectivityData *) data;
-//            if ((num_gid_entries != 1) || (num_lid_entries != 1)) {
-//                *ierr = ZOLTAN_FATAL;
-//                return -1;
-//            }
-//            ZOLTAN_ID_TYPE indx = *local_id;
-//            *ierr = ZOLTAN_OK;
-//            return g_data->num_edges[indx];
-//        }
-//
-//        void zoltan_edge_list(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
-//                              ZOLTAN_ID_PTR local_id, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs, int wgt_dim,
-//                              float *ewgts, int *ierr) {
-//            auto g_data = (FiniteStateSubset::ConnectivityData *) data;
-//            if ((num_gid_entries != 1) || (num_lid_entries != 1)) {
-//                *ierr = ZOLTAN_FATAL;
-//                return;
-//            }
-//            ZOLTAN_ID_TYPE indx = *local_id;
-//            int k = 0;
-//            int edge_ptr = g_data->edge_ptr[indx];
-//            for (auto i = 0; i <  g_data->num_edges[indx]; ++i) {
-//                nbor_global_id[k] = (ZOLTAN_ID_TYPE) g_data->reachable_states[edge_ptr + i];
-//                k++;
-//            }
-//            if (wgt_dim == 1){
-//                k = 0;
-//                for (auto i = 0; i <  g_data->num_edges[indx]; ++i){
-//                    ewgts[k] = g_data->edge_weights[edge_ptr + i];
-//                    k++;
-//                }
-//            }
-//            *ierr = ZOLTAN_OK;
-//        }
+        void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vertices, int num_pins, int format,
+                                   ZOLTAN_ID_PTR vtx_gid, int *vtx_edge_ptr, ZOLTAN_ID_PTR pin_gid, int *ierr) {
+            auto hg_data = (FiniteStateSubset*) data;
+
+            int ns {hg_data->n_species}, nr {hg_data->n_reactions};
+            if ((num_vertices != hg_data->nstate_local) ||
+                (format != ZOLTAN_COMPRESSED_VERTEX)) {
+                *ierr = ZOLTAN_FATAL;
+                std::cout << "zoltan_get_hypergraph fails. \n";
+                return;
+            }
+
+            int pin_ptr{0};
+            for (int i{0}; i < num_vertices; ++i) {
+                if (i == 0){
+                    vtx_edge_ptr[0] = 0;
+                }
+                else{
+                    vtx_edge_ptr[i] = vtx_edge_ptr[i-1] + hg_data->num_local_edges(i-1);
+                }
+                if (pin_ptr != vtx_edge_ptr[i]*ns){
+                    *ierr = ZOLTAN_FATAL;
+                    return;
+                }
+                for (int ii{0}; ii < ns; ++ii){
+                    vtx_gid[i*ns + ii] = (ZOLTAN_ID_TYPE) hg_data->local_states(ii, i);
+                }
+                for (int ir{0}; ir < nr; ++ir){
+                    if (hg_data->local_observable_states_status(ir, i) == 0){
+                        for (int ii{0}; ii < ns; ++ii){
+                            pin_gid[pin_ptr + ii] = (ZOLTAN_ID_TYPE) hg_data->local_observable_states(ir*ns + ii, i);
+                        }
+                        pin_ptr += ns;
+                    }
+                }
+            }
+            vtx_edge_ptr[num_vertices] = arma::sum(hg_data->num_local_edges);
+            *ierr = ZOLTAN_OK;
+        }
+
+        int zoltan_num_edges(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
+                             ZOLTAN_ID_PTR local_id, int *ierr) {
+            auto g_data = (FiniteStateSubset*) data;
+            if ((num_gid_entries != g_data->n_species) || (num_lid_entries != 1)) {
+                *ierr = ZOLTAN_FATAL;
+                return -1;
+            }
+            ZOLTAN_ID_TYPE indx = *local_id;
+            *ierr = ZOLTAN_OK;
+            return g_data->num_local_edges[indx];
+        }
+
+        void zoltan_get_graph_edges(void *data, int num_gid_entries, int num_lid_entries, int num_obj, ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id,
+                int *num_edges, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs, int wgt_dim, float *ewgts, int *ierr){
+            auto g_data = (FiniteStateSubset*) data;
+            if ((num_gid_entries != g_data->n_species) || (num_lid_entries != 1)) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            int n = g_data->nstate_local;
+            int ns = g_data->n_species;
+            int nr = g_data->n_reactions;
+            int nbr_ptr = 0;
+            for (int i{0}; i < n; ++i){
+                for (int ii{0}; ii < ns; ++ii){
+                    global_id[i*ns + ii] = (ZOLTAN_ID_TYPE) g_data->local_states(ii, i);
+                }
+                local_id[i] = (ZOLTAN_ID_TYPE) i;
+                for (int ir{0}; ir < nr; ++ir){
+                    if (g_data->local_observable_states_status(ir, i) == 0){
+                        for (int ii{0}; ii < ns; ++ii){
+                            nbor_global_id[nbr_ptr + ii] = (ZOLTAN_ID_TYPE) g_data->local_observable_states(ir*ns + ii, i);
+                        }
+                        nbr_ptr += ns;
+                    }
+                }
+            }
+            *ierr = ZOLTAN_OK;
+        }
 
         int zoltan_obj_size(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
                             ZOLTAN_ID_PTR local_id, int *ierr) {
