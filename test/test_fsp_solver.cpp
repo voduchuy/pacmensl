@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         FiniteStateSubset& state_set = fsp.GetStateSubset();
         std::vector<arma::Col<PetscReal>> marginals(fsp_size.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i) {
-            marginals[i] = cme::parallel::marginal(state_set, P, i);
+            marginals[i] = state_set.marginal(P, i);
         }
 
         MPI_Comm_rank(PETSC_COMM_WORLD, &rank);

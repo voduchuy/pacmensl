@@ -231,9 +231,9 @@ int main(int argc, char *argv[]) {
                         /* Compute the marginal distributions */
                         Vec P = fsp_solver.GetP();
                         FiniteStateSubset &state_set = fsp_solver.GetStateSubset();
-                        std::vector<arma::Col<PetscReal>> marginals(FSPBounds.n_elem);
+                        std::vector<arma::Col<PetscReal>> marginals(state_set.GetNumSpecies());
                         for (PetscInt i{0}; i < marginals.size(); ++i) {
-                            marginals[i] = cme::parallel::marginal(state_set, P, i);
+                            marginals[i] = state_set.marginal(P, i);
                         }
 
                         MPI_Comm_rank(PETSC_COMM_WORLD, &myRank);

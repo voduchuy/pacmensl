@@ -143,26 +143,16 @@ namespace cme {
             return global_sinks;
         }
 
-        arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species) {
-            MPI_Comm comm;
-            PetscObjectGetComm((PetscObject) P, &comm);
-
+        arma::Col<PetscReal> FiniteStateSubset::marginal(Vec P, PetscInt species) {
             PetscReal *local_data;
             VecGetArray(P, &local_data);
 
-            // Find the maximum size of each dimension
-            arma::Row<int> fsp_dim_local(fsp.n_species), max_num_molecules(fsp.n_species);
-            for (int i{0}; i < fsp.n_species; ++i) {
-                fsp_dim_local(i) = arma::max(fsp.local_states.row(i));
-            }
-            MPI_Allreduce(&fsp_dim_local[0], &max_num_molecules[0], fsp.n_species, MPI_INT, MPI_MAX, comm);
-
-            arma::Col<PetscReal> p_local(local_data, fsp.nstate_local, false, true);
+            arma::Col<PetscReal> p_local(local_data, nstate_local, false, true);
             arma::Col<PetscReal> v(max_num_molecules(species) + 1);
             v.fill(0.0);
 
-            for (PetscInt i{0}; i < fsp.nstate_local; ++i) {
-                v(fsp.local_states(species, i)) += p_local(i);
+            for (PetscInt i{0}; i < nstate_local; ++i) {
+                v(local_states(species, i)) += p_local(i);
             }
 
             MPI_Barrier(comm);
