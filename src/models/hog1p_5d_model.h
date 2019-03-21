@@ -20,6 +20,25 @@ namespace hog1p_cme {
 // parameters for the time-dependent factors
             r1 {6.9e-5}, r2 {7.1e-3}, eta {3.1}, Ahog {9.3e09}, Mhog {6.4e-4};
 
+    // Function to constraint the shape of the FSP
+    void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
+                     double *vals){
+
+        for (int j{0}; j < num_states; ++j){
+            for (int i{0}; i < 5; ++i){
+                vals[num_constrs*j + i] = double(states[num_species*j+i]);
+            }
+            for (int i{0}; i < 4; ++i){
+                vals[num_constrs*j + 5 + i] = double(states[num_species*j]==i)*(double(states[num_species*j+1]) + double(states[num_species*j+3]));
+            }
+            for (int i{0}; i < 4; ++i){
+                vals[num_constrs*j + 9 + i] = double(states[num_species*j]==i)*(double(states[num_species*j+2]) + double(states[num_species*j+4]));
+            }
+        }
+    }
+    arma::Row<double> rhs_constr{3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 10.0, 10.0, 10.0, 2.0, 10.0, 10.0, 10.0};
+    arma::Row<double> expansion_factors{0.0, 0.5, 0.5, 0.5, 0.5, 0.5,0.5, 0.5, 0.5, 0.5,0.5, 0.5, 0.5};
+
 // propensity function
     PetscReal propensity(PetscInt *X, PetscInt k) {
         switch (k) {

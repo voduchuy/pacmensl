@@ -10,13 +10,19 @@ namespace cme {
     namespace parallel {
         FSPSolver::FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type) {
             MPI_Comm_dup(_comm, &comm);
-            partioning_type = _part_type;
+            partitioning_type = _part_type;
             odes_type = _solve_type;
         }
 
 
-        void FSPSolver::SetInitFSPSize(arma::Row<Int> &_fsp_size) {
-            fsp_size = _fsp_size;
+        void FSPSolver::SetInitFSPBounds(arma::Row<double> &_fsp_size) {
+            fsp_bounds = _fsp_size;
+        }
+
+        void FSPSolver::SetFSPConstraintFunctions(
+                fsp_constr_multi_fn *lhs_constr) {
+            fsp_constr_funs = lhs_constr;
+            custom_constraints = true;
         }
 
         void FSPSolver::SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors) {
@@ -69,16 +75,16 @@ namespace cme {
 
                     for (auto i{0}; i < to_expand.n_elem; ++i) {
                         if (to_expand(i) == 1) {
-                            fsp_size(i) = (PetscInt) std::ceil(
-                                    ((PetscReal) fsp_size(i)) * (fsp_expasion_factors(i) + 1.0e0));
+                            fsp_bounds(i) =
+                                    (PetscReal) fsp_bounds(i) * (fsp_expasion_factors(i) + 1.0e0);
                         }
                     }
                     if (verbosity) {
                         PetscPrintf(comm, "\n ------------- \n");
-                        PetscPrintf(comm, "At time t = %.2e expansion to new fsp size: \n",
+                        PetscPrintf(comm, "At time t = %.2f expansion to new fsp size: \n",
                                     ode_solver->GetCurrentTime());
-                        for (auto i{0}; i < fsp_size.n_elem; ++i) {
-                            PetscPrintf(comm, "%d ", fsp_size[i]);
+                        for (auto i{0}; i < fsp_bounds.n_elem; ++i) {
+                            PetscPrintf(comm, "%.2f ", fsp_bounds[i]);
                         }
                         PetscPrintf(comm, "\n ------------- \n");
                     }
@@ -87,10 +93,16 @@ namespace cme {
                     if (log_fsp_events) {
                         CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
                     }
-                    fsp->SetShapeBounds(fsp_size);
+                    fsp->SetShapeBounds(fsp_bounds);
                     fsp->GenerateStatesAndOrdering();
                     if (log_fsp_events) {
                         CHKERRABORT(comm, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
+                    }
+                    if (verbosity) {
+                        PetscPrintf(comm, "\n ------------- \n");
+                        PetscPrintf(comm, "New FSP number of states: %d \n",
+                                    fsp->GetNumGlobalStates());
+                        PetscPrintf(comm, "\n ------------- \n");
                     }
 
                     // Generate the expanded vector and scatter forward the current solution
@@ -99,7 +111,7 @@ namespace cme {
                     }
                     Vec Pnew;
                     VecCreate(comm, &Pnew);
-                    VecSetSizes(Pnew, fsp->GetNumLocalStates() + fsp->GetNumSpecies(), PETSC_DECIDE);
+                    VecSetSizes(Pnew, fsp->GetNumLocalStates() + fsp->GetNumConstraints(), PETSC_DECIDE);
                     VecSetUp(Pnew);
                     VecSet(Pnew, 0.0);
 
@@ -179,7 +191,7 @@ namespace cme {
             assert(stoich_mat.n_elem > 0);
             assert(init_states.n_elem > 0);
             assert(init_probs.n_elem > 0);
-            assert(fsp_size.n_elem > 0);
+            assert(fsp_bounds.n_elem > 0);
 
             PetscErrorCode ierr;
             // Register events if logging is needed
@@ -200,11 +212,17 @@ namespace cme {
 
             fsp = new FiniteStateSubset(comm, stoich_mat.n_rows);
             fsp->SetStoichiometry(stoich_mat);
-            fsp->SetShapeBounds(fsp_size);
+            if (custom_constraints){
+                fsp->SetShape(fsp_constr_funs, fsp_bounds);
+            }
+            else{
+                fsp->SetShapeBounds(fsp_bounds);
+            }
             fsp->SetInitialStates(init_states);
             if (log_fsp_events) {
                 CHKERRABORT(comm, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
             }
+            fsp->SetLBType(partitioning_type);
             fsp->SetRepartApproach(repart_approach);
             fsp->GenerateStatesAndOrdering();
             if (log_fsp_events) {
@@ -235,7 +253,7 @@ namespace cme {
             arma::Row<Int> indices = fsp->State2Petsc(init_states);
             ierr = VecCreate(comm, p);
             CHKERRABORT(comm, ierr);
-            ierr = VecSetSizes(*p, fsp->GetNumSpecies() + fsp->GetNumLocalStates(), PETSC_DECIDE);
+            ierr = VecSetSizes(*p, fsp->GetNumConstraints() + fsp->GetNumLocalStates(), PETSC_DECIDE);
             CHKERRABORT(comm, ierr);
             ierr = VecSetFromOptions(*p);
             CHKERRABORT(comm, ierr);
@@ -317,10 +335,10 @@ namespace cme {
             ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
             CHKERRABORT(comm, ierr);
             if (opt_set) {
-                partioning_type = str2part(std::string(opt));
+                partitioning_type = str2part(std::string(opt));
             }
             if (num_procs == 1) {
-                partioning_type = Graph;
+                partitioning_type = Graph;
             }
 
             ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
@@ -349,6 +367,7 @@ namespace cme {
             }
 
         }
+
 
     }
 }

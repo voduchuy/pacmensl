@@ -31,11 +31,13 @@ namespace cme {
 
             MPI_Comm comm = MPI_COMM_NULL;
 
-            PartitioningType partioning_type = Graph;
+            PartitioningType partitioning_type = Graph;
             PartitioningApproach repart_approach = FromScratch;
             ODESolverType odes_type = CVODE_BDF;
 
-            arma::Row<Int> fsp_size;
+            bool custom_constraints = false;
+            fsp_constr_multi_fn *fsp_constr_funs;
+            arma::Row<double> fsp_bounds;
             arma::Row<Real> fsp_expasion_factors;
 
             FiniteStateSubset *fsp;
@@ -67,7 +69,9 @@ namespace cme {
 
             explicit FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
 
-            void SetInitFSPSize(arma::Row<Int> &_fsp_size);
+            void SetFSPConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
+
+            void SetInitFSPBounds(arma::Row<double> &_fsp_size);
 
             void SetFinalTime(PetscReal t);
 

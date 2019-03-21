@@ -32,8 +32,8 @@ set(TEST_PROGRAMS
         )
 
 set(EXAMPLES
-#        distribute_states
-#        benchmark
+        distribute_states
+        benchmark
 #        multiple_single_core_jobs
         )
 
@@ -50,7 +50,7 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_CXX_COMPILER mpicxx )
-set(CMAKE_CXX_FLAGS " -g -std=c++11")
+set(CMAKE_CXX_FLAGS " -g -std=c++11 -fexceptions")
 
 FIND_PACKAGE(PETSc)
 INCLUDE_DIRECTORIES(${PETSC_INCLUDES})

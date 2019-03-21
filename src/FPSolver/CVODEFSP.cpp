@@ -55,7 +55,7 @@ namespace cme{
             cvode_stat = CVSpilsSetJacTimes(cvode_mem, NULL, &cvode_jac); CVODECHKERR(comm, cvode_stat);
 
             // Advance the temporary solution until either reaching final time or FSP error exceeding tolerance
-            arma::Row<PetscReal> sink_values(fsp->GetNumSpecies());
+            arma::Row<PetscReal> sink_values(fsp->GetNumConstraints());
             PetscBool fsp_accept;
             expand_sink.fill(0);
             while(t_now < t_final){

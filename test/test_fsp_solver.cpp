@@ -40,10 +40,10 @@ int main(int argc, char *argv[]) {
 
     // Begin PETSC context
     {
-        arma::Row<PetscInt> fsp_size = {30, 30};
+        arma::Row<double> fsp_size = {30, 30};
         arma::Row<PetscReal> expansion_factors = {0.25,0.25};
         FSPSolver fsp(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
-        fsp.SetInitFSPSize(fsp_size);
+        fsp.SetInitFSPBounds(fsp_size);
         fsp.SetFSPTolerance(fsp_tol);
         fsp.SetFinalTime(t_final);
         fsp.SetStoichiometry(toggle_cme::SM);

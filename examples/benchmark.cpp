@@ -45,8 +45,9 @@ int main(int argc, char *argv[]) {
                 std::string part_approach;
                 // Default problem
                 std::string model_name = "hog1p";
-                Row<PetscInt> FSPSize({3, 9, 9, 9, 9}); // Size of the FSP
-                arma::Row<PetscReal> expansion_factors = {0.0, 0.5, 0.5, 0.5, 0.5};
+                fsp_constr_multi_fn *FSPConstraintFuns = hog1p_cme::lhs_constr;
+                Row<double> FSPBounds = hog1p_cme::rhs_constr; // Size of the FSP
+                arma::Row<PetscReal> expansion_factors = hog1p_cme::expansion_factors;
                 PetscReal t_final = 60.00 * 5;
                 PetscReal fsp_tol = 1.0e-1;
                 arma::Mat<PetscInt> X0 = {0, 0, 0, 0, 0};
@@ -71,8 +72,9 @@ int main(int argc, char *argv[]) {
                 if (opt_set) {
                     if (strcmp(opt, "transcr_reg_6d") == 0) {
                         model_name = "transcr_reg_6d";
-                        FSPSize = {10, 6, 1, 2, 1, 1}; // Size of the FSP
-                        expansion_factors = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+                        FSPConstraintFuns = six_species_cme::lhs_constr;
+                        FSPBounds = six_species_cme::rhs_constr; // Size of the FSP
+                        expansion_factors = six_species_cme::expansion_factors;
                         t_final = 300.0;
                         fsp_tol = 1.0e-4;
                         X0 = {2, 6, 0, 2, 0, 0};
@@ -84,8 +86,9 @@ int main(int argc, char *argv[]) {
                         PetscPrintf(PETSC_COMM_WORLD, "Problem: Transcription regulation with 6 species.\n");
                     } else if (strcmp(opt, "hog3d") == 0) {
                         model_name = "hog3d";
-                        FSPSize = {3, 10, 10}; // Size of the FSP
-                        expansion_factors = {0.0, 0.5, 0.5};
+                        FSPConstraintFuns = hog3d_cme::lhs_constr;
+                        FSPBounds = hog3d_cme::rhs_constr; // Size of the FSP
+                        expansion_factors = hog3d_cme::expansion_factors;
                         t_final = 60.00 * 15;
                         fsp_tol = 1.0e-6;
                         X0 = {0, 0, 0};
@@ -140,7 +143,8 @@ int main(int argc, char *argv[]) {
 
                 tic = MPI_Wtime();
                 FSPSolver fsp_solver(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
-                fsp_solver.SetInitFSPSize(FSPSize);
+                fsp_solver.SetInitFSPBounds(FSPBounds);
+                fsp_solver.SetFSPConstraintFunctions(FSPConstraintFuns);
                 fsp_solver.SetExpansionFactors(expansion_factors);
                 fsp_solver.SetFSPTolerance(fsp_tol);
                 if (PetscPreLoadIt == 0) {
@@ -227,7 +231,7 @@ int main(int argc, char *argv[]) {
                         /* Compute the marginal distributions */
                         Vec P = fsp_solver.GetP();
                         FiniteStateSubset &state_set = fsp_solver.GetStateSubset();
-                        std::vector<arma::Col<PetscReal>> marginals(FSPSize.n_elem);
+                        std::vector<arma::Col<PetscReal>> marginals(FSPBounds.n_elem);
                         for (PetscInt i{0}; i < marginals.size(); ++i) {
                             marginals[i] = cme::parallel::marginal(state_set, P, i);
                         }

@@ -34,6 +34,7 @@ int main(int argc, char *argv[]) {
     PetscErrorCode ierr;
     std::string model_name, part_option;
     arma::Row<PetscInt> FSPSize;
+    arma::Mat<PetscInt> X0;
     arma::Mat<PetscInt> stoich_mat;
     PartitioningType fsp_par_type;
     std::fstream ofs;
@@ -49,7 +50,6 @@ int main(int argc, char *argv[]) {
         MPI_Comm_size(comm, &num_procs);
         MPI_Comm_rank(comm, &myRank);
         PetscPrintf(comm, "\n ================ \n");
-        std::unique_ptr<FiniteStateSubset> state_set;
 
         // Default options
         model_name = "toggle";
@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
         stoich_mat = toggle_cme::SM;
         part_option = "graph";
         fsp_par_type = Graph;
+        X0.set_size(2, 1); X0.fill(0);
 
         // Read options for fsp
         char opt[100];
@@ -68,16 +69,19 @@ int main(int argc, char *argv[]) {
             if (strcmp(opt, "transcr_reg_6d") == 0) {
                 model_name = "transcr_reg_6d";
                 FSPSize = {10, 6, 1, 2, 1, 1}; // Size of the FSP
+                X0.set_size(6, 1); X0.fill(0);
                 stoich_mat = six_species_cme::SM;
                 PetscPrintf(PETSC_COMM_WORLD, "Problem: Transcription regulation with 6 species.\n");
             } else if (strcmp(opt, "hog5d") == 0) {
                 model_name = "hog1p";
                 FSPSize = {3, 3, 3, 3, 3}; // Size of the FSP
+                X0.set_size(5, 1); X0.fill(0);
                 stoich_mat = hog1p_cme::SM;
                 PetscPrintf(PETSC_COMM_WORLD, "Problem: Hog1p with 5 species.\n");
             } else if (strcmp(opt, "hog3d") == 0) {
                 model_name = "hog3d";
                 FSPSize = {3, 10, 10}; // Size of the FSP
+                X0.set_size(3, 1); X0.fill(0);
                 stoich_mat = hog3d_cme::SM;
                 PetscPrintf(PETSC_COMM_WORLD, "Problem: Hog1p with 3 species.\n");
             } else {
@@ -100,28 +104,15 @@ int main(int argc, char *argv[]) {
         }
         PetscPrintf(comm, "Distributing to %d processors.\n", num_procs);
 
-        if (fsp_par_type == Graph){
-            state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetGraph(comm));
-        }
-        else if (fsp_par_type == RCB){
-            state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetRCB(comm));
-        }
-        else if (fsp_par_type == HyperGraph){
-            state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetHyperGraph(comm));
-        }
-        else if (fsp_par_type == Hierarch){
-            state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetHierarch(comm));
-        }
-        else{
-            state_set = std::unique_ptr<FiniteStateSubset>(new FiniteStateSubsetNaive(comm));
-        }
-        state_set->SetStoichiometry(stoich_mat);
-        state_set->SetSize(FSPSize);
+        FiniteStateSubset state_set(comm, X0.n_rows);
+        state_set.SetStoichiometry(stoich_mat);
+        state_set.SetShapeBounds(FSPSize);
+        state_set.SetInitialStates(X0);
+        state_set.SetLBType(fsp_par_type);
 
-        state_set->GenerateStatesAndOrdering();
-        state_set->ExpandToNewFSPSize(2*FSPSize);
+        state_set.GenerateStatesAndOrdering();
 
-        local_states = state_set->GetLocalStates();
+        local_states = state_set.GetLocalStates();
         local_states = local_states.t();
 
         filename = model_name + "_local_states_" + std::to_string(myRank) + "_of_" + std::to_string(num_procs) + "_" + part_option + ".dat";
