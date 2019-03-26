@@ -102,6 +102,14 @@ int main(int argc, char *argv[]) {
         else{
             PetscPrintf(PETSC_COMM_WORLD, "FSP is partitioned with Graph.\n");
         }
+
+        PartitioningApproach fsp_repart_approach;
+        ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
+        CHKERRQ(ierr);
+        if (opt_set) {
+            fsp_repart_approach = str2partapproach(std::string(opt));
+        }
+
         PetscPrintf(comm, "Distributing to %d processors.\n", num_procs);
 
         FiniteStateSubset state_set(comm, X0.n_rows);
@@ -109,6 +117,7 @@ int main(int argc, char *argv[]) {
         state_set.SetShapeBounds(FSPSize);
         state_set.SetInitialStates(X0);
         state_set.SetLBType(fsp_par_type);
+        state_set.SetRepartApproach(fsp_repart_approach);
 
         state_set.GenerateStatesAndOrdering();
 

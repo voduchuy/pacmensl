@@ -36,7 +36,7 @@ namespace hog1p_cme {
             }
         }
     }
-    arma::Row<double> rhs_constr{3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 10.0, 10.0, 10.0, 2.0, 10.0, 10.0, 10.0};
+    arma::Row<double> rhs_constr{3.0, 10.0, 10.0, 10.0, 10.0, 0.5, 10.0, 10.0, 10.0, 0.5, 10.0, 10.0, 10.0};
     arma::Row<double> expansion_factors{0.0, 0.5, 0.5, 0.5, 0.5, 0.5,0.5, 0.5, 0.5, 0.5,0.5, 0.5, 0.5};
 
 // propensity function

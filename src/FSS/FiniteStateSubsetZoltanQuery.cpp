@@ -107,5 +107,18 @@ namespace cme {
             }
             fss_data->ReceiveZoltanBuffer(num_gid_entries, num_ids, global_ids, sizes, idx, buf, ierr);
         }
+
+        void zoltan_mid_migrate_pp(void *data, int num_gid_entries, int num_lid_entries, int num_import,
+                                   ZOLTAN_ID_PTR import_global_ids, ZOLTAN_ID_PTR import_local_ids, int *import_procs,
+                                   int *import_to_part, int num_export, ZOLTAN_ID_PTR export_global_ids,
+                                   ZOLTAN_ID_PTR export_local_ids, int *export_procs, int *export_to_part, int *ierr) {
+            auto fss_data = (FiniteStateSubset *) data;
+            if (num_gid_entries != 1) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            fss_data->MidMigrationProcessing(num_gid_entries, num_lid_entries, num_import, nullptr, nullptr, nullptr, nullptr, num_export, export_global_ids, export_local_ids, nullptr, nullptr,nullptr);
+            *ierr = ZOLTAN_OK;
+        }
     }
 }

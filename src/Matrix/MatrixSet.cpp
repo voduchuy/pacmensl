@@ -97,16 +97,16 @@ namespace cme {
             out_indices.set_size(n_local_states*n_reactions);
             mat_vals.set_size(n_local_states, n_reactions);
             mat_vals_sinks.set_size(n_local_states, n_reactions);
+            to_sinks.set_size(n_local_states, n_reactions);
             d_nnz.set_size(n_rows_local, n_reactions);
             o_nnz.set_size(n_rows_local, n_reactions);
             d_nnz.fill(1);
             o_nnz.zeros();
             int out_count = 0;
             irnz_off.fill(-1);
-            to_sinks = fsp.GetReachableStateStatus().t();
             for (auto i_reaction{0}; i_reaction < n_reactions; ++i_reaction){
                 can_reach_X = my_X - arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
-                fsp.State2Petsc(can_reach_X, irnz.colptr(i_reaction));
+                fsp.State2Petsc( can_reach_X, irnz.colptr( i_reaction ), true );
                 // Count nnz for rows that represent CME states
                 for (auto i_state{0}; i_state < n_local_states; ++i_state){
                     if (irnz(i_state, i_reaction) >= own_start && irnz(i_state, i_reaction) < own_end){
@@ -123,10 +123,12 @@ namespace cme {
                     }
                 }
                 // Count nnz for rows that represent sink states
+                can_reach_X = my_X + arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
+                fsp.State2Petsc( can_reach_X, to_sinks.colptr( i_reaction ), true );
                 for (auto i_state{0}; i_state < n_local_states; ++i_state){
-                    if (to_sinks(i_state, i_reaction) > 0){ // state i_state can reach a sink state
-                        d_nnz(n_rows_local - to_sinks(i_state,i_reaction), i_reaction) += 1;
-                        to_sinks(i_state, i_reaction) = own_end - to_sinks(i_state,i_reaction);
+                    if (to_sinks(i_state, i_reaction) < -1){ // state i_state can reach a sink state
+                        d_nnz(n_rows_local + 1 + to_sinks(i_state,i_reaction), i_reaction) += 1;
+                        to_sinks(i_state, i_reaction) = own_end + 1 + to_sinks(i_state,i_reaction);
                         mat_vals_sinks(i_state, i_reaction) = prop(my_X.colptr(i_state), i_reaction);
                     }
                     else{

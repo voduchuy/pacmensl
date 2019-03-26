@@ -77,12 +77,12 @@ int main(int argc, char *argv[]) {
             return;
         };
         arma::Mat<PetscInt> local_states = fsp.GetLocalStates();
-        arma::Row<PetscInt> petsc_indices = fsp.State2Petsc(local_states);
+        arma::Row<PetscInt> petsc_indices = fsp.State2Petsc( local_states, false );
         arma::Mat<PetscInt> local_table = arma::join_horiz(local_states.t(), petsc_indices.t());
         sequential_action(comm, print_states, (void *) &local_table);
         fsp.GenerateStatesAndOrdering();
         local_states = fsp.GetLocalStates();
-        petsc_indices = fsp.State2Petsc(local_states);
+        petsc_indices = fsp.State2Petsc( local_states, false );
         local_table = arma::join_horiz(local_states.t(), petsc_indices.t());
         sequential_action(comm, print_states, (void *) &local_table);
 

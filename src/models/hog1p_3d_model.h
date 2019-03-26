@@ -27,7 +27,6 @@ namespace hog3d_cme {
             vals[i*num_constrs] = double(states[num_species*i]);
             vals[i*num_constrs + 1] = double(states[num_species*i+1]);
             vals[i*num_constrs + 2] = double(states[num_species*i+2]);
-            vals[i*num_constrs + 3] = double(states[num_species*i+3]);
             vals[i*num_constrs + 3] = double(states[num_species*i]==0)*(double(states[num_species*i+1]) + double(states[num_species*i+2]));
             vals[i*num_constrs + 4] = double(states[num_species*i]==1)*(double(states[num_species*i+1]) + double(states[num_species*i+2]));
             vals[i*num_constrs + 5] = double(states[num_species*i]==2)*(double(states[num_species*i+1]) + double(states[num_species*i+2]));

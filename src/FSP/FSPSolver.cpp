@@ -116,7 +116,7 @@ namespace cme {
                     VecSet(Pnew, 0.0);
 
                     IS new_locations;
-                    arma::Row<Int> new_states_locations = fsp->State2Petsc(states_old);
+                    arma::Row<Int> new_states_locations = fsp->State2Petsc( states_old, true );
                     arma::Row<Int> new_sinks_locations(to_expand.n_elem);
                     Int i_end_new;
                     ierr = VecGetOwnershipRange(Pnew, NULL, &i_end_new);
@@ -250,7 +250,7 @@ namespace cme {
             }
 
             p = new Vec;
-            arma::Row<Int> indices = fsp->State2Petsc(init_states);
+            arma::Row<Int> indices = fsp->State2Petsc( init_states, true );
             ierr = VecCreate(comm, p);
             CHKERRABORT(comm, ierr);
             ierr = VecSetSizes(*p, fsp->GetNumConstraints() + fsp->GetNumLocalStates(), PETSC_DECIDE);

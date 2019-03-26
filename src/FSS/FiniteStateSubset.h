@@ -72,31 +72,19 @@ namespace cme {
              */
             arma::Row<PetscInt> local_states_status;
 
-            /// Armadillo array to store states reachable from the local states, alongside their statuses
-            /**
-             * The first N*M rows store reachable states, with N = number of species and M = number of reactions.
-             * Entries (i*N .. (i+1)*N-1, j) storing the state reachable
-             * from the j-th local state via the i-th chemical reaction.
-             */
-            arma::Mat<PetscInt> local_reachable_states;
-
-            /// Armadillo array to store the status of the reachable states
-            /**
-             * Status = i if the (i-1)-th constraint was not satisfied. Otherwise status = 0.
-             */
-            arma::Mat<PetscInt> local_reachable_states_status;
-
             /// PETSc vector layout for the probability distribution
             PetscLayout state_layout = nullptr;
+            PetscLayout state_layout_no_sinks = nullptr;
 
             /// Variable to store local ids of frontier states
             arma::uvec frontier_lids;
 
             /// Information for graph/hypergraph-based load-balancing methods
+            arma::Row<PetscInt> local_graph_gids;
             /// States that can reach on-processor states via a chemical reaction
             arma::Mat<PetscInt> local_observable_states;
-            /// Observable states status
-            arma::Mat<PetscInt> local_observable_states_status;
+            arma::Mat<PetscInt> local_reachable_states;
+
             /// Number of edges connected to the local states
             arma::Row<PetscInt> num_local_edges;
             /// State's weights
@@ -150,7 +138,7 @@ namespace cme {
              * @param x
              * @return 0 if x satisfies all constraints; otherwise i+1 where i is the index of the first constraint violated by x.
              */
-            inline int CheckConstraints(arma::Col<PetscInt> &x);
+            inline PetscInt CheckConstraints( PetscInt *x );
 
 
             /// Maximum molecules of the state space
@@ -163,13 +151,15 @@ namespace cme {
             /**
              * Call level: collective.
              */
-            void update_max_num_molecules();
+            inline void UpdateMaxNumMolecules();
 
             /// Generate local graph/hypergraph data
             /**
              * Call level: local.
              */
-            void GenerateGraphData();
+            inline void GenerateGraphData();
+
+            inline void UpdateLayouts();
 
         public:
 
@@ -197,12 +187,24 @@ namespace cme {
              */
             void SetInitialStates(arma::Mat<PetscInt> X0);
 
+            /// Expand from the existing states to all reachable states that satisfy the constraints.
+            /**
+             * Call level: collective.
+             * This function also distribute the states into the processors to improve the load-balance of matrix-vector multplications.
+             */
             void GenerateStatesAndOrdering();
 
-            arma::Row<PetscInt> State2Petsc(arma::Mat<PetscInt> state);
+            /// Generate the indices of the states in the Petsc vector ordering.
+            /**
+             * Call level: collective.
+             * @param state: matrix of input states. Each column represent a state. Each processor inputs its own set of states.
+             * @return Armadillo row vector of indices. The index of each state is nonzero of the state is a member of the finite state subset. Otherwise, the index is -1 (if state does not exist in the subset, or some entries of the state are 0) or -2-i if the state violates constraint i.
+             */
+            arma::Row< PetscInt > State2Petsc( arma::Mat< PetscInt > state, bool count_sinks = true );
 
-            void State2Petsc(arma::Mat<PetscInt> state, PetscInt *indx);
+            void State2Petsc( arma::Mat< PetscInt > state, PetscInt *indx, bool count_sinks = true);
 
+            ///
             arma::Row<PetscReal> SinkStatesReduce(Vec P);
 
             /// Getters
@@ -248,6 +250,21 @@ namespace cme {
             ReceiveZoltanBuffer(int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids, int *sizes,
                                 int *idx, char *buf, int *ierr);
 
+            void MidMigrationProcessing(
+                    int num_gid_entries,
+                    int num_lid_entries,
+                    int num_import,
+                    ZOLTAN_ID_PTR import_global_ids,
+                    ZOLTAN_ID_PTR import_local_ids,
+                    int *import_procs,
+                    int *import_to_part,
+                    int num_export,
+                    ZOLTAN_ID_PTR export_global_ids,
+                    ZOLTAN_ID_PTR export_local_ids,
+                    int *export_procs,
+                    int *export_to_part,
+                    int *ierr);
+
 
             int GiveZoltanNumFrontier();
 
@@ -271,11 +288,10 @@ namespace cme {
                                       int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr,
                                       ZOLTAN_ID_PTR pin_gid, int *ierr);
 
-            friend arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
+            /// Compute the marginal distributions from a given finite state subset and parallel probability vector
+            arma::Col<PetscReal> marginal(Vec P, PetscInt species);
         };
 
-        /// Compute the marginal distributions from a given finite state subset and parallel probability vector
-        arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
 
         /*
          * Helper functions to convert back and forth between partitioning options and string
