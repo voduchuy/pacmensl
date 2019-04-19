@@ -39,7 +39,7 @@ namespace cme{
             PetscReal abs_tol = 1.0e-8;
             int cvode_stat;
         public:
-            explicit CVODEFSP(MPI_Comm _comm, int lmm = CV_BDF, int iter = CV_NEWTON);
+            explicit CVODEFSP( MPI_Comm _comm, int lmm = CV_BDF );
             void SetCVodeTolerances(PetscReal _r_tol, PetscReal _abs_tol);
 
             PetscInt Solve() override;

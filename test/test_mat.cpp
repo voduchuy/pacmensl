@@ -12,6 +12,7 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<petscao.h>
 #include<armadillo>
 #include"models/toggle_model.h"
+#include"models/repressilator_model.h"
 #include"util/cme_util.h"
 #include"FSS/FiniteStateSubset.h"
 #include"Matrix/MatrixSet.h"
@@ -40,17 +41,29 @@ int main(int argc, char *argv[]) {
 
     double Q_sum;
     {
-        arma::Mat<PetscInt> X0(2, 1); X0.fill(0);
-        FiniteStateSubset fsp(PETSC_COMM_WORLD, 2);
+//        arma::Mat<PetscInt> X0(2, 1); X0.fill(0);
+//        FiniteStateSubset fsp(PETSC_COMM_WORLD, 2);
+//        fsp.SetLBType(fsp_par_type);
+//        fsp.SetShapeBounds(fsp_size);
+//        fsp.SetStoichiometry(toggle_cme::SM);
+//        fsp.SetInitialStates(X0);
+//        fsp.GenerateStatesAndOrdering();
+//        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated.\n");
+//
+//        MatrixSet A(PETSC_COMM_WORLD);
+//        A.GenerateMatrices(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
+        arma::Mat<PetscInt> X0(3, 1); X0.fill(0); X0(0) = 20;
+        FiniteStateSubset fsp(PETSC_COMM_WORLD, 3);
         fsp.SetLBType(fsp_par_type);
-        fsp.SetShapeBounds(fsp_size);
-        fsp.SetStoichiometry(toggle_cme::SM);
+        fsp.SetShape(&repressilator_cme::lhs_constr, repressilator_cme::rhs_constr);
+//        fsp.SetShapeBounds(fsp_size);
+        fsp.SetStoichiometry(repressilator_cme::SM);
         fsp.SetInitialStates(X0);
         fsp.GenerateStatesAndOrdering();
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated.\n");
 
         MatrixSet A(PETSC_COMM_WORLD);
-        A.GenerateMatrices(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
+        A.GenerateMatrices(fsp, repressilator_cme::SM, repressilator_cme::propensity, repressilator_cme::t_fun);
 
         Vec P, Q;
         VecCreate(PETSC_COMM_WORLD, &P);

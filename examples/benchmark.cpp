@@ -8,6 +8,8 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <armadillo>
 #include <cmath>
 #include "FSP/FSPSolver.h"
+
+#include "models/repressilator_model.h"
 #include "models/toggle_model.h"
 #include "models/hog1p_5d_model.h"
 #include "models/transcription_regulation_6d_model.h"
@@ -49,7 +51,7 @@ int main( int argc, char *argv[] ) {
                 Row< double > FSPBounds = hog1p_cme::rhs_constr; // Size of the FSP
                 arma::Row< PetscReal > expansion_factors = hog1p_cme::expansion_factors;
                 PetscReal t_final = 60.00 * 5;
-                PetscReal fsp_tol = 1.0e-1;
+                PetscReal fsp_tol = 1.0e-6;
                 arma::Mat< PetscInt > X0 = {0, 0, 0, 0, 0};
                 X0 = X0.t( );
                 arma::Col< PetscReal > p0 = {1.0};
@@ -98,6 +100,20 @@ int main( int argc, char *argv[] ) {
                         t_fun = hog3d_cme::t_fun;
                         propensity = hog3d_cme::propensity;
                         PetscPrintf( PETSC_COMM_WORLD, "Problem: Hog1p with 3 species.\n" );
+                    } else if ( strcmp (opt, "repressilator") == 0){
+                        model_name = "repressilator";
+                        FSPConstraintFuns = repressilator_cme::lhs_constr;
+                        FSPBounds = repressilator_cme::rhs_constr; // Size of the FSP
+                        expansion_factors = repressilator_cme::expansion_factors;
+                        t_final = 10.0;
+                        fsp_tol = 1.0e-6;
+                        X0 = {20, 0, 0};
+                        X0 = X0.t( );
+                        p0 = {1.0};
+                        stoich_mat = repressilator_cme::SM;
+                        t_fun = repressilator_cme::t_fun;
+                        propensity = repressilator_cme::propensity;
+                        PetscPrintf( PETSC_COMM_WORLD, "Problem: Repressilator with 3 species.\n" );
                     } else {
                         PetscPrintf( PETSC_COMM_WORLD, "Problem: Hog1p with 5 species.\n" );
                     }

@@ -15,11 +15,11 @@ namespace cme {
         typedef void fsp_constr_multi_fn(int n_species, int n_constraints, int n_states, int *states, double *output);
 
         enum PartitioningType {
-            Graph, HyperGraph
+            Block, Graph, HyperGraph
         };
 
         enum PartitioningApproach {
-            FromScratch, Repartition
+            FromScratch, Repartition, Refine
         };
 
         /// Base class for the Finite State Subset object.
@@ -38,6 +38,7 @@ namespace cme {
             int stoich_set = 0;
 
             MPI_Comm comm;
+            PetscInt comm_size;
             PartitioningType partitioning_type = Graph;
             PartitioningApproach repart_approach = Repartition;
 
@@ -102,7 +103,7 @@ namespace cme {
             /// Zoltan struct for load-balancing the state space search
             Zoltan_Struct *zoltan_explore;
 
-            std::string zoltan_part_opt = std::string("REPARTITION");
+            std::string zoltan_repart_opt = std::string("REPARTITION");
 
             /* Private functions */
 
@@ -159,7 +160,19 @@ namespace cme {
              */
             inline void GenerateGraphData();
 
+            /// Decide whether to run Graph/Hypergraph partitioning algorithms
+
+            /// Update the parallel solution vector layout
+            /**
+             * Call lvel: collective.
+             */
             inline void UpdateLayouts();
+
+            /// Update the distributed directory of states (after FSP expansion, Load-balancing...)
+            /**
+             * Call lvel: collective.
+             */
+            inline void UpdateDD();
 
         public:
 

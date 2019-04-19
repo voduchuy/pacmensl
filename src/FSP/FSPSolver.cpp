@@ -267,7 +267,7 @@ namespace cme {
             ierr = VecAssemblyEnd(*p);
             CHKERRABORT(comm, ierr);
 
-            ode_solver = new CVODEFSP(PETSC_COMM_WORLD, CV_BDF, CV_NEWTON);
+            ode_solver = new CVODEFSP( PETSC_COMM_WORLD, CV_BDF );
             ode_solver->SetFinalTime(t_final);
             ode_solver->SetFSPTolerance(fsp_tol);
             ode_solver->SetInitSolution(p);

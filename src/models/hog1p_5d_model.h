@@ -15,8 +15,12 @@ namespace hog1p_cme {
 // reaction parameters
     const PetscReal k12 {1.29}, k21 {1.0e0}, k23 {0.0067},
             k32 {0.027}, k34 {0.133}, k43 {0.0381},
-            kr2 {0.0116}, kr3 {0.987}, kr4 {0.0538},
-            trans {0.01}, gamma {0.0049},
+            kr2 {0.005}, kr3 {0.45}, kr4 {0.025},
+            trans {0.001}, gamma {0.0049},
+//    const PetscReal k12 {1.29}, k21 {1.0e0}, k23 {0.0067},
+//            k32 {0.027}, k34 {0.133}, k43 {0.0381},
+//            kr2 {0.0116}, kr3 {0.987}, kr4 {0.0538},
+//            trans {0.01}, gamma {0.0049},
 // parameters for the time-dependent factors
             r1 {6.9e-5}, r2 {7.1e-3}, eta {3.1}, Ahog {9.3e09}, Mhog {6.4e-4};
 

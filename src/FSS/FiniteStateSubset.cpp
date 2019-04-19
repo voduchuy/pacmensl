@@ -10,6 +10,7 @@ namespace cme {
         FiniteStateSubset::FiniteStateSubset( MPI_Comm new_comm, PetscInt num_species ) {
             PetscErrorCode ierr;
             MPI_Comm_dup( new_comm, &comm );
+            MPI_Comm_size( comm, &comm_size );
             n_species = num_species;
             max_num_molecules.set_size( n_species );
             local_states.resize( n_species, 0 );
@@ -55,16 +56,7 @@ namespace cme {
 
         void FiniteStateSubset::SetRepartApproach( PartitioningApproach approach ) {
             repart_approach = approach;
-            switch ( approach ) {
-                case FromScratch:
-                    zoltan_part_opt = "PARTITION";
-                    break;
-                case Repartition:
-                    zoltan_part_opt = "REPARTITION";
-                    break;
-                default:
-                    break;
-            }
+            zoltan_repart_opt = partapproach2str( repart_approach );
         }
 
         void FiniteStateSubset::SetShape(
@@ -177,6 +169,7 @@ namespace cme {
 
         void FiniteStateSubset::GenerateStatesAndOrdering( ) {
             InitZoltanParameters( );
+
             bool frontier_empty;
             int my_rank;
             MPI_Comm_rank( comm, &my_rank );
@@ -233,7 +226,17 @@ namespace cme {
                     frontier_empty = ( n2 == 0 );
                 }
             }
+            // Quickly distribute the recently added states equally to all processors
+            DistributeFrontier( );
             // Repartition the state set
+            if ( partitioning_type == Graph ) {
+                PetscMPIInt n_local_min;
+                PetscMPIInt n_local = ( PetscMPIInt ) nstate_local;
+                MPI_Allreduce( &n_local, &n_local_min, 1, MPI_INT, MPI_MIN, comm );
+                if ( n_local_min == 0 ) {
+                    Zoltan_Set_Param( zoltan_lb, "LB_METHOD", "Block" );
+                }
+            }
             PetscPrintf( comm, "Repartitioning...\n" );
             LoadBalance( );
             for ( int i{0}; i < nstate_local; ++i ) {
@@ -269,24 +272,15 @@ namespace cme {
             frontier_lids = arma::find( local_states_status == 1 );
 
             UpdateLayouts( );
-
-            // Update hash table
-            auto local_dd_gids = arma::conv_to< arma::Mat< ZOLTAN_ID_TYPE>>::from( local_states );
-            arma::Row< ZOLTAN_ID_TYPE > lids;
-            if ( nstate_local > 0 ) {
-                lids = arma::regspace< arma::Row< ZOLTAN_ID_TYPE>>( 0, nstate_local - 1 );
-            } else {
-                lids.set_size( 0 );
-            }
-            zoltan_err = Zoltan_DD_Update( state_directory, &local_dd_gids[ 0 ], &lids[ 0 ], nullptr, nullptr,
-                                           nstate_local );
-            ZOLTANCHKERRABORT( comm, zoltan_err );
+            UpdateDD( );
 
             Zoltan_LB_Free_Part( &import_global_ids, &import_local_ids, &import_procs, &import_to_part );
             Zoltan_LB_Free_Part( &export_global_ids, &export_local_ids, &export_procs, &export_to_part );
         }
 
         void FiniteStateSubset::LoadBalance( ) {
+            if ( partitioning_type == Block ) return;
+
             PetscLogEventBegin( generate_graph_data, 0, 0, 0, 0 );
             GenerateGraphData( );
             PetscLogEventEnd( generate_graph_data, 0, 0, 0, 0 );
@@ -311,18 +305,7 @@ namespace cme {
             frontier_lids = arma::find( local_states_status == 1 );
 
             UpdateLayouts( );
-
-            // Update hash table
-            auto local_dd_gids = arma::conv_to< arma::Mat< ZOLTAN_ID_TYPE>>::from( local_states );
-            arma::Row< ZOLTAN_ID_TYPE > lids;
-            if ( nstate_local > 0 ) {
-                lids = arma::regspace< arma::Row< ZOLTAN_ID_TYPE>>( 0, nstate_local - 1 );
-            } else {
-                lids.set_size( 0 );
-            }
-            zoltan_err = Zoltan_DD_Update( state_directory, &local_dd_gids[ 0 ], &lids[ 0 ], nullptr, nullptr,
-                                           nstate_local );
-            ZOLTANCHKERRABORT( comm, zoltan_err );
+            UpdateDD( );
 
             Zoltan_LB_Free_Part( &import_global_ids, &import_local_ids, &import_procs, &import_to_part );
             Zoltan_LB_Free_Part( &export_global_ids, &export_local_ids, &export_procs, &export_to_part );
@@ -376,24 +359,14 @@ namespace cme {
             PetscMPIInt nsglobal;
             MPI_Allreduce( &nslocal, &nsglobal, 1, MPI_INT, MPI_SUM, comm );
             nstate_global = nsglobal;
-            // Update local ids
-            local_dd_gids = arma::conv_to< arma::Mat< ZOLTAN_ID_TYPE>>::from( local_states );
-
-            arma::Row< ZOLTAN_ID_TYPE > lids;
-            if ( nstate_local > 0 ) {
-                lids = arma::regspace< arma::Row< ZOLTAN_ID_TYPE>>( 0, nstate_local - 1 );
-            } else {
-                lids.set_size( 0 );
-            }
-            zoltan_err = Zoltan_DD_Update( state_directory, &local_dd_gids[ 0 ], &lids[ 0 ], nullptr, nullptr,
-                                           nstate_local );
-            ZOLTANCHKERRABORT( comm, zoltan_err );
-
-            // Store the local indices of frontier states
-            frontier_lids = arma::find( local_states_status == 1 );
 
             // Update layout
             UpdateLayouts( );
+            // Update local ids
+            UpdateDD( );
+
+            // Store the local indices of frontier states
+            frontier_lids = arma::find( local_states_status == 1 );
         }
 
         void FiniteStateSubset::UpdateMaxNumMolecules( ) {
@@ -482,7 +455,7 @@ namespace cme {
             // Parameters for state exploration load-balancing
             Zoltan_Set_Param( zoltan_explore, "NUM_GID_ENTRIES", "1" );
             Zoltan_Set_Param( zoltan_explore, "NUM_LID_ENTRIES", "1" );
-            Zoltan_Set_Param( zoltan_explore, "IMBALANCE_TOL", "1.1" );
+            Zoltan_Set_Param( zoltan_explore, "IMBALANCE_TOL", "1.01" );
             Zoltan_Set_Param( zoltan_explore, "AUTO_MIGRATE", "1" );
             Zoltan_Set_Param( zoltan_explore, "RETURN_LISTS", "ALL" );
             Zoltan_Set_Param( zoltan_explore, "DEBUG_LEVEL", "0" );
@@ -501,7 +474,8 @@ namespace cme {
             Zoltan_Set_Param( zoltan_lb, "RETURN_LISTS", "ALL" );
             Zoltan_Set_Param( zoltan_lb, "DEBUG_LEVEL", "3" );
             // This imbalance tolerance is universal for all methods
-            Zoltan_Set_Param( zoltan_lb, "IMBALANCE_TOL", "1.1" );
+            Zoltan_Set_Param( zoltan_lb, "IMBALANCE_TOL", "1.01" );
+            Zoltan_Set_Param( zoltan_lb, "LB_APPROACH", zoltan_repart_opt.c_str( ));
 
             Zoltan_Set_Param( zoltan_lb, "GRAPH_BUILD_TYPE", "FAST_NO_DUP" );
             // Register query functions to zoltan_lb
@@ -517,6 +491,9 @@ namespace cme {
             Zoltan_Set_HG_CS_Fn( zoltan_lb, &zoltan_get_hypergraph, ( void * ) this );
 
             switch ( partitioning_type ) {
+                case Block:
+                    Zoltan_Set_Param( zoltan_lb, "LB_METHOD", "Block" );
+                    break;
                 case Graph:
                     Zoltan_Set_Param( zoltan_lb, "LB_METHOD", "GRAPH" );
                     Zoltan_Set_Param( zoltan_lb, "GRAPH_PACKAGE", "Parmetis" );
@@ -524,24 +501,19 @@ namespace cme {
                     Zoltan_Set_Param( zoltan_lb, "EDGE_WEIGHT_DIM", "0" );
                     Zoltan_Set_Param( zoltan_lb, "CHECK_GRAPH", "0" );
                     Zoltan_Set_Param( zoltan_lb, "GRAPH_SYMMETRIZE", "NONE" );
-                    Zoltan_Set_Param( zoltan_lb, "PARMETIS_ITR", "100" );
-                    if ( repart_approach == Repartition ) {
-                        Zoltan_Set_Param( zoltan_lb, "PARMETIS_METHOD", "AdaptiveRepart" );
-                        Zoltan_Set_Param( zoltan_lb, "LB_APPROACH", "REPARTITION" );
-                    } else {
-                        Zoltan_Set_Param( zoltan_lb, "LB_APPROACH", zoltan_part_opt.c_str( ));
-                    }
+                    Zoltan_Set_Param( zoltan_lb, "PARMETIS_ITR", "1000" );
                     break;
                 case HyperGraph:
                     Zoltan_Set_Param( zoltan_lb, "LB_METHOD", "HYPERGRAPH" );
                     Zoltan_Set_Param( zoltan_lb, "HYPERGRAPH_PACKAGE", "PHG" );
+                    Zoltan_Set_Param( zoltan_lb, "PHG_CUT_OBJECTIVE", "CONNECTIVITY" );
                     Zoltan_Set_Param( zoltan_lb, "CHECK_HYPERGRAPH", "0" );
-                    Zoltan_Set_Param( zoltan_lb, "PHG_REPART_MULTIPLIER", "100" );
+                    Zoltan_Set_Param( zoltan_lb, "PHG_REPART_MULTIPLIER", "1000" );
                     Zoltan_Set_Param( zoltan_lb, "PHG_RANDOMIZE_INPUT", "1" );
                     Zoltan_Set_Param( zoltan_lb, "OBJ_WEIGHT_DIM", "1" );
-                    Zoltan_Set_Param( zoltan_lb, "PHG_COARSENING_METHOD", "A-IPM" );
+                    Zoltan_Set_Param( zoltan_lb, "PHG_COARSENING_METHOD", "AGG" );
                     Zoltan_Set_Param( zoltan_lb, "EDGE_WEIGHT_DIM", "0" );// use Zoltan default hyperedge weights
-                    Zoltan_Set_Param( zoltan_lb, "LB_APPROACH", zoltan_part_opt.c_str( ));
+                    Zoltan_Set_Param( zoltan_lb, "PHG_EDGE_WEIGHT_OPERATION", "ADD" );
                     break;
             }
         }
@@ -551,7 +523,7 @@ namespace cme {
             arma::Row< PetscInt > iconstr( state.n_cols );
 
             for ( int i{0}; i < state.n_cols; ++i ) {
-                iconstr( i ) = CheckConstraints( state.colptr(i));
+                iconstr( i ) = CheckConstraints( state.colptr( i ));
                 if ( iconstr( i ) < 0 ) {
                     indices( i ) = iconstr( i );
                 }
@@ -792,9 +764,9 @@ namespace cme {
                 }
             }
 
-            if (wgt_dim == 1){
-                for (int i{0}; i < nstate_local; ++i){
-                    ewgts[i] = 1.0f*sizeof(PetscReal);
+            if ( wgt_dim == 1 ) {
+                for ( int i{0}; i < nstate_local; ++i ) {
+                    ewgts[ i ] = 1.0f * sizeof( PetscReal );
                 }
             }
             *ierr = ZOLTAN_OK;
@@ -815,7 +787,7 @@ namespace cme {
                 if ( i == 0 ) {
                     vtx_edge_ptr[ 0 ] = 0;
                 } else {
-                    vtx_edge_ptr[ i ] = vtx_edge_ptr[ i - 1 ] + num_local_edges( i - 1 );
+                    vtx_edge_ptr[ i ] = vtx_edge_ptr[ i - 1 ] + num_local_edges( i - 1 ) + 1;
                 }
 
                 vtx_gid[ i ] = local_graph_gids( i );
@@ -831,7 +803,6 @@ namespace cme {
                     }
                 }
             }
-            vtx_edge_ptr[ num_vertices ] = arma::sum( num_local_edges );
             *ierr = ZOLTAN_OK;
         }
 
@@ -857,6 +828,22 @@ namespace cme {
             CHKERRABORT( comm, ierr );
         }
 
+        void FiniteStateSubset::UpdateDD( ) {
+            int zoltan_err;
+            // Update hash table
+            auto local_dd_gids = arma::conv_to< arma::Mat< ZOLTAN_ID_TYPE>>::from( local_states );
+            arma::Row< ZOLTAN_ID_TYPE > lids;
+            if ( nstate_local > 0 ) {
+                lids = arma::regspace< arma::Row< ZOLTAN_ID_TYPE>>( 0, nstate_local - 1 );
+            } else {
+                lids.set_size( 0 );
+            }
+            zoltan_err = Zoltan_DD_Update( state_directory, &local_dd_gids[ 0 ], &lids[ 0 ], nullptr, nullptr,
+                                           nstate_local );
+            ZOLTANCHKERRABORT( comm, zoltan_err );
+        }
+
+
         /*
          * Helper functions for option parsing
          */
@@ -865,30 +852,32 @@ namespace cme {
         std::string part2str( PartitioningType part ) {
             switch ( part ) {
                 case Graph:
-                    return std::string( "graph" );
+                    return std::string( "Graph" );
                 case HyperGraph:
-                    return std::string( "hyper_graph" );
+                    return std::string( "Hyper-graph" );
                 default:
-                    return std::string( "graph" );
+                    return std::string( "Block" );
             }
         }
 
         PartitioningType str2part( std::string str ) {
             if ( str == "graph" || str == "Graph" || str == "GRAPH" ) {
                 return Graph;
-            } else {
+            } else if ( str == "hypergraph" || str == "HyperGraph" || str == "HYPERGRAPH" ) {
                 return HyperGraph;
+            } else {
+                return Block;
             }
         }
 
         std::string partapproach2str( PartitioningApproach part_approach ) {
             switch ( part_approach ) {
                 case FromScratch:
-                    return std::string( "from_scratch" );
+                    return std::string( "fromscratch" );
                 case Repartition:
-                    return std::string( "repart" );
+                    return std::string( "repartition" );
                 default:
-                    return std::string( "from_scratch" );
+                    return std::string( "refine" );
             }
         }
 
@@ -899,7 +888,7 @@ namespace cme {
                         str == "Repartition" ) {
                 return Repartition;
             } else {
-                return FromScratch;
+                return Refine;
             }
         }
     }
