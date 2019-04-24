@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
     // Begin PETSC context
     {
-        arma::Row<double> fsp_size = {30, 30};
+        arma::Row<int> fsp_size = {30, 30};
         arma::Row<PetscReal> expansion_factors = {0.25,0.25};
         FSPSolver fsp(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
         fsp.SetInitFSPBounds(fsp_size);

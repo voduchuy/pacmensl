@@ -48,10 +48,10 @@ int main( int argc, char *argv[] ) {
                 // Default problem
                 std::string model_name = "hog1p";
                 fsp_constr_multi_fn *FSPConstraintFuns = hog1p_cme::lhs_constr;
-                Row< double > FSPBounds = hog1p_cme::rhs_constr; // Size of the FSP
+                Row< int > FSPBounds = hog1p_cme::rhs_constr; // Size of the FSP
                 arma::Row< PetscReal > expansion_factors = hog1p_cme::expansion_factors;
                 PetscReal t_final = 60.00 * 5;
-                PetscReal fsp_tol = 1.0e-6;
+                PetscReal fsp_tol = 1.0e-4;
                 arma::Mat< PetscInt > X0 = {0, 0, 0, 0, 0};
                 X0 = X0.t( );
                 arma::Col< PetscReal > p0 = {1.0};
@@ -92,7 +92,7 @@ int main( int argc, char *argv[] ) {
                         FSPBounds = hog3d_cme::rhs_constr; // Size of the FSP
                         expansion_factors = hog3d_cme::expansion_factors;
                         t_final = 60.00 * 15;
-                        fsp_tol = 1.0e-6;
+                        fsp_tol = 1.0e-4;
                         X0 = {0, 0, 0};
                         X0 = X0.t( );
                         p0 = {1.0};
@@ -106,7 +106,7 @@ int main( int argc, char *argv[] ) {
                         FSPBounds = repressilator_cme::rhs_constr; // Size of the FSP
                         expansion_factors = repressilator_cme::expansion_factors;
                         t_final = 10.0;
-                        fsp_tol = 1.0e-6;
+                        fsp_tol = 1.0e-4;
                         X0 = {20, 0, 0};
                         X0 = X0.t( );
                         p0 = {1.0};

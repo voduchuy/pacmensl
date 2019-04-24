@@ -47,6 +47,48 @@ namespace cme {
                 ZOLTAN_ID_PTR local_id,
                 int *ierr);
 
+        /// Zoltan interface to pack frontiers for migrating
+        void zoltan_pack_frontiers (
+                void *data,
+                int num_gid_entries,
+                int num_lid_entries,
+                int num_ids,
+                ZOLTAN_ID_PTR global_ids,
+                ZOLTAN_ID_PTR local_ids,
+                int *dest,
+                int *sizes,
+                int *idx,
+                char *buf,
+                int *ierr);
+
+        /// Zoltan interface for processing local data structure mid-migration
+        void zoltan_frontiers_mid_migrate_pp(
+                void *data,
+                int num_gid_entries,
+                int num_lid_entries,
+                int num_import,
+                ZOLTAN_ID_PTR import_global_ids,
+                ZOLTAN_ID_PTR import_local_ids,
+                int *import_procs,
+                int *import_to_part,
+                int num_export,
+                ZOLTAN_ID_PTR export_global_ids,
+                ZOLTAN_ID_PTR export_local_ids,
+                int *export_procs,
+                int *export_to_part,
+                int *ierr);
+
+        /// Zoltan interface to unpack states migrated from other processors
+        void zoltan_unpack_frontiers (
+                void *data,
+                int num_gid_entries,
+                int num_ids,
+                ZOLTAN_ID_PTR global_ids,
+                int *sizes,
+                int *idx,
+                char *buf,
+                int *ierr);
+
         /// Zoltan interface to pack states for migrating
         void zoltan_pack_states (
                 void *data,

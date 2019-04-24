@@ -30,7 +30,7 @@ namespace cme {
         protected:
             MPI_Comm comm{MPI_COMM_NULL};
 
-            arma::Row<double> fsp_bounds;
+            arma::Row<int> fsp_bounds;
 
             Int n_reactions;
             Int n_rows_global;

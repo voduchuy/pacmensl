@@ -9,6 +9,7 @@ set(UTIL_LIBS
 set(FSS_LIBS
         FiniteStateSubset
         FiniteStateSubsetZoltanQuery
+        FiniteStateSubsetHelpers
         )
 
 set(MAT_LIBS
@@ -29,6 +30,7 @@ set(TEST_PROGRAMS
         test_mat
         test_fps_cvode
         test_fsp_solver
+        test_dd
         )
 
 set(EXAMPLES

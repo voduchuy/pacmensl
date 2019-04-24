@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     PetscErrorCode ierr;
     std::string model_name, part_option;
     fsp_constr_multi_fn *FSPConstraintFuns;
-    Row< double > FSPBounds; // Size of the FSP
+    Row< int > FSPBounds; // Size of the FSP
     arma::Mat<PetscInt> X0;
     arma::Mat<PetscInt> stoich_mat;
     PartitioningType fsp_par_type;

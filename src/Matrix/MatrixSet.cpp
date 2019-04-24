@@ -1,5 +1,6 @@
 
 #include <Matrix/MatrixSet.h>
+#include <petscblaslapack_stdcall.h>
 
 #include "Matrix/MatrixSet.h"
 #include "util/cme_util.h"
@@ -57,21 +58,31 @@ namespace cme {
                                          TcoefFun new_t_fun) {
             PetscInt ierr;
             PetscMPIInt rank;
-            PetscInt n_local_states = fsp.GetNumLocalStates(), own_start, own_end;
+            PetscInt n_local_states, n_constraints, own_start, own_end;
             arma::Mat<Int> my_X = fsp.GetLocalStates();
             arma::Mat<Int> can_reach_X(my_X.n_rows, my_X.n_cols), reachable_from_X(my_X.n_rows, my_X.n_cols);
-            arma::Mat<Int> irnz, irnz_off, to_sinks;
+            // Number of nonzero entries on the diagonal and off-diagonal blocks
             arma::Mat<Int> d_nnz, o_nnz;
             arma::Row<Int> out_indices;
-            arma::Mat<PetscReal> mat_vals, mat_vals_sinks;
+            // Entry values for the normal rows
+            arma::Mat<Int> irnz, irnz_off;
+            arma::Mat<PetscReal> mat_vals;
+
+            //
+            std::vector<arma::Row<PetscInt>> sink_inz(fsp.GetNumReactions()*fsp.GetNumConstraints());
+            std::vector<arma::Row<PetscReal>> sink_rows(fsp.GetNumConstraints()*fsp.GetNumReactions());
+
             ISLocalToGlobalMapping local2global_rows, local2global_lvec;
 
+            n_local_states = fsp.GetNumLocalStates();
+            n_constraints = fsp.GetNumConstraints();
+            n_reactions = fsp.GetNumReactions();
             t_fun = new_t_fun;
-            n_reactions = PetscInt(SM.n_cols);
             diag_mats.resize(n_reactions);
             offdiag_mats.resize(n_reactions);
             fsp_bounds = fsp.GetShapeBounds();
-            n_rows_local = n_local_states + PetscInt(fsp_bounds.n_elem);
+            n_rows_local = n_local_states + n_constraints;
+
 
             MPI_Comm_rank(comm, &rank);
 
@@ -96,17 +107,21 @@ namespace cme {
             irnz_off.set_size(n_local_states, n_reactions);
             out_indices.set_size(n_local_states*n_reactions);
             mat_vals.set_size(n_local_states, n_reactions);
-            mat_vals_sinks.set_size(n_local_states, n_reactions);
-            to_sinks.set_size(n_local_states, n_reactions);
+
             d_nnz.set_size(n_rows_local, n_reactions);
             o_nnz.set_size(n_rows_local, n_reactions);
             d_nnz.fill(1);
             o_nnz.zeros();
             int out_count = 0;
             irnz_off.fill(-1);
+
+            // Workspace for checking constraints
+            arma::Mat<PetscInt> constraints_satisfied(n_local_states, n_constraints);
+            arma::Col<PetscInt> nconstraints_satisfied;
             for (auto i_reaction{0}; i_reaction < n_reactions; ++i_reaction){
                 can_reach_X = my_X - arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
                 fsp.State2Petsc( can_reach_X, irnz.colptr( i_reaction ), true );
+
                 // Count nnz for rows that represent CME states
                 for (auto i_state{0}; i_state < n_local_states; ++i_state){
                     if (irnz(i_state, i_reaction) >= own_start && irnz(i_state, i_reaction) < own_end){
@@ -122,17 +137,27 @@ namespace cme {
                         out_count+=1;
                     }
                 }
+
                 // Count nnz for rows that represent sink states
                 can_reach_X = my_X + arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
-                fsp.State2Petsc( can_reach_X, to_sinks.colptr( i_reaction ), true );
-                for (auto i_state{0}; i_state < n_local_states; ++i_state){
-                    if (to_sinks(i_state, i_reaction) < -1){ // state i_state can reach a sink state
-                        d_nnz(n_rows_local + 1 + to_sinks(i_state,i_reaction), i_reaction) += 1;
-                        to_sinks(i_state, i_reaction) = own_end + 1 + to_sinks(i_state,i_reaction);
-                        mat_vals_sinks(i_state, i_reaction) = prop(my_X.colptr(i_state), i_reaction);
-                    }
-                    else{
-                        to_sinks(i_state, i_reaction) = -1;
+                fsp.CheckConstraint(n_local_states, can_reach_X.colptr(0), constraints_satisfied.colptr(0));
+                nconstraints_satisfied = arma::sum(constraints_satisfied, 1);
+
+                for ( int i_constr = 0; i_constr < n_constraints; ++i_constr ) {
+                    d_nnz(n_local_states + i_constr, i_reaction) = n_local_states - arma::sum(constraints_satisfied.col(i_constr));
+                    sink_inz.at(n_constraints*i_reaction + i_constr).set_size(d_nnz(n_local_states+i_constr, i_reaction));
+                    sink_rows.at(n_constraints*i_reaction + i_constr).set_size(d_nnz(n_local_states+i_constr, i_reaction));
+                }
+                // Store the column indices and values of the nonzero entries on the sink rows
+                for ( int i_constr = 0; i_constr < n_constraints; ++i_constr ){
+                    int count = 0;
+                    for (int i_state = 0; i_state < n_local_states; ++ i_state){
+                        if (constraints_satisfied(i_state, i_constr) == 0){
+                            sink_inz.at(n_constraints*i_reaction + i_constr).at(count) = i_state;
+                            sink_rows.at(n_constraints*i_reaction + i_constr).at(count) =
+                                    prop(my_X.colptr(i_state), i_reaction)/(PetscReal(n_constraints - nconstraints_satisfied(i_state)));
+                            count += 1;
+                        }
                     }
                 }
             }
@@ -193,8 +218,6 @@ namespace cme {
             // Convert the global indices of nonzero entries to local indices
             ierr = ISGlobalToLocalMappingApply(local2global_rows, IS_GTOLM_MASK, n_local_states*n_reactions, irnz.memptr(), NULL, irnz.memptr());
             CHKERRABORT(comm, ierr);
-            ierr = ISGlobalToLocalMappingApply(local2global_rows, IS_GTOLM_MASK, n_local_states*n_reactions, to_sinks.memptr(), NULL, to_sinks.memptr());
-            CHKERRABORT(comm, ierr);
             ierr = ISGlobalToLocalMappingApply(local2global_lvec, IS_GTOLM_MASK, n_local_states*n_reactions, irnz_off.memptr(), NULL, irnz_off.memptr());
             CHKERRABORT(comm, ierr);
 
@@ -202,7 +225,7 @@ namespace cme {
             CHKERRABORT(comm, ierr);
             ierr = ISLocalToGlobalMappingDestroy(&local2global_rows);
             CHKERRABORT(comm, ierr);
-            for (auto i_reaction{0}; i_reaction < n_reactions; ++i_reaction){
+            for (PetscInt i_reaction{0}; i_reaction < n_reactions; ++i_reaction){
                 ierr = MatCreate(PETSC_COMM_SELF, &diag_mats[i_reaction]);
                 CHKERRABORT(comm, ierr);
                 ierr = MatSetType(diag_mats[i_reaction], MATSEQAIJ);
@@ -228,14 +251,21 @@ namespace cme {
                 for (auto i_state{0}; i_state < n_local_states; ++i_state){
                     PetscReal diag_val = -1.0*prop(my_X.colptr(i_state), i_reaction);
 
+                    // Set values for the diagonal block
                     ierr = MatSetValue(diag_mats[i_reaction], i_state, i_state, diag_val, INSERT_VALUES);
                     CHKERRABORT(comm, ierr);
                     ierr = MatSetValue(diag_mats[i_reaction], i_state, irnz(i_state, i_reaction), mat_vals(i_state, i_reaction), INSERT_VALUES);
                     CHKERRABORT(comm, ierr);
-                    ierr = MatSetValue(diag_mats[i_reaction], to_sinks(i_state, i_reaction), i_state, mat_vals_sinks(i_state, i_reaction), INSERT_VALUES);
-                    CHKERRABORT(comm, ierr);
 
+                    // Set values for the off-diagonal block
                     ierr = MatSetValue(offdiag_mats[i_reaction], i_state, irnz_off(i_state, i_reaction), mat_vals(i_state, i_reaction), INSERT_VALUES);
+                    CHKERRABORT(comm, ierr);
+                }
+
+                for (auto i_constr{0}; i_constr < n_constraints; i_constr++){
+                    PetscInt irow = n_local_states + i_constr;
+                    ierr = MatSetValues(diag_mats[i_reaction], 1, &irow, d_nnz(irow, i_reaction), sink_inz.at(i_reaction*n_constraints + i_constr).memptr(),
+                            sink_rows.at(i_reaction*n_constraints + i_constr).memptr(), INSERT_VALUES);
                     CHKERRABORT(comm, ierr);
                 }
 

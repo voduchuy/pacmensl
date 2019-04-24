@@ -59,15 +59,15 @@ namespace six_species_cme {
 
     // Function to constraint the shape of the FSP
     void lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
-                    double *vals) {
+                    int *vals) {
         for (int j{0}; j < num_states; ++j) {
             for (int i{0}; i < 6; ++i) {
-                vals[j * num_constrs + i] = double(states[num_species * j + i]);
+                vals[j * num_constrs + i] = states[num_species * j + i];
             }
         }
     }
 
-    arma::Row<double> rhs_constr{10, 6, 1, 2, 1, 1};
+    arma::Row<int> rhs_constr{10, 6, 1, 2, 1, 1};
     arma::Row<double> expansion_factors{0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
 
     // function to compute the time-dependent coefficients of the propensity functions

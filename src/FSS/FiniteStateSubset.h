@@ -12,7 +12,7 @@
 
 namespace cme {
     namespace parallel {
-        typedef void fsp_constr_multi_fn(int n_species, int n_constraints, int n_states, int *states, double *output);
+        typedef void fsp_constr_multi_fn(int n_species, int n_constraints, int n_states, int *states, int *output);
 
         enum PartitioningType {
             Block, Graph, HyperGraph
@@ -37,8 +37,11 @@ namespace cme {
             int set_up = 0;
             int stoich_set = 0;
 
+            double lb_threshold = 0.2;
+
             MPI_Comm comm;
             PetscInt comm_size;
+            int my_rank;
             PartitioningType partitioning_type = Graph;
             PartitioningApproach repart_approach = Repartition;
 
@@ -47,31 +50,31 @@ namespace cme {
             PetscInt n_species;
             PetscInt n_reactions;
             PetscInt nstate_global;
-            PetscInt nstate_local;
+            PetscInt nstate_local = 0;
+            PetscInt nstate_global_old = 0;
 
             /// Left and right hand side for the custom constraints
             fsp_constr_multi_fn *lhs_constr;
-            arma::Row<double> rhs_constr;
+            arma::Row<int> rhs_constr;
 
-            static void default_constr_fun(int num_species, int num_constr, int n_states, int *states, double *outputs);
+            static void default_constr_fun(int num_species, int num_constr, int n_states, int *states, int *outputs);
 
             /// For event logging
+            PetscLogEvent state_exploration;
+            PetscLogEvent check_constraints;
+            PetscLogEvent add_states;
             PetscLogEvent generate_graph_data;
             PetscLogEvent call_partitioner;
+            PetscLogEvent zoltan_dd_stuff;
+            PetscLogEvent total_update_dd;
+            PetscLogEvent distribute_frontiers;
 
             /// Armadillo array to store states owned by this processor
             /**
              * States are stored as column vectors of integers.
              */
             arma::Mat<PetscInt> local_states;
-
-            /// Local states status
-            /**
-             * Its length must be the same as the number of columns in local_states.
-             * State's status is either 'active'
-             * (1, to be expanded in state space exploration) or 'inactive' (0).
-             */
-            arma::Row<PetscInt> local_states_status;
+            arma::Row<char> local_states_status;
 
             /// PETSc vector layout for the probability distribution
             PetscLayout state_layout = nullptr;
@@ -79,6 +82,8 @@ namespace cme {
 
             /// Variable to store local ids of frontier states
             arma::uvec frontier_lids;
+            arma::Mat<PetscInt> local_frontier_gids;
+            arma::Mat<PetscInt> frontiers;
 
             /// Information for graph/hypergraph-based load-balancing methods
             arma::Row<PetscInt> local_graph_gids;
@@ -137,9 +142,9 @@ namespace cme {
             /**
              * Call level: local.
              * @param x
-             * @return 0 if x satisfies all constraints; otherwise i+1 where i is the index of the first constraint violated by x.
+             * @return 0 if x satisfies all constraints; otherwise -1.
              */
-            inline PetscInt CheckConstraints( PetscInt *x );
+            inline PetscInt CheckState( PetscInt *x );
 
 
             /// Maximum molecules of the state space
@@ -172,8 +177,10 @@ namespace cme {
             /**
              * Call lvel: collective.
              */
-            inline void UpdateDD();
-
+            inline void UpdateStateLID( );
+            inline void UpdateStateStatus( arma::Mat<PetscInt> states, arma::Row<char> status);
+            inline void UpdateStateLIDStatus( arma::Mat<PetscInt> states, arma::Row< PetscInt > local_ids, arma::Row<char> status);
+            inline void RetrieveStateStatus();
         public:
 
             // Generic Interface
@@ -182,15 +189,21 @@ namespace cme {
             void SetStoichiometry(arma::Mat<PetscInt> SM);
 
             void SetShape(fsp_constr_multi_fn *lhs_fun,
-                          arma::Row<double> &rhs_bounds);
+                          arma::Row<int> &rhs_bounds);
 
             void SetShapeBounds(arma::Row<PetscInt> &rhs_bounds);
-
-            void SetShapeBounds(arma::Row<double> &rhs_bounds);
 
             void SetLBType(PartitioningType lb_type);
 
             void SetRepartApproach(PartitioningApproach approach);
+
+            /// Check if a list of states satisfy a constraint
+            /**
+             * Call level: local.
+             * @param num_states : number of states. x : array of states. satisfied: output array of size num_states*num_constraints.
+             * @return void.
+             */
+            void CheckConstraint( PetscInt num_states, PetscInt *x, PetscInt *satisfied );
 
             /// Set the initial states.
             /**
@@ -224,7 +237,7 @@ namespace cme {
 
             MPI_Comm GetComm();
 
-            arma::Row<double> GetShapeBounds();
+            arma::Row<int> GetShapeBounds();
 
             PetscInt GetNumLocalStates();
 
@@ -236,13 +249,9 @@ namespace cme {
 
             PetscInt GetNumReactions();
 
-            arma::Mat<PetscInt> GetReachableStateStatus();
-
             arma::Mat<PetscInt> GetLocalStates();
 
             std::tuple<PetscInt, PetscInt> GetLayoutStartEnd();
-
-            void Destroy();
 
             ~FiniteStateSubset();
 
@@ -285,6 +294,29 @@ namespace cme {
                                       ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim,
                                       float *obj_wgts,
                                       int *ierr);
+
+            void
+            PackFrontiers(int num_gid_entries, int num_lid_entries, int num_ids, ZOLTAN_ID_PTR global_ids,
+                                 ZOLTAN_ID_PTR local_ids, int *dest, int *sizes, int *idx, char *buf, int *ierr);
+
+            void
+            ReceiveFrontiers(int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids, int *sizes,
+                                int *idx, char *buf, int *ierr);
+
+            void FrontiersMidMigration(
+                    int num_gid_entries,
+                    int num_lid_entries,
+                    int num_import,
+                    ZOLTAN_ID_PTR import_global_ids,
+                    ZOLTAN_ID_PTR import_local_ids,
+                    int *import_procs,
+                    int *import_to_part,
+                    int num_export,
+                    ZOLTAN_ID_PTR export_global_ids,
+                    ZOLTAN_ID_PTR export_local_ids,
+                    int *export_procs,
+                    int *export_to_part,
+                    int *ierr);
 
             int GiveZoltanNumEdges(int num_gid_entries, int num_lid_entries,
                                  ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id, int *ierr);

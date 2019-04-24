@@ -52,11 +52,11 @@ int main(int argc, char *argv[]) {
 //
 //        MatrixSet A(PETSC_COMM_WORLD);
 //        A.GenerateMatrices(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
+
         arma::Mat<PetscInt> X0(3, 1); X0.fill(0); X0(0) = 20;
         FiniteStateSubset fsp(PETSC_COMM_WORLD, 3);
         fsp.SetLBType(fsp_par_type);
         fsp.SetShape(&repressilator_cme::lhs_constr, repressilator_cme::rhs_constr);
-//        fsp.SetShapeBounds(fsp_size);
         fsp.SetStoichiometry(repressilator_cme::SM);
         fsp.SetInitialStates(X0);
         fsp.GenerateStatesAndOrdering();

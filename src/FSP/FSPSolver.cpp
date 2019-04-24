@@ -14,8 +14,7 @@ namespace cme {
             odes_type = _solve_type;
         }
 
-
-        void FSPSolver::SetInitFSPBounds(arma::Row<double> &_fsp_size) {
+        void FSPSolver::SetInitFSPBounds( arma::Row< int > &_fsp_size ) {
             fsp_bounds = _fsp_size;
         }
 
@@ -76,7 +75,7 @@ namespace cme {
                     for (auto i{0}; i < to_expand.n_elem; ++i) {
                         if (to_expand(i) == 1) {
                             fsp_bounds(i) =
-                                    (PetscReal) fsp_bounds(i) * (fsp_expasion_factors(i) + 1.0e0);
+                                    (int) std::round(double(fsp_bounds(i)) * (fsp_expasion_factors(i) + 1.0e0) + 0.5e0);
                         }
                     }
                     if (verbosity) {
@@ -84,7 +83,7 @@ namespace cme {
                         PetscPrintf(comm, "At time t = %.2f expansion to new fsp size: \n",
                                     ode_solver->GetCurrentTime());
                         for (auto i{0}; i < fsp_bounds.n_elem; ++i) {
-                            PetscPrintf(comm, "%.2f ", fsp_bounds[i]);
+                            PetscPrintf(comm, "%d ", fsp_bounds[i]);
                         }
                         PetscPrintf(comm, "\n ------------- \n");
                     }

@@ -16,7 +16,7 @@ namespace hog1p_cme {
     const PetscReal k12 {1.29}, k21 {1.0e0}, k23 {0.0067},
             k32 {0.027}, k34 {0.133}, k43 {0.0381},
             kr2 {0.005}, kr3 {0.45}, kr4 {0.025},
-            trans {0.001}, gamma {0.0049},
+            trans {0.01}, gamma {0.0049},
 //    const PetscReal k12 {1.29}, k21 {1.0e0}, k23 {0.0067},
 //            k32 {0.027}, k34 {0.133}, k43 {0.0381},
 //            kr2 {0.0116}, kr3 {0.987}, kr4 {0.0538},
@@ -26,22 +26,24 @@ namespace hog1p_cme {
 
     // Function to constraint the shape of the FSP
     void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
-                     double *vals){
+                     int *vals){
 
         for (int j{0}; j < num_states; ++j){
             for (int i{0}; i < 5; ++i){
-                vals[num_constrs*j + i] = double(states[num_species*j+i]);
+                vals[num_constrs*j + i] = (states[num_species*j+i]);
             }
-            for (int i{0}; i < 4; ++i){
-                vals[num_constrs*j + 5 + i] = double(states[num_species*j]==i)*(double(states[num_species*j+1]) + double(states[num_species*j+3]));
-            }
-            for (int i{0}; i < 4; ++i){
-                vals[num_constrs*j + 9 + i] = double(states[num_species*j]==i)*(double(states[num_species*j+2]) + double(states[num_species*j+4]));
-            }
+            vals[num_constrs*j + 5] = ((states[num_species*j+1]) + (states[num_species*j+3]));
+            vals[num_constrs*j + 6] = ((states[num_species*j+2]) + (states[num_species*j+4]));
+//            for (int i{0}; i < 4; ++i){
+//                vals[num_constrs*j + 5 + i] = (states[num_species*j]==i)*((states[num_species*j+1]) + (states[num_species*j+3]));
+//            }
+//            for (int i{0}; i < 4; ++i){
+//                vals[num_constrs*j + 9 + i] = (states[num_species*j]==i)*((states[num_species*j+2]) + (states[num_species*j+4]));
+//            }
         }
     }
-    arma::Row<double> rhs_constr{3.0, 10.0, 10.0, 10.0, 10.0, 0.5, 10.0, 10.0, 10.0, 0.5, 10.0, 10.0, 10.0};
-    arma::Row<double> expansion_factors{0.0, 0.5, 0.5, 0.5, 0.5, 0.5,0.5, 0.5, 0.5, 0.5,0.5, 0.5, 0.5};
+    arma::Row<int> rhs_constr{3, 10, 10, 10, 10, 10, 10};
+    arma::Row<double> expansion_factors{0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25};
 
 // propensity function
     PetscReal propensity(PetscInt *X, PetscInt k) {

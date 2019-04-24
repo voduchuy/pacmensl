@@ -16,15 +16,15 @@ namespace toggle_cme {
 
     // Function to constraint the shape of the FSP
     void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
-                     double *vals){
+                     int *vals){
 
         for (int i{0}; i < num_states; ++i){
-            vals[i*num_constrs] = double(states[num_species*i]);
-            vals[i*num_constrs + 1] = double(states[num_species*i+1]);
-            vals[i*num_constrs + 2] = double(states[num_species*i])*double(states[num_species*i+1]);
+            vals[i*num_constrs] = states[num_species*i];
+            vals[i*num_constrs + 1] = states[num_species*i+1];
+            vals[i*num_constrs + 2] = states[num_species*i]*states[num_species*i+1];
         }
     }
-    arma::Row<double> rhs_constr{200.0, 200.0, 2000.0};
+    arma::Row<int> rhs_constr{200, 200, 2000};
     arma::Row<double> expansion_factors{0.2, 0.2, 0.2};
 
 // propensity function for toggle

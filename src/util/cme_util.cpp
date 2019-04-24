@@ -8,23 +8,50 @@ namespace cme {
 
     }
 
-    int ParaFSP_init(int *argc, char ***argv, const char *help) {
+    int ParaFSP_init( int *argc, char ***argv, const char *help ) {
         PetscErrorCode ierr;
-        MPI_Init(argc, argv);
-        ierr = PetscInitialize(argc, argv, (char *) 0, help);
-        CHKERRQ(ierr);
+        MPI_Init( argc, argv );
+        ierr = PetscInitialize( argc, argv, ( char * ) 0, help );
+        CHKERRQ( ierr );
         float ver;
-        ierr = Zoltan_Initialize(*argc, *argv, &ver);
-        CHKERRQ(ierr);
+        ierr = Zoltan_Initialize( *argc, *argv, &ver );
+        CHKERRQ( ierr );
         return 0;
     }
 
-    int ParaFSP_finalize() {
+    int ParaFSP_finalize( ) {
         PetscErrorCode ierr;
-        ierr = PetscFinalize();
-        CHKERRQ(ierr);
-        MPI_Finalize();
+        ierr = PetscFinalize( );
+        CHKERRQ( ierr );
+        MPI_Finalize( );
         return ierr;
         return 0;
+    }
+
+    void sequential_action( MPI_Comm comm, std::function< void( void * ) > action, void *data ) {
+        int my_rank, comm_size;
+        MPI_Comm_rank( comm, &my_rank );
+        MPI_Comm_size( comm, &comm_size );
+
+        if ( comm_size == 1 ) {
+            action( data );
+            return;
+        }
+
+        int print;
+        MPI_Status status;
+        if ( my_rank == 0 ) {
+            std::cout << "Processor " << my_rank << "\n";
+            action( data );
+            MPI_Send( &print, 1, MPI_INT, my_rank + 1, 1, comm );
+        } else {
+            MPI_Recv( &print, 1, MPI_INT, my_rank - 1, 1, comm, &status );
+            std::cout << "Processor " << my_rank << "\n";
+            action( data );
+            if ( my_rank < comm_size - 1 ) {
+                MPI_Send( &print, 1, MPI_INT, my_rank + 1, 1, comm );
+            }
+        }
+        MPI_Barrier( comm );
     }
 }

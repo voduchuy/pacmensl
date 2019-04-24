@@ -37,7 +37,7 @@ namespace cme {
 
             bool custom_constraints = false;
             fsp_constr_multi_fn *fsp_constr_funs;
-            arma::Row<double> fsp_bounds;
+            arma::Row<int> fsp_bounds;
             arma::Row<Real> fsp_expasion_factors;
 
             FiniteStateSubset *fsp;
@@ -71,7 +71,7 @@ namespace cme {
 
             void SetFSPConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
 
-            void SetInitFSPBounds(arma::Row<double> &_fsp_size);
+            void SetInitFSPBounds( arma::Row< int > &_fsp_size );
 
             void SetFinalTime(PetscReal t);
 

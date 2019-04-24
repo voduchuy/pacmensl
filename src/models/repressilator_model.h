@@ -12,22 +12,22 @@ namespace repressilator_cme {
     };
 
 // reaction parameters
-    const PetscReal k1{25.0}, ka{5.0}, ket{6.0}, kg{1.0};
+    const PetscReal k1{100.0}, ka{20.0}, ket{6.0}, kg{1.0};
 
     // Function to constraint the shape of the FSP
     void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
-                       double *vals){
+                       int *vals){
 
         for (int i{0}; i < num_states; ++i){
-            vals[i*num_constrs] = double(states[num_species*i]);
-            vals[i*num_constrs + 1] = double(states[num_species*i+1]);
-            vals[i*num_constrs + 2] = double(states[num_species*i+2]);
-            vals[i*num_constrs + 3] = double(states[num_species*i])*double(states[num_species*i+1]);
-            vals[i*num_constrs + 4] = double(states[num_species*i+2])*double(states[num_species*i+1]);
-            vals[i*num_constrs + 5] = double(states[num_species*i])*double(states[num_species*i+2]);
+            vals[i*num_constrs] = (states[num_species*i]);
+            vals[i*num_constrs + 1] = (states[num_species*i+1]);
+            vals[i*num_constrs + 2] = (states[num_species*i+2]);
+            vals[i*num_constrs + 3] = (states[num_species*i])*(states[num_species*i+1]);
+            vals[i*num_constrs + 4] = (states[num_species*i+2])*(states[num_species*i+1]);
+            vals[i*num_constrs + 5] = (states[num_species*i])*(states[num_species*i+2]);
         }
     }
-    arma::Row<double> rhs_constr{22.0, 2.0, 2.0, 44.0, 4.0, 44.0};
+    arma::Row<int> rhs_constr{22, 2, 2, 44, 4, 44};
     arma::Row<double> expansion_factors{0.2, 0.2, 0.2, 0.2, 0.2, 0.2};
 
 // propensity function

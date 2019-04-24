@@ -77,7 +77,6 @@ namespace cme {
                 }
                 // Check that the temporary solution satisfies FSP tolerance
                 sink_values = fsp->SinkStatesReduce( solution_tmp_dat );
-
                 fsp_accept = ( PetscBool ) ( arma::sum( sink_values ) <= fsp_tol * t_now_tmp / t_final );
 
                 if ( !fsp_accept ) {
@@ -85,14 +84,15 @@ namespace cme {
                     arma::uvec i_sink_sorted = arma::sort_index( sink_increase, "descend" );
                     PetscReal x1{0.0}, x2{arma::sum(sink_increase) - (arma::sum( sink_values ) - fsp_tol * t_now_tmp / t_final)};
                     for ( auto i = 0; i < expand_sink.n_elem; ++i ) {
-                        expand_sink( i_sink_sorted( i )) = 1;
-                        x1 += sink_increase( i_sink_sorted( i ));
-                        if ( x1 > 1.2*x2 ) {
+                        if ( x1 > 1.1*x2 || sink_increase(i_sink_sorted(i)) == 0.0e0 ) {
                             break;
                         }
+                        expand_sink( i_sink_sorted( i )) = 1;
+                        x1 += sink_increase( i_sink_sorted( i ));
                     }
 
                     cvode_stat = CVodeGetDky( cvode_mem, t_now, 0, solution_tmp );
+                    break;
                 } else {
                     t_now = t_now_tmp;
                     if ( print_intermediate ) {
@@ -108,7 +108,6 @@ namespace cme {
                     }
                     sink_values_old = sink_values;
                 }
-                if ( expand_sink.max( ) != 0 ) break;
             }
             // Copy data from temporary vector to solution vector
             CHKERRABORT( comm, VecCopy( solution_tmp_dat, *solution ));
