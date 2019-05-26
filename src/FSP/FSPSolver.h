@@ -22,6 +22,7 @@ namespace cme {
             PetscReal ODESolveTime;
             PetscReal SolutionScatterTime;
             PetscReal RHSEvalTime;
+            PetscReal TotalTime;
         };
 
         class FSPSolver {
@@ -65,6 +66,8 @@ namespace cme {
             PetscLogEvent ODESolve;
             PetscLogEvent SolutionScatter;
             PetscLogEvent RHSEvaluation;
+            PetscLogEvent SettingUp;
+            PetscLogEvent Solving;
         public:
 
             explicit FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
@@ -97,7 +100,7 @@ namespace cme {
 
             Vec &GetP();
 
-            FiniteStateSubset &GetStateSubset();
+            FiniteStateSubset *GetStateSubset();
 
             FSPSolverComponentTiming GetAvgComponentTiming();
 

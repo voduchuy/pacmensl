@@ -66,6 +66,9 @@ namespace cme {
             PetscBool fsp_accept;
             expand_sink.fill( 0 );
             sink_values_old = fsp->SinkStatesReduce( solution_tmp_dat );
+            for ( int j = 0; j < sink_values_old.n_elem; ++j ) {
+                sink_values_old(j) = round2digit(sink_values_old(j));
+            }
             while ( t_now < t_final ) {
                 cvode_stat = CVode( cvode_mem, t_final, solution_tmp, &t_now_tmp, CV_ONE_STEP );
                 CVODECHKERR( comm, cvode_stat );
@@ -77,19 +80,25 @@ namespace cme {
                 }
                 // Check that the temporary solution satisfies FSP tolerance
                 sink_values = fsp->SinkStatesReduce( solution_tmp_dat );
-                fsp_accept = ( PetscBool ) ( arma::sum( sink_values ) <= fsp_tol * t_now_tmp / t_final );
+                for ( int j = 0; j < sink_values.n_elem; ++j ) {
+                    sink_values(j) = round2digit(sink_values(j));
+                }
+                double target_error = round2digit(fsp_tol * t_now_tmp / t_final);
+                fsp_accept = ( PetscBool ) ( arma::max( sink_values )*double(fsp->GetNumConstraints()) <=  target_error);
 
                 if ( !fsp_accept ) {
-                    arma::Row< PetscReal > sink_increase = sink_values - sink_values_old;
-                    arma::uvec i_sink_sorted = arma::sort_index( sink_increase, "descend" );
-                    PetscReal x1{0.0}, x2{arma::sum(sink_increase) - (arma::sum( sink_values ) - fsp_tol * t_now_tmp / t_final)};
-                    for ( auto i = 0; i < expand_sink.n_elem; ++i ) {
-                        if ( x1 > 1.1*x2 || sink_increase(i_sink_sorted(i)) == 0.0e0 ) {
-                            break;
-                        }
-                        expand_sink( i_sink_sorted( i )) = 1;
-                        x1 += sink_increase( i_sink_sorted( i ));
-                    }
+//                    arma::Row< PetscReal > sink_increase = sink_values - sink_values_old;
+//                    arma::uvec i_sink_sorted = arma::sort_index( sink_increase, "descend" );
+//                    PetscReal x1{0.0}, x2{round2digit(arma::sum(sink_increase) - (arma::sum( sink_values ) - target_error))};
+//                    for ( auto i = 0; i < expand_sink.n_elem; ++i ) {
+//                        if ( x1 > 1.1e0*x2 || sink_increase(i_sink_sorted(i)) == 0.0e0 ) {
+//                            break;
+//                        }
+//                        expand_sink( i_sink_sorted( i )) = 1;
+//                        x1 += sink_increase( i_sink_sorted( i ));
+//                    }
+                    arma::uvec iexpand = arma::find(sink_values > target_error/(double(fsp->GetNumConstraints())));
+                    expand_sink(iexpand).fill(1);
 
                     cvode_stat = CVodeGetDky( cvode_mem, t_now, 0, solution_tmp );
                     break;

@@ -36,6 +36,16 @@ namespace cme {
                                    int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr, ZOLTAN_ID_PTR pin_gid,
                                    int *ierr);
 
+        void zoltan_get_hg_size_eweights(void *data, int *num_edges, int *ierr);
+
+        void zoltan_get_hg_eweights(void *data, int num_gid_entries, int num_lid_entries, int num_edges, int edge_weight_dim, ZOLTAN_ID_PTR edge_GID, ZOLTAN_ID_PTR edge_LID, float  *edge_weight, int *ierr);
+
+        int zoltan_hier_num_levels (void *data, int *ierr);
+
+        int zoltan_hier_part (void *data, int level, int *ierr);
+
+        void zoltan_hier_method (void *data, int level, struct Zoltan_Struct * zz, int *ierr);
+
         /* Zoltan migration functions */
 
         /// Zoltan interface to give Zoltan the sizes of local states data

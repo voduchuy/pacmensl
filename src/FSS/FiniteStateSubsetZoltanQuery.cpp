@@ -79,6 +79,18 @@ namespace cme {
             g_data->GiveZoltanGraphEdges(num_gid_entries,num_lid_entries, num_obj, global_id, local_id, num_edges, nbor_global_id, nbor_procs, wgt_dim, ewgts, ierr);
         }
 
+        void zoltan_get_hg_size_eweights( void *data, int *num_edges, int *ierr ) {
+            auto fss = (FiniteStateSubset*) data;
+            *num_edges = fss->GetNumLocalStates();
+            *ierr = ZOLTAN_OK;
+        }
+
+        void zoltan_get_hg_eweights (void *data, int num_gid_entries, int num_lid_entries, int num_edges, int edge_weight_dim, ZOLTAN_ID_PTR edge_GID, ZOLTAN_ID_PTR edge_LID, float  *edge_weight, int *ierr){
+            auto fss = (FiniteStateSubset*) data;
+            fss->GiveZoltanHypergraphEdgeWeights(num_gid_entries, num_lid_entries, num_edges, edge_weight_dim, edge_GID, edge_LID, edge_weight, ierr);
+            *ierr = ZOLTAN_OK;
+        }
+
         int zoltan_obj_size(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
                             ZOLTAN_ID_PTR local_id, int *ierr) {
             *ierr = ZOLTAN_OK;
@@ -155,6 +167,36 @@ namespace cme {
                 return;
             }
             fss_data->MidMigrationProcessing(num_gid_entries, num_lid_entries, num_import, nullptr, nullptr, nullptr, nullptr, num_export, export_global_ids, export_local_ids, nullptr, nullptr,nullptr);
+            *ierr = ZOLTAN_OK;
+        }
+
+        int zoltan_hier_num_levels(void *data, int *ierr) {
+            auto fss_data = (FiniteStateSubset*) data;
+            *ierr = ZOLTAN_OK;
+            return fss_data->num_levels;
+        }
+
+        int zoltan_hier_part(void *data, int level, int *ierr) {
+            auto fss_data = (FiniteStateSubset*) data;
+            if (level >= fss_data->num_levels) {
+                *ierr = ZOLTAN_FATAL;
+                std::cout
+                        << "Zoltan_hier_part requests higher level than the max number of levels in the hierarchical partitioning.\n";
+                return -1;
+            }
+            *ierr = ZOLTAN_OK;
+            return ((int) fss_data->my_part[level]);
+        }
+
+        void zoltan_hier_method(void *data, int level, struct Zoltan_Struct *zz, int *ierr) {
+            auto fss_data = (FiniteStateSubset*) data;
+            if (level >= fss_data->num_levels) {
+                *ierr = ZOLTAN_FATAL;
+                std::cout
+                        << "Zoltan_hier_part requests higher level than the max number of levels in the hierarchical partitioning.\n";
+                return;
+            }
+            fss_data->SetHiearchicalMethods(level, zz);
             *ierr = ZOLTAN_OK;
         }
 

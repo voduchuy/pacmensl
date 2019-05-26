@@ -6,6 +6,8 @@
 #define PARALLEL_FSP_FINITESTATESUBSETHELPERS_H
 
 #include "FiniteStateSubset.h"
+#include <algorithm>
+#include <string>
 /*
  * Helper functions for option parsing
  */

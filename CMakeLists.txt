@@ -8,6 +8,10 @@ set(UTIL_LIBS
 
 set(FSS_LIBS
         FiniteStateSubset
+        FiniteStateSubsetFrontiers
+        FiniteStateSubsetGraph
+        FiniteStateSubsetHyperGraph
+        FiniteStateSubsetMigration
         FiniteStateSubsetZoltanQuery
         FiniteStateSubsetHelpers
         )
@@ -35,8 +39,9 @@ set(TEST_PROGRAMS
 
 set(EXAMPLES
         distribute_states
-        benchmark
-#        multiple_single_core_jobs
+        hog1p
+        repressilator
+        transcr_reg_6d
         )
 
 set(EXT_LIBRARIES
