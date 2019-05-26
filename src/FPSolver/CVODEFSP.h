@@ -36,7 +36,7 @@ namespace cme{
             N_Vector solution_tmp = nullptr;
             PetscReal t_now_tmp = 0.0;
             PetscReal rel_tol = 1.0e-4;
-            PetscReal abs_tol = 1.0e-8;
+            PetscReal abs_tol = 1.0e-14;
             int cvode_stat;
         public:
             explicit CVODEFSP( MPI_Comm _comm, int lmm = CV_BDF );

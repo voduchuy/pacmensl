@@ -2,8 +2,6 @@
 // Created by Huy Vo on 5/29/18.
 //
 
-#include <FSP/FSPSolver.h>
-
 #include "FSPSolver.h"
 
 namespace cme {
@@ -49,6 +47,10 @@ namespace cme {
         }
 
         void FSPSolver::Solve() {
+            if (log_fsp_events){
+                CHKERRABORT(comm, PetscLogEventBegin(Solving, 0, 0, 0, 0));
+            }
+
             Int ierr;
             PetscInt solver_stat = 1;
             PetscReal t = 0.0e0;
@@ -59,7 +61,6 @@ namespace cme {
 
             arma::Row<PetscInt> to_expand(fsp->GetNumConstraints());
             while (solver_stat) {
-
                 if (log_fsp_events) {
                     CHKERRABORT(comm, PetscLogEventBegin(ODESolve, 0, 0, 0, 0));
                 }
@@ -165,18 +166,23 @@ namespace cme {
                     }
                 }
             }
+
+            if (log_fsp_events){
+                CHKERRABORT(comm, PetscLogEventEnd(Solving, 0, 0, 0, 0));
+            }
         }
 
         FSPSolver::~FSPSolver() {
-            MPI_Comm_free(&comm);
+            if (comm) MPI_Comm_free(&comm);
             Destroy();
         }
 
         void FSPSolver::Destroy() {
+            custom_constraints = false;
             VecDestroy(p);
-            delete A;
-            delete fsp;
-            delete ode_solver;
+            delete A; A = nullptr;
+            delete fsp; fsp = nullptr;
+            delete ode_solver; ode_solver = nullptr;
         }
 
         Vec &FSPSolver::GetP() {
@@ -206,6 +212,12 @@ namespace cme {
                 ierr = PetscLogEventRegister("FSP RHS evaluation", 0, &RHSEvaluation);
                 CHKERRABORT(comm, ierr);
                 ierr = PetscLogEventRegister("FSP Solution scatter", 0, &SolutionScatter);
+                CHKERRABORT(comm, ierr);
+                ierr = PetscLogEventRegister("FSP Set-up", 0, &SettingUp);
+                CHKERRABORT(comm, ierr);
+                ierr = PetscLogEventRegister("FSP Solving total", 0, &Solving);
+                CHKERRABORT(comm, ierr);
+                ierr = PetscLogEventBegin(SettingUp, 0, 0, 0, 0);
                 CHKERRABORT(comm, ierr);
             }
 
@@ -274,6 +286,8 @@ namespace cme {
             ode_solver->SetFiniteStateSubset(this->fsp);
             if (log_fsp_events) {
                 ode_solver->EnableLogging();
+                ierr = PetscLogEventEnd(SettingUp, 0, 0, 0, 0);
+                CHKERRABORT(comm, ierr);
             }
         }
 
@@ -287,8 +301,8 @@ namespace cme {
             assert(init_probs.n_elem == init_states.n_cols);
         }
 
-        FiniteStateSubset &FSPSolver::GetStateSubset() {
-            return *fsp;
+        FiniteStateSubset* FSPSolver::GetStateSubset() {
+            return fsp;
         }
 
         void FSPSolver::SetLogging(PetscBool logging) {
@@ -304,7 +318,8 @@ namespace cme {
                 PetscReal timing;
                 PetscReal tmp;
                 PetscEventPerfInfo info;
-                CHKERRABORT(comm, PetscLogEventGetPerfInfo(PETSC_DETERMINE, event, &info));
+                int ierr = PetscLogEventGetPerfInfo(PETSC_DETERMINE, event, &info);
+                CHKERRABORT(comm, ierr);
                 tmp = info.time;
                 MPI_Allreduce(&tmp, &timing, 1, MPIU_REAL, MPI_SUM, comm);
                 timing /= PetscReal(comm_size);
@@ -316,6 +331,7 @@ namespace cme {
             timings.ODESolveTime = get_avg_timing(ODESolve);
             timings.RHSEvalTime = get_avg_timing(RHSEvaluation);
             timings.SolutionScatterTime = get_avg_timing(SolutionScatter);
+            timings.TotalTime = get_avg_timing(SettingUp) + get_avg_timing(Solving);
             return timings;
         }
 

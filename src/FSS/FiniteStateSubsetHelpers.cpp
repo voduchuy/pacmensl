@@ -13,18 +13,24 @@ namespace cme::parallel{
             case Graph:
                 return std::string( "Graph" );
             case HyperGraph:
-                return std::string( "Hyper-graph" );
+                return std::string( "Hypergraph" );
+            case Hierarchical:
+                return std::string( "Hiearchical");
             default:
                 return std::string( "Block" );
         }
     }
 
     PartitioningType str2part( std::string str ) {
-        if ( str == "graph" || str == "Graph" || str == "GRAPH" ) {
+        std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+        if ( str == "graph") {
             return Graph;
-        } else if ( str == "hypergraph" || str == "HyperGraph" || str == "HYPERGRAPH" ) {
+        } else if ( str == "hypergraph") {
             return HyperGraph;
-        } else {
+        } else if ( str == "hier" || str == "hierarchical"){
+            return Hierarchical;
+        }
+        else {
             return Block;
         }
     }
@@ -41,10 +47,10 @@ namespace cme::parallel{
     }
 
     PartitioningApproach str2partapproach( std::string str ) {
-        if ( str == "from_scratch" || str == "partition" || str == "FromScratch" || str == "FROMSCRATCH" ) {
+        std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+        if ( str == "from_scratch" || str == "partition" ) {
             return FromScratch;
-        } else if ( str == "repart" || str == "repartition" || str == "REPARTITION" || str == "Repart" ||
-                    str == "Repartition" ) {
+        } else if ( str == "repart" || str == "repartition") {
             return Repartition;
         } else {
             return Refine;

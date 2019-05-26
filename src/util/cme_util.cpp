@@ -54,4 +54,10 @@ namespace cme {
         }
         MPI_Barrier( comm );
     }
+
+    double round2digit( double x ) {
+        if (x == 0.0e0) return x;
+        double p1 = std::pow(10.0e0, round(log10(x) - SQR1) - 1.0e0);
+        return trunc(x/p1 + 0.55e0)*p1;
+    }
 }

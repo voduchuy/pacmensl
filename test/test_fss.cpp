@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         fsp.SetInitialStates(X0);
 
         // Generate a small FSP
-        arma::Row<int> fsp_size = {2, 2};
+        arma::Row<int> fsp_size = {5, 5};
         fsp.SetShapeBounds(fsp_size);
         PetscPrintf(comm, "Initial states:\n");
         PetscPrintf(comm, "State | Petsc ordering \n");
@@ -57,19 +57,19 @@ int main(int argc, char *argv[]) {
         petsc_indices = fsp.State2Petsc( local_states, false );
         local_table = arma::join_horiz(local_states.t(), petsc_indices.t());
         cme::sequential_action(comm, print_states, (void *) &local_table);
-//
-//        // Timing for generating a big FSP
-//        PetscReal t1, t2;
-//        PetscTime(&t1);
-//        for (int i{0}; i < 100; ++i) {
-//            fsp_size+=10;
-//            fsp.SetShapeBounds(fsp_size);
-//            fsp.GenerateStatesAndOrdering();
-//            PetscTime(&t2);
-//            int nglobal = fsp.GetNumGlobalStates();
-//            PetscPrintf(comm, "FSP expansion takes %.2f second, global state set size = %d.\n", t2 - t1, nglobal);
-//        }
-//        PetscPrintf(comm, "FSP expansion takes %.2f second.\n", t2 - t1);
+
+        // Timing for generating a big FSP
+        PetscReal t1, t2;
+        PetscTime(&t1);
+        for (int i{0}; i < 10; ++i) {
+            fsp_size+=100;
+            fsp.SetShapeBounds(fsp_size);
+            fsp.GenerateStatesAndOrdering();
+            PetscTime(&t2);
+            int nglobal = fsp.GetNumGlobalStates();
+            PetscPrintf(comm, "FSP expansion takes %.2f second, global state set size = %d.\n", t2 - t1, nglobal);
+        }
+        PetscPrintf(comm, "FSP expansion takes %.2f second.\n", t2 - t1);
     }
     CHKERRQ(ierr);
     MPI_Comm_free(&comm);

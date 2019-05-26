@@ -15,7 +15,7 @@ namespace cme {
         typedef void fsp_constr_multi_fn(int n_species, int n_constraints, int n_states, int *states, int *output);
 
         enum PartitioningType {
-            Block, Graph, HyperGraph
+            Block, Graph, HyperGraph, Hierarchical
         };
 
         enum PartitioningApproach {
@@ -42,6 +42,8 @@ namespace cme {
             MPI_Comm comm;
             PetscInt comm_size;
             int my_rank;
+            const int num_levels = 2;
+            int my_part[2];
             PartitioningType partitioning_type = Graph;
             PartitioningApproach repart_approach = Repartition;
 
@@ -85,16 +87,29 @@ namespace cme {
             arma::Mat<PetscInt> local_frontier_gids;
             arma::Mat<PetscInt> frontiers;
 
-            /// Information for graph/hypergraph-based load-balancing methods
-            arma::Row<PetscInt> local_graph_gids;
-            /// States that can reach on-processor states via a chemical reaction
-            arma::Mat<PetscInt> local_observable_states;
-            arma::Mat<PetscInt> local_reachable_states;
 
-            /// Number of edges connected to the local states
-            arma::Row<PetscInt> num_local_edges;
-            /// State's weights
-            arma::Row<float> state_weights;
+            /// Struct to stores data for graph/hypergraph partitioning algorithms
+            /**
+             * This data structure corresponds to the row-wise decomposition of the CME matrix. Each object/vertex corresponds
+             * to a state of the CME. Connectivity between states are represented by edges in the graph model (using the generalized graph model
+             * of Catalyurek et al.), and hyper-edges in
+             * the hypergraph model (using the column-net model of Catalyurek et al.).
+             * The details about these graph and hypergraph models could be found in Catalyurek et al., IEEE Trans Parallel Dist Sys, Vol 10, No 7, 1999.
+             * We adjust the computational weights to reflect our specific implementation of the time-dependent CME matrix [Vo & Munsky, 2019?].
+             */
+            struct ConnectivityData {
+                int num_local_states; ///< Number of local states held by the processor in the current partitioning
+                PetscInt *states_gid; ///< Global IDs of the states held by the processor, these IDs are the lexicographic orders of the states in the hyper-rectangular FSP
+                float *states_weights; ///< Computational weights associated with each state, here we assign to these weights the number of FLOPs needed
+
+                int *num_edges; ///< Number of states that share information with each local states
+
+                int num_reachable_states; ///< Number of nz entries on the rows of the FSP matrix corresponding to local states
+                PetscInt *reachable_states; ///< Global indices of nz entries on the rows corresponding to local states
+                int *reachable_states_proc; ///< Processors that own the reachable states
+                float *edge_weights; ///< For storing the edge weights in graph model
+                int *edge_ptr; ///< reachable_states[edge_ptr[i] to ege_ptr[i+1]-1] contains the ids of states connected to local state i
+            } adj_data;
 
             /// Zoltan directory
             /**
@@ -159,13 +174,27 @@ namespace cme {
              */
             inline void UpdateMaxNumMolecules();
 
-            /// Generate local graph/hypergraph data
+            /// Generate graph data
             /**
-             * Call level: local.
+             * Call level: collective.
              */
-            inline void GenerateGraphData();
+            void GenerateGraphData();
+            void FreeGraphData();
 
-            /// Decide whether to run Graph/Hypergraph partitioning algorithms
+            /// Generate hypergraph data
+            /**
+             * Call level: collective.
+             */
+            void GenerateHyperGraphData();
+            void FreeHyperGraphData();
+
+            /// Generate partition number for Hierarchical partitioning
+            /**
+             * Call level: collective.
+             */
+            inline void GenerateHiearchicalParts();
+
+            void SetHiearchicalMethods(int level, struct Zoltan_Struct * zz);
 
             /// Update the parallel solution vector layout
             /**
@@ -181,6 +210,12 @@ namespace cme {
             inline void UpdateStateStatus( arma::Mat<PetscInt> states, arma::Row<char> status);
             inline void UpdateStateLIDStatus( arma::Mat<PetscInt> states, arma::Row< PetscInt > local_ids, arma::Row<char> status);
             inline void RetrieveStateStatus();
+
+            friend int zoltan_hier_num_levels (void *data, int *ierr);
+
+            friend int zoltan_hier_part (void *data, int level, int *ierr);
+
+            friend void zoltan_hier_method (void *data, int level, struct Zoltan_Struct * zz, int *ierr);
         public:
 
             // Generic Interface
@@ -226,9 +261,9 @@ namespace cme {
              * @param state: matrix of input states. Each column represent a state. Each processor inputs its own set of states.
              * @return Armadillo row vector of indices. The index of each state is nonzero of the state is a member of the finite state subset. Otherwise, the index is -1 (if state does not exist in the subset, or some entries of the state are 0) or -2-i if the state violates constraint i.
              */
-            arma::Row< PetscInt > State2Petsc( arma::Mat< PetscInt > state, bool count_sinks = true );
+            arma::Row< PetscInt > State2Petsc( arma::Mat< PetscInt > &state, bool count_sinks = true );
 
-            void State2Petsc( arma::Mat< PetscInt > state, PetscInt *indx, bool count_sinks = true);
+            void State2Petsc( arma::Mat< PetscInt > &state, PetscInt *indx, bool count_sinks = true );
 
             ///
             arma::Row<PetscReal> SinkStatesReduce(Vec P);
@@ -332,6 +367,8 @@ namespace cme {
             void GiveZoltanHypergraph(int num_gid_entries, int num_vtx_edge, int num_pins,
                                       int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr,
                                       ZOLTAN_ID_PTR pin_gid, int *ierr);
+
+            void GiveZoltanHypergraphEdgeWeights(int num_gid_entries, int num_lid_entries, int num_edges, int edge_weight_dim, ZOLTAN_ID_PTR edge_GID, ZOLTAN_ID_PTR edge_LID, float  *edge_weight, int *ierr);
 
             /// Compute the marginal distributions from a given finite state subset and parallel probability vector
             arma::Col<PetscReal> marginal(Vec P, PetscInt species);

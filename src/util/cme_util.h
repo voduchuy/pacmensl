@@ -31,6 +31,7 @@
 
 
 namespace cme {
+    #define SQR1 sqrt(0.1e0)
 /*
    The following functions mimic the similar MATLAB functions.
  */
@@ -218,6 +219,10 @@ namespace cme {
         arma::uvec(unique_colids) = arma::find_unique( ids );
         return X.cols( unique_colids );
     }
+
+    /*! Round to 2 significant digits
+     */
+    double round2digit(double x);
 
 /*! Initialize and finalize Parallel context
  *

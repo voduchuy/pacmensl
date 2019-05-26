@@ -29,6 +29,8 @@ namespace repressilator_cme {
     }
     arma::Row<int> rhs_constr{22, 2, 2, 44, 4, 44};
     arma::Row<double> expansion_factors{0.2, 0.2, 0.2, 0.2, 0.2, 0.2};
+    arma::Row<int> rhs_constr_hyperrec{22, 2, 2};
+    arma::Row<double> expansion_factors_hyperrec{0.2, 0.2, 0.2};
 
 // propensity function
     PetscReal propensity(PetscInt *X, PetscInt k) {
