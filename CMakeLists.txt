@@ -9,11 +9,7 @@ set(UTIL_LIBS
 set(FSS_LIBS
         FiniteStateSubset
         FiniteStateSubsetZoltanQuery
-        FiniteStateSubsetNaive
-        FiniteStateSubsetGraph
-        FiniteStateSubsetHyperGraph
-        FiniteStateSubsetHierarch
-        FiniteStateSubsetRCB
+        FiniteStateSubsetHelpers
         )
 
 set(MAT_LIBS
@@ -34,13 +30,13 @@ set(TEST_PROGRAMS
         test_mat
         test_fps_cvode
         test_fsp_solver
-        test_ao
+        test_dd
         )
 
 set(EXAMPLES
         distribute_states
         benchmark
-        multiple_single_core_jobs
+#        multiple_single_core_jobs
         )
 
 set(EXT_LIBRARIES
@@ -56,7 +52,7 @@ list (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_CXX_COMPILER mpicxx )
-set(CMAKE_CXX_FLAGS " -g -std=c++11")
+set(CMAKE_CXX_FLAGS " -g -std=c++11 -fexceptions")
 
 FIND_PACKAGE(PETSc)
 INCLUDE_DIRECTORIES(${PETSC_INCLUDES})
@@ -109,7 +105,7 @@ endforeach()
 
 foreach ( PROG ${TEST_PROGRAMS})
   add_executable(${PROG} ${CMAKE_SOURCE_DIR}/test/${PROG}.cpp)
-  target_link_libraries(${PROG} ${FSP_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+  target_link_libraries(${PROG} ${UTIL_LIBS} ${FSS_LIBS} ${MAT_LIBS} ${SOLVER_LIBS} ${FSP_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
 endforeach()
 
 foreach ( PROG ${EXAMPLES})

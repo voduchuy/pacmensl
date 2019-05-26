@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(PETSC_COMM_WORLD, &num_procs);
 
     // Read options for fsp
-    PartitioningType fsp_par_type = Naive;
+    PartitioningType fsp_par_type = Graph;
     ODESolverType fsp_odes_type = CVODE_BDF;
     char opt[100];
     PetscBool opt_set;
@@ -40,10 +40,10 @@ int main(int argc, char *argv[]) {
 
     // Begin PETSC context
     {
-        arma::Row<PetscInt> fsp_size = {30, 30};
+        arma::Row<int> fsp_size = {30, 30};
         arma::Row<PetscReal> expansion_factors = {0.25,0.25};
         FSPSolver fsp(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
-        fsp.SetInitFSPSize(fsp_size);
+        fsp.SetInitFSPBounds(fsp_size);
         fsp.SetFSPTolerance(fsp_tol);
         fsp.SetFinalTime(t_final);
         fsp.SetStoichiometry(toggle_cme::SM);
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         FiniteStateSubset& state_set = fsp.GetStateSubset();
         std::vector<arma::Col<PetscReal>> marginals(fsp_size.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i) {
-            marginals[i] = cme::parallel::marginal(state_set, P, i);
+            marginals[i] = state_set.marginal(P, i);
         }
 
         MPI_Comm_rank(PETSC_COMM_WORLD, &rank);

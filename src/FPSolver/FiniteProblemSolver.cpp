@@ -36,7 +36,7 @@ namespace cme{
 
         void FiniteProblemSolver::SetFiniteStateSubset(FiniteStateSubset *_fsp) {
             fsp = _fsp;
-            expand_sink.resize(fsp->GetNumSpecies());
+            expand_sink.resize(fsp->GetNumConstraints());
         }
 
         void FiniteProblemSolver::RHSEval(PetscReal t, Vec x, Vec y) {

@@ -21,9 +21,12 @@ int main(int argc, char *argv[]) {
     // Begin PETSC context
     {
         arma::Row<PetscInt> fsp_size = {30, 30};
-        FiniteStateSubsetGraph fsp(PETSC_COMM_WORLD);
-        fsp.SetSize(fsp_size);
+        arma::Mat<PetscInt> X0(2, 1);
+        X0.col(0).fill(0);
+        FiniteStateSubset fsp(PETSC_COMM_WORLD, 2);
+        fsp.SetShapeBounds(fsp_size);
         fsp.SetStoichiometry(toggle_cme::SM);
+        fsp.SetInitialStates(X0);
         fsp.GenerateStatesAndOrdering();
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 
@@ -47,7 +50,7 @@ int main(int argc, char *argv[]) {
         PetscPrintf(PETSC_COMM_WORLD, "Initial vector set.\n");
 
         PetscReal fsp_tol = 1.0e-2, t_final = 1000.0;
-        CVODEFSP cvode_solver(PETSC_COMM_WORLD, CV_BDF, CV_NEWTON);
+        CVODEFSP cvode_solver( PETSC_COMM_WORLD, CV_BDF );
         cvode_solver.SetFinalTime(t_final);
         cvode_solver.SetFSPTolerance(fsp_tol);
         cvode_solver.SetInitSolution(&P);

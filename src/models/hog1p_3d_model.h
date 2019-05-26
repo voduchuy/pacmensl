@@ -19,6 +19,23 @@ namespace hog3d_cme {
 // parameters for the time-dependent factors
             r1{6.9e-5}, r2{7.1e-3}, eta{3.1}, Ahog{9.3e09}, Mhog{6.4e-4};
 
+    // Function to constraint the shape of the FSP
+    void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
+                       int *vals){
+
+        for (int i{0}; i < num_states; ++i){
+            vals[i*num_constrs] = states[num_species*i];
+            vals[i*num_constrs + 1] = states[num_species*i+1];
+            vals[i*num_constrs + 2] = states[num_species*i+2];
+            vals[i*num_constrs + 3] = (states[num_species*i]==0)*((states[num_species*i+1]) + (states[num_species*i+2]));
+            vals[i*num_constrs + 4] = (states[num_species*i]==1)*((states[num_species*i+1]) + (states[num_species*i+2]));
+            vals[i*num_constrs + 5] = (states[num_species*i]==2)*((states[num_species*i+1]) + (states[num_species*i+2]));
+            vals[i*num_constrs + 6] = (states[num_species*i]==3)*((states[num_species*i+1]) + (states[num_species*i+2]));;
+        }
+    }
+    arma::Row<int> rhs_constr{3, 4, 4, 1, 10, 10, 10};
+    arma::Row<double> expansion_factors{0.0, 0.5, 0.5, 0.5,0.5, 0.5, 0.5, 0.5,0.5, 0.5, 0.5};
+
 // propensity function
     PetscReal propensity(PetscInt *X, PetscInt k) {
         switch (k) {

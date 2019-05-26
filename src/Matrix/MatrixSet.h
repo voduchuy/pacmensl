@@ -10,11 +10,8 @@
 #include <mpi.h>
 #include <petscmat.h>
 #include <petscis.h>
-#include <petscao.h>
 #include "util/cme_util.h"
 #include "FSS/FiniteStateSubset.h"
-#include "FSS/FiniteStateSubsetGraph.h"
-#include "FSS/FiniteStateSubsetNaive.h"
 
 namespace cme {
     namespace parallel {
@@ -33,7 +30,7 @@ namespace cme {
         protected:
             MPI_Comm comm{MPI_COMM_NULL};
 
-            arma::Row<Int> fsp_size;
+            arma::Row<int> fsp_bounds;
 
             Int n_reactions;
             Int n_rows_global;

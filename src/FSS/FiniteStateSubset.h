@@ -6,13 +6,16 @@
 #define PARALLEL_FSP_FINITESTATESUBSET_H
 
 #include <zoltan.h>
+#include <petscis.h>
 #include "util/cme_util.h"
 #include "FiniteStateSubsetZoltanQuery.h"
 
 namespace cme {
     namespace parallel {
+        typedef void fsp_constr_multi_fn(int n_species, int n_constraints, int n_states, int *states, int *output);
+
         enum PartitioningType {
-            Naive, RCB, Graph, HyperGraph, Hierarch, NotSet
+            Block, Graph, HyperGraph
         };
 
         enum PartitioningApproach {
@@ -29,181 +32,311 @@ namespace cme {
          * */
         class FiniteStateSubset {
         protected:
+            static const int hash_table_length = 1000000;
+
             int set_up = 0;
             int stoich_set = 0;
 
-            MPI_Comm comm;
-            PartitioningType partitioning_type;
-            PartitioningApproach repart_approach = FromScratch;
+            double lb_threshold = 0.2;
 
-            arma::Row<PetscInt> fsp_size;
+            MPI_Comm comm;
+            PetscInt comm_size;
+            int my_rank;
+            PartitioningType partitioning_type = Graph;
+            PartitioningApproach repart_approach = Repartition;
+
             arma::Mat<PetscInt> stoichiometry;
 
             PetscInt n_species;
-            PetscInt n_states_global;
-            PetscInt n_local_states;
-            arma::Mat<PetscInt> local_states;
+            PetscInt n_reactions;
+            PetscInt nstate_global;
+            PetscInt nstate_local = 0;
+            PetscInt nstate_global_old = 0;
+
+            /// Left and right hand side for the custom constraints
+            fsp_constr_multi_fn *lhs_constr;
+            arma::Row<int> rhs_constr;
+
+            static void default_constr_fun(int num_species, int num_constr, int n_states, int *states, int *outputs);
 
             /// For event logging
+            PetscLogEvent state_exploration;
+            PetscLogEvent check_constraints;
+            PetscLogEvent add_states;
             PetscLogEvent generate_graph_data;
             PetscLogEvent call_partitioner;
+            PetscLogEvent zoltan_dd_stuff;
+            PetscLogEvent total_update_dd;
+            PetscLogEvent distribute_frontiers;
 
-            void LocalStatesFromAO();
-
-            PetscLayout vec_layout = nullptr;
-            AO lex2petsc = nullptr;
-
-            arma::Mat<PetscInt>
-            compute_my_naive_local_states(); ///< Compute the local states owned by the processor in the naive partitioning. This is used as the initial guess for the partitioning algorithms.
-
-            /// Struct to stores data for graph/hypergraph partitioning algorithms
+            /// Armadillo array to store states owned by this processor
             /**
-             * This data structure corresponds to the row-wise decomposition of the CME matrix. Each object/vertex corresponds
-             * to a state of the CME. Connectivity between states are represented by edges in the graph model (using the generalized graph model
-             * of Catalyurek et al.), and hyper-edges in
-             * the hypergraph model (using the column-net model of Catalyurek et al.).
-             * The details about these graph and hypergraph models could be found in Catalyurek et al., IEEE Trans Parallel Dist Sys, Vol 10, No 7, 1999.
-             * We adjust the computational weights to reflect our specific implementation of the time-dependent CME matrix [Vo & Munsky, 2019?].
+             * States are stored as column vectors of integers.
              */
-            struct ConnectivityData {
-                AO lex2zoltan; ///< Store ordering from FSP states' natural indexing to Zoltan's indexing
+            arma::Mat<PetscInt> local_states;
+            arma::Row<char> local_states_status;
 
-                int num_local_states; ///< Number of local states held by the processor in the current partitioning
-                PetscInt *states_gid; ///< Global IDs of the states held by the processor, these IDs are the lexicographic orders of the states in the hyper-rectangular FSP
-                float *states_weights; ///< Computational weights associated with each state, here we assign to these weights the number of FLOPs needed
+            /// PETSc vector layout for the probability distribution
+            PetscLayout state_layout = nullptr;
+            PetscLayout state_layout_no_sinks = nullptr;
 
-                int *num_edges; ///< Number of states that share information with each local states
+            /// Variable to store local ids of frontier states
+            arma::uvec frontier_lids;
+            arma::Mat<PetscInt> local_frontier_gids;
+            arma::Mat<PetscInt> frontiers;
 
-                int num_reachable_states; ///< Number of nz entries on the rows of the FSP matrix corresponding to local states
-                PetscInt *reachable_states; ///< Global indices of nz entries on the rows corresponding to local states
-                int *reachable_states_proc; ///< Processors that own the reachable states
-                float *edge_weights; ///< For storing the edge weights in graph model
-                int *edge_ptr; ///< reachable_states[edge_ptr[i] to ege_ptr[i+1]-1] contains the ids of states connected to local state i
-            } adj_data;
+            /// Information for graph/hypergraph-based load-balancing methods
+            arma::Row<PetscInt> local_graph_gids;
+            /// States that can reach on-processor states via a chemical reaction
+            arma::Mat<PetscInt> local_observable_states;
+            arma::Mat<PetscInt> local_reachable_states;
 
-            void GenerateVertexData(arma::Mat<PetscInt> &local_states_tmp);
+            /// Number of edges connected to the local states
+            arma::Row<PetscInt> num_local_edges;
+            /// State's weights
+            arma::Row<float> state_weights;
 
-            void FreeVertexData();
+            /// Zoltan directory
+            /**
+             * This is essentially a parallel hash table. We use it to store existing states for fast lookup.
+             */
+            Zoltan_DD_Struct *state_directory;
 
-            void GenerateGraphData(arma::Mat<PetscInt> &local_states_tmp); ///< The name says it all
+            /// Zoltan struct for load-balancing
+            Zoltan_Struct *zoltan_lb;
 
-            void FreeGraphData(); ///< The name says it all
+            /// Zoltan struct for load-balancing the state space search
+            Zoltan_Struct *zoltan_explore;
 
-            void GenerateHyperGraphData(arma::Mat<PetscInt> &local_states_tmp); ///< The name says it all
+            std::string zoltan_repart_opt = std::string("REPARTITION");
 
-            void FreeHyperGraphData(); ///< The name says it all
+            /* Private functions */
 
-            struct GeomData {
-                int dim;
-                double *states_coo;
-            } geom_data;
+            /// Initialize the number of GIDs and the Load-balancing method in Zoltan
+            /**
+             * Call level: collective.
+             */
+            void InitZoltanParameters();
 
-            void GenerateGeomData(arma::Row<PetscInt> &fsp_size, arma::Mat<PetscInt> &local_states_tmp);
+            /// Distribute the frontier states to all processors for state space exploration
+            /**
+             * Call level: collective.
+             */
+            void DistributeFrontier();
 
-            void FreeGeomData();
+            /// Distribute the frontier states to all processors in FSS's communication context for state space exploration
+            /**
+             * Call level: collective.
+             */
+            void LoadBalance();
 
-            // These variables are needed for partitioning with Zoltan
-            Zoltan_Struct *zoltan;
-            std::string zoltan_part_opt = std::string("PARTITION");
-            // Variables to store Zoltan's output
-            int zoltan_err;
-            int changes, num_gid_entries, num_lid_entries, num_import, num_export;
-            ZOLTAN_ID_PTR import_global_ids, import_local_ids, export_global_ids, export_local_ids;
-            int *import_procs, *import_to_part, *export_procs, *export_to_part;
+            /// Add a set of states to the global and local state set
+            /**
+             * Call level: collective.
+             * @param X : armadillo matrix of states to be added. X.n_rows = number of species. Each processor input its own
+             * local X. Different input sets from different processors may overlap.
+             */
+            void AddStates(arma::Mat<PetscInt> &X);
 
-            void CallZoltanLoadBalancing();
+            /// Check if a state satisfies all constraints
+            /**
+             * Call level: local.
+             * @param x
+             * @return 0 if x satisfies all constraints; otherwise -1.
+             */
+            inline PetscInt CheckState( PetscInt *x );
 
-            void ComputePetscOrderingFromZoltan();
 
-            void FreeZoltanParts();
+            /// Maximum molecules of the state space
+            /**
+             * This is the 'key' for packing and unpacking state data during load-balancing.
+             */
+            arma::Row<PetscInt> max_num_molecules;
 
-            /* Zoltan interface functions */
-            friend int zoltan_num_obj(void *fss_data, int *ierr);
+            /// Find the maximum number of molecules across states in the current subset and their reachable states.
+            /**
+             * Call level: collective.
+             */
+            inline void UpdateMaxNumMolecules();
 
-            friend void zoltan_obj_list(void *fss_data, int num_gid_entries, int num_lid_entries,
-                                        ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts,
-                                        int *ierr);
+            /// Generate local graph/hypergraph data
+            /**
+             * Call level: local.
+             */
+            inline void GenerateGraphData();
 
-            friend int zoltan_num_geom(void *data, int *ierr);
+            /// Decide whether to run Graph/Hypergraph partitioning algorithms
 
-            friend void zoltan_geom_multi(void *data, int num_gid_entries, int num_lid_entries, int num_obj,
-                                          ZOLTAN_ID_PTR global_ids, ZOLTAN_ID_PTR local_ids, int num_dim,
-                                          double *geom_vec, int *ierr);
+            /// Update the parallel solution vector layout
+            /**
+             * Call lvel: collective.
+             */
+            inline void UpdateLayouts();
 
-            friend int zoltan_num_edges(void *data, int num_gid_entries, int num_lid_entries,
-                                        ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id, int *ierr);
-
-            friend void zoltan_edge_list(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
-                                         ZOLTAN_ID_PTR local_id, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs,
-                                         int wgt_dim, float *ewgts, int *ierr);
-
-            friend void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr);
-
-            friend void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vtx_edge, int num_pins,
-                                              int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr,
-                                              ZOLTAN_ID_PTR pin_gid, int *ierr);
-
-            friend int zoltan_obj_size(
-                    void *data,
-                    int num_gid_entries,
-                    int num_lid_entries,
-                    ZOLTAN_ID_PTR global_id,
-                    ZOLTAN_ID_PTR local_id,
-                    int *ierr);
-
-            friend arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
-
+            /// Update the distributed directory of states (after FSP expansion, Load-balancing...)
+            /**
+             * Call lvel: collective.
+             */
+            inline void UpdateStateLID( );
+            inline void UpdateStateStatus( arma::Mat<PetscInt> states, arma::Row<char> status);
+            inline void UpdateStateLIDStatus( arma::Mat<PetscInt> states, arma::Row< PetscInt > local_ids, arma::Row<char> status);
+            inline void RetrieveStateStatus();
         public:
 
             // Generic Interface
-            explicit FiniteStateSubset(MPI_Comm new_comm);
+            explicit FiniteStateSubset(MPI_Comm new_comm, PetscInt num_species);
 
             void SetStoichiometry(arma::Mat<PetscInt> SM);
 
-            void SetSize(arma::Row<PetscInt> new_fsp_size);
+            void SetShape(fsp_constr_multi_fn *lhs_fun,
+                          arma::Row<int> &rhs_bounds);
+
+            void SetShapeBounds(arma::Row<PetscInt> &rhs_bounds);
+
+            void SetLBType(PartitioningType lb_type);
 
             void SetRepartApproach(PartitioningApproach approach);
 
+            /// Check if a list of states satisfy a constraint
+            /**
+             * Call level: local.
+             * @param num_states : number of states. x : array of states. satisfied: output array of size num_states*num_constraints.
+             * @return void.
+             */
+            void CheckConstraint( PetscInt num_states, PetscInt *x, PetscInt *satisfied );
+
+            /// Set the initial states.
+            /**
+             * Call level: collective.
+             * Each processor enters its own set of initial states. Initial state could be empty, but at least one processor
+             * must insert at least one state. Initial states from different processors must not overlap.
+             */
+            void SetInitialStates(arma::Mat<PetscInt> X0);
+
+            /// Expand from the existing states to all reachable states that satisfy the constraints.
+            /**
+             * Call level: collective.
+             * This function also distribute the states into the processors to improve the load-balance of matrix-vector multplications.
+             */
+            void GenerateStatesAndOrdering();
+
+            /// Generate the indices of the states in the Petsc vector ordering.
+            /**
+             * Call level: collective.
+             * @param state: matrix of input states. Each column represent a state. Each processor inputs its own set of states.
+             * @return Armadillo row vector of indices. The index of each state is nonzero of the state is a member of the finite state subset. Otherwise, the index is -1 (if state does not exist in the subset, or some entries of the state are 0) or -2-i if the state violates constraint i.
+             */
+            arma::Row< PetscInt > State2Petsc( arma::Mat< PetscInt > state, bool count_sinks = true );
+
+            void State2Petsc( arma::Mat< PetscInt > state, PetscInt *indx, bool count_sinks = true);
+
+            ///
+            arma::Row<PetscReal> SinkStatesReduce(Vec P);
+
+            /// Getters
+
             MPI_Comm GetComm();
 
-            arma::Row<PetscInt> GetFSPSize();
+            arma::Row<int> GetShapeBounds();
 
             PetscInt GetNumLocalStates();
+
+            PetscInt GetNumConstraints();
 
             PetscInt GetNumGlobalStates();
 
             PetscInt GetNumSpecies();
 
-            AO GetAO();
-
-            void PrintAO();
+            PetscInt GetNumReactions();
 
             arma::Mat<PetscInt> GetLocalStates();
 
             std::tuple<PetscInt, PetscInt> GetLayoutStartEnd();
 
-            arma::Row<PetscInt> State2Petsc(arma::Mat<PetscInt> state);
-
-            void State2Petsc(arma::Mat<PetscInt> state, PetscInt *indx);
-
-            arma::Row<PetscReal> SinkStatesReduce(Vec P);
-
-            void Destroy();
-
             ~FiniteStateSubset();
 
+            /* Zoltan interface functions */
+            void GiveZoltanObjList(int num_gid_entries, int num_lid_entries,
+                                   ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts,
+                                   int *ierr);
 
-            // Implementation-dependent methods
-            // This procedure generate data for the members:
-            // local_states, vec_layout, lex2petsc
+            int
+            GiveZoltanObjSize(int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id,
+                              int *ierr);
 
-            virtual void GenerateStatesAndOrdering() {};
+            void
+            GiveZoltanSendBuffer(int num_gid_entries, int num_lid_entries, int num_ids, ZOLTAN_ID_PTR global_ids,
+                                 ZOLTAN_ID_PTR local_ids, int *dest, int *sizes, int *idx, char *buf, int *ierr);
 
-            virtual void ExpandToNewFSPSize(arma::Row<PetscInt> new_fsp_size) {};
+            void
+            ReceiveZoltanBuffer(int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids, int *sizes,
+                                int *idx, char *buf, int *ierr);
+
+            void MidMigrationProcessing(
+                    int num_gid_entries,
+                    int num_lid_entries,
+                    int num_import,
+                    ZOLTAN_ID_PTR import_global_ids,
+                    ZOLTAN_ID_PTR import_local_ids,
+                    int *import_procs,
+                    int *import_to_part,
+                    int num_export,
+                    ZOLTAN_ID_PTR export_global_ids,
+                    ZOLTAN_ID_PTR export_local_ids,
+                    int *export_procs,
+                    int *export_to_part,
+                    int *ierr);
+
+
+            int GiveZoltanNumFrontier();
+
+            void GiveZoltanFrontierList(int num_gid_entries, int num_lid_entries,
+                                      ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_ids, int wgt_dim,
+                                      float *obj_wgts,
+                                      int *ierr);
+
+            void
+            PackFrontiers(int num_gid_entries, int num_lid_entries, int num_ids, ZOLTAN_ID_PTR global_ids,
+                                 ZOLTAN_ID_PTR local_ids, int *dest, int *sizes, int *idx, char *buf, int *ierr);
+
+            void
+            ReceiveFrontiers(int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids, int *sizes,
+                                int *idx, char *buf, int *ierr);
+
+            void FrontiersMidMigration(
+                    int num_gid_entries,
+                    int num_lid_entries,
+                    int num_import,
+                    ZOLTAN_ID_PTR import_global_ids,
+                    ZOLTAN_ID_PTR import_local_ids,
+                    int *import_procs,
+                    int *import_to_part,
+                    int num_export,
+                    ZOLTAN_ID_PTR export_global_ids,
+                    ZOLTAN_ID_PTR export_local_ids,
+                    int *export_procs,
+                    int *export_to_part,
+                    int *ierr);
+
+            int GiveZoltanNumEdges(int num_gid_entries, int num_lid_entries,
+                                 ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id, int *ierr);
+
+            void GiveZoltanGraphEdges(int num_gid_entries, int num_lid_entries, int num_obj,
+                                       ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id,
+                                       int *num_edges, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs,
+                                       int wgt_dim, float *ewgts, int *ierr);
+
+            void GiveZoltanHypergraphSize(int *num_lists, int *num_pins, int *format, int *ierr);
+
+
+            void GiveZoltanHypergraph(int num_gid_entries, int num_vtx_edge, int num_pins,
+                                      int format, ZOLTAN_ID_PTR vtx_edge_gid, int *vtx_edge_ptr,
+                                      ZOLTAN_ID_PTR pin_gid, int *ierr);
+
+            /// Compute the marginal distributions from a given finite state subset and parallel probability vector
+            arma::Col<PetscReal> marginal(Vec P, PetscInt species);
         };
 
-        /// Compute the marginal distributions from a given finite state subset and parallel probability vector
-        arma::Col<PetscReal> marginal(FiniteStateSubset &fsp, Vec P, PetscInt species);
 
         /*
          * Helper functions to convert back and forth between partitioning options and string

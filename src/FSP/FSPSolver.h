@@ -11,11 +11,6 @@
 #include"Matrix/MatrixSet.h"
 #include"FPSolver/FiniteProblemSolver.h"
 #include"FSS/FiniteStateSubset.h"
-#include"FSS/FiniteStateSubsetNaive.h"
-#include"FSS/FiniteStateSubsetRCB.h"
-#include"FSS/FiniteStateSubsetGraph.h"
-#include"FSS/FiniteStateSubsetHyperGraph.h"
-#include"FSS/FiniteStateSubsetHierarch.h"
 #include"FPSolver/CVODEFSP.h"
 #include"util/cme_util.h"
 
@@ -36,11 +31,13 @@ namespace cme {
 
             MPI_Comm comm = MPI_COMM_NULL;
 
-            PartitioningType partioning_type = Naive;
+            PartitioningType partitioning_type = Graph;
             PartitioningApproach repart_approach = FromScratch;
             ODESolverType odes_type = CVODE_BDF;
 
-            arma::Row<Int> fsp_size;
+            bool custom_constraints = false;
+            fsp_constr_multi_fn *fsp_constr_funs;
+            arma::Row<int> fsp_bounds;
             arma::Row<Real> fsp_expasion_factors;
 
             FiniteStateSubset *fsp;
@@ -72,7 +69,9 @@ namespace cme {
 
             explicit FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
 
-            void SetInitFSPSize(arma::Row<Int> &_fsp_size);
+            void SetFSPConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
+
+            void SetInitFSPBounds( arma::Row< int > &_fsp_size );
 
             void SetFinalTime(PetscReal t);
 

@@ -12,120 +12,151 @@ namespace cme {
 
         // Interface to Zoltan
         int zoltan_num_obj(void *data, int *ierr) {
-            *ierr = 0;
-            return ((FiniteStateSubset::ConnectivityData *) data)->num_local_states;
+            *ierr = ZOLTAN_OK;
+            return ((FiniteStateSubset *) data)->GetNumLocalStates();
         }
 
         void zoltan_obj_list(void *data, int num_gid_entries, int num_lid_entries,
                              ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id, int wgt_dim,
                              float *obj_wgts, int *ierr) {
-            auto adj_data = (FiniteStateSubset::ConnectivityData *) data;
-            for (int i{0}; i < adj_data->num_local_states; ++i) {
-                global_id[i] = (ZOLTAN_ID_TYPE ) adj_data->states_gid[i];
-                local_id[i] = (ZOLTAN_ID_TYPE) i;
-            }
-            if (wgt_dim == 1){
-                for (int i{0}; i < adj_data->num_local_states; ++i){
-                    obj_wgts[i] = adj_data->states_weights[i];
-                }
-            }
+            auto fss_data = (FiniteStateSubset *) data;
+
+            fss_data->GiveZoltanObjList(num_gid_entries, num_lid_entries, global_id, local_id, wgt_dim, obj_wgts, ierr);
+
             *ierr = ZOLTAN_OK;
         }
 
-        int zoltan_num_geom(void *data, int *ierr) {
-            auto fss_data = (FiniteStateSubset *) data;
+        int zoltan_num_frontier(void *fss_data, int *ierr) {
             *ierr = ZOLTAN_OK;
-            return fss_data->geom_data.dim;
+            return ((FiniteStateSubset *) fss_data)->GiveZoltanNumFrontier();
         }
 
-        void
-        zoltan_geom_multi(void *data, int num_gid_entries, int num_lid_entries, int num_obj, ZOLTAN_ID_PTR global_ids,
-                          ZOLTAN_ID_PTR local_ids, int num_dim, double *geom_vec, int *ierr) {
-            if ((num_gid_entries != 1) || (num_lid_entries != 1)) {
-                *ierr = ZOLTAN_FATAL;
-                return;
-            }
+
+        void zoltan_frontier_list(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
+                                  ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts, int *ierr) {
             auto fss_data = (FiniteStateSubset *) data;
-            ZOLTAN_ID_TYPE local_idx;
-            for (auto i{0}; i < num_obj; ++i) {
-                local_idx = local_ids[i];
-                for (auto j{0}; j < num_dim; ++j) {
-                    geom_vec[num_dim * i + j] = fss_data->geom_data.states_coo[num_dim * local_idx + j];
-                }
-            }
+            fss_data->GiveZoltanFrontierList(num_gid_entries, num_lid_entries, global_id, local_ids, wgt_dim, obj_wgts, ierr);
         }
 
         void zoltan_get_hypergraph_size(void *data, int *num_lists, int *num_pins, int *format, int *ierr) {
-            auto *hg_data = (FiniteStateSubset::ConnectivityData *) data;
-            *num_lists = hg_data->num_local_states;
-            *num_pins = hg_data->num_reachable_states;
-            *format = ZOLTAN_COMPRESSED_VERTEX;
-            *ierr = ZOLTAN_OK;
+            auto *hg_data = (FiniteStateSubset *) data;
+            hg_data->GiveZoltanHypergraphSize(num_lists, num_pins, format, ierr);
         }
 
         void zoltan_get_hypergraph(void *data, int num_gid_entries, int num_vertices, int num_pins, int format,
                                    ZOLTAN_ID_PTR vtx_gid, int *vtx_edge_ptr, ZOLTAN_ID_PTR pin_gid, int *ierr) {
-            auto hg_data = (FiniteStateSubset::ConnectivityData *) data;
+            auto hg_data = (FiniteStateSubset *) data;
 
-            if ((num_vertices != hg_data->num_local_states) || (num_pins != hg_data->num_reachable_states) ||
+            if ((num_vertices != hg_data->GetNumLocalStates()) ||
                 (format != ZOLTAN_COMPRESSED_VERTEX)) {
                 *ierr = ZOLTAN_FATAL;
+                std::cout << "zoltan_get_hypergraph fails. \n";
                 return;
             }
 
-            for (int i{0}; i < num_vertices; ++i) {
-                vtx_gid[i] = (ZOLTAN_ID_TYPE) hg_data->states_gid[i];
-                vtx_edge_ptr[i] = hg_data->edge_ptr[i];
-            }
-
-            for (int i{0}; i < num_pins; ++i) {
-                pin_gid[i] = (ZOLTAN_ID_TYPE) hg_data->reachable_states[i];
-            }
-            *ierr = ZOLTAN_OK;
+            hg_data->GiveZoltanHypergraph(num_gid_entries, num_vertices, num_pins, format, vtx_gid, vtx_edge_ptr, pin_gid, ierr);
         }
 
         int zoltan_num_edges(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
                              ZOLTAN_ID_PTR local_id, int *ierr) {
-            auto g_data = (FiniteStateSubset::ConnectivityData *) data;
+            auto g_data = (FiniteStateSubset *) data;
             if ((num_gid_entries != 1) || (num_lid_entries != 1)) {
                 *ierr = ZOLTAN_FATAL;
                 return -1;
             }
-            ZOLTAN_ID_TYPE indx = *local_id;
-            *ierr = ZOLTAN_OK;
-            return g_data->num_edges[indx];
+            return g_data->GiveZoltanNumEdges(num_gid_entries, num_lid_entries, global_id, local_id, ierr);
         }
 
-        void zoltan_edge_list(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
-                              ZOLTAN_ID_PTR local_id, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs, int wgt_dim,
-                              float *ewgts, int *ierr) {
-            auto g_data = (FiniteStateSubset::ConnectivityData *) data;
+        void zoltan_get_graph_edges(void *data, int num_gid_entries, int num_lid_entries, int num_obj,
+                                    ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id,
+                                    int *num_edges, ZOLTAN_ID_PTR nbor_global_id, int *nbor_procs, int wgt_dim,
+                                    float *ewgts, int *ierr) {
+            auto g_data = (FiniteStateSubset *) data;
             if ((num_gid_entries != 1) || (num_lid_entries != 1)) {
                 *ierr = ZOLTAN_FATAL;
                 return;
             }
-            ZOLTAN_ID_TYPE indx = *local_id;
-            int k = 0;
-            int edge_ptr = g_data->edge_ptr[indx];
-            for (auto i = 0; i <  g_data->num_edges[indx]; ++i) {
-                nbor_global_id[k] = (ZOLTAN_ID_TYPE) g_data->reachable_states[edge_ptr + i];
-                k++;
-            }
-            if (wgt_dim == 1){
-                k = 0;
-                for (auto i = 0; i <  g_data->num_edges[indx]; ++i){
-                    ewgts[k] = g_data->edge_weights[edge_ptr + i];
-                    k++;
-                }
-            }
-            *ierr = ZOLTAN_OK;
+            g_data->GiveZoltanGraphEdges(num_gid_entries,num_lid_entries, num_obj, global_id, local_id, num_edges, nbor_global_id, nbor_procs, wgt_dim, ewgts, ierr);
         }
 
         int zoltan_obj_size(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
                             ZOLTAN_ID_PTR local_id, int *ierr) {
             *ierr = ZOLTAN_OK;
+            auto fss_data = (FiniteStateSubset *) data;
             // The only things that migrate in our current version are the entries of the solution vector
-            return (int) sizeof(PetscReal);
+            return fss_data->GiveZoltanObjSize(num_gid_entries, num_lid_entries, global_id, local_id, ierr);
         }
+
+        void zoltan_pack_frontiers( void *data, int num_gid_entries, int num_lid_entries, int num_ids,
+                                    ZOLTAN_ID_PTR global_ids, ZOLTAN_ID_PTR local_ids, int *dest, int *sizes, int *idx,
+                                    char *buf, int *ierr ) {
+            auto fss_data = (FiniteStateSubset *) data;
+            if (num_gid_entries != 1 || num_lid_entries != 1) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            fss_data->PackFrontiers(num_gid_entries, num_lid_entries, num_ids, global_ids, local_ids, dest, sizes, idx, buf, ierr);
+        }
+
+        void zoltan_frontiers_mid_migrate_pp( void *data, int num_gid_entries, int num_lid_entries, int num_import,
+                                              ZOLTAN_ID_PTR import_global_ids, ZOLTAN_ID_PTR import_local_ids,
+                                              int *import_procs, int *import_to_part, int num_export,
+                                              ZOLTAN_ID_PTR export_global_ids, ZOLTAN_ID_PTR export_local_ids,
+                                              int *export_procs, int *export_to_part, int *ierr ) {
+            auto fss_data = (FiniteStateSubset *) data;
+            if (num_gid_entries != 1) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            fss_data->FrontiersMidMigration(num_gid_entries, num_lid_entries, num_import, nullptr, nullptr, nullptr, nullptr, num_export, export_global_ids, export_local_ids, nullptr, nullptr,nullptr);
+            *ierr = ZOLTAN_OK;
+        }
+
+        void
+        zoltan_unpack_frontiers( void *data, int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids, int *sizes,
+                                 int *idx, char *buf, int *ierr ) {
+            auto fss_data = (FiniteStateSubset *) data;
+            if (num_gid_entries != 1) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            fss_data->ReceiveFrontiers(num_gid_entries, num_ids, global_ids, sizes, idx, buf, ierr);
+        }
+
+        void
+        zoltan_pack_states(void *data, int num_gid_entries, int num_lid_entries, int num_ids, ZOLTAN_ID_PTR global_ids,
+                           ZOLTAN_ID_PTR local_ids, int *dest, int *sizes, int *idx, char *buf, int *ierr) {
+            auto fss_data = (FiniteStateSubset *) data;
+            if (num_gid_entries != 1 || num_lid_entries != 1) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            fss_data->GiveZoltanSendBuffer(num_gid_entries, num_lid_entries, num_ids, global_ids, local_ids, dest, sizes, idx, buf, ierr);
+        }
+
+        void zoltan_unpack_states(void *data, int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids, int *sizes,
+                                  int *idx, char *buf, int *ierr) {
+            auto fss_data = (FiniteStateSubset *) data;
+            if (num_gid_entries != 1) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            fss_data->ReceiveZoltanBuffer(num_gid_entries, num_ids, global_ids, sizes, idx, buf, ierr);
+        }
+
+
+        void zoltan_mid_migrate_pp(void *data, int num_gid_entries, int num_lid_entries, int num_import,
+                                   ZOLTAN_ID_PTR import_global_ids, ZOLTAN_ID_PTR import_local_ids, int *import_procs,
+                                   int *import_to_part, int num_export, ZOLTAN_ID_PTR export_global_ids,
+                                   ZOLTAN_ID_PTR export_local_ids, int *export_procs, int *export_to_part, int *ierr) {
+            auto fss_data = (FiniteStateSubset *) data;
+            if (num_gid_entries != 1) {
+                *ierr = ZOLTAN_FATAL;
+                return;
+            }
+            fss_data->MidMigrationProcessing(num_gid_entries, num_lid_entries, num_import, nullptr, nullptr, nullptr, nullptr, num_export, export_global_ids, export_local_ids, nullptr, nullptr,nullptr);
+            *ierr = ZOLTAN_OK;
+        }
+
     }
 }

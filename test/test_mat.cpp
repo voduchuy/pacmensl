@@ -12,20 +12,16 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<petscao.h>
 #include<armadillo>
 #include"models/toggle_model.h"
+#include"models/repressilator_model.h"
 #include"util/cme_util.h"
 #include"FSS/FiniteStateSubset.h"
-#include"FSS/FiniteStateSubsetNaive.h"
-#include"FSS/FiniteStateSubsetGraph.h"
-#include"FSS/FiniteStateSubsetHyperGraph.h"
-#include"FSS/FiniteStateSubsetHierarch.h"
-#include"FSS/FiniteStateSubsetRCB.h"
 #include"Matrix/MatrixSet.h"
 
 using namespace cme::parallel;
 
 int main(int argc, char *argv[]) {
     int ierr;
-    arma::Row<PetscInt> fsp_size = {3, 3};
+    arma::Row<double> fsp_size = {3.0, 3.0};
 
     ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
     CHKERRQ(ierr);
@@ -35,7 +31,7 @@ int main(int argc, char *argv[]) {
     // Read options for fsp
     char opt[100];
     PetscBool opt_set;
-    PartitioningType fsp_par_type = Naive;
+    PartitioningType fsp_par_type = Graph;
     ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
     CHKERRQ(ierr);
     if (opt_set) {
@@ -45,38 +41,33 @@ int main(int argc, char *argv[]) {
 
     double Q_sum;
     {
-        FiniteStateSubset *fsp;
-        switch (fsp_par_type){
-            case Graph:
-                fsp = new FiniteStateSubsetGraph(PETSC_COMM_WORLD);
-                break;
-            case RCB:
-                fsp = new FiniteStateSubsetRCB(PETSC_COMM_WORLD);
-                break;
-            case HyperGraph:
-                fsp = new FiniteStateSubsetHyperGraph(PETSC_COMM_WORLD);
-                break;
-            case Naive:
-                fsp = new FiniteStateSubsetNaive(PETSC_COMM_WORLD);
-                break;
-            case Hierarch:
-                fsp = new FiniteStateSubsetHierarch(PETSC_COMM_WORLD);
-                break;
-            default:
-                fsp = new FiniteStateSubsetNaive(PETSC_COMM_WORLD);
-                break;
-        }
-        fsp->SetSize(fsp_size);
-        fsp->SetStoichiometry(toggle_cme::SM);
-        fsp->GenerateStatesAndOrdering();
-        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with hypergraph partitioning.\n");
+//        arma::Mat<PetscInt> X0(2, 1); X0.fill(0);
+//        FiniteStateSubset fsp(PETSC_COMM_WORLD, 2);
+//        fsp.SetLBType(fsp_par_type);
+//        fsp.SetShapeBounds(fsp_size);
+//        fsp.SetStoichiometry(toggle_cme::SM);
+//        fsp.SetInitialStates(X0);
+//        fsp.GenerateStatesAndOrdering();
+//        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated.\n");
+//
+//        MatrixSet A(PETSC_COMM_WORLD);
+//        A.GenerateMatrices(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
+
+        arma::Mat<PetscInt> X0(3, 1); X0.fill(0); X0(0) = 20;
+        FiniteStateSubset fsp(PETSC_COMM_WORLD, 3);
+        fsp.SetLBType(fsp_par_type);
+        fsp.SetShape(&repressilator_cme::lhs_constr, repressilator_cme::rhs_constr);
+        fsp.SetStoichiometry(repressilator_cme::SM);
+        fsp.SetInitialStates(X0);
+        fsp.GenerateStatesAndOrdering();
+        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated.\n");
 
         MatrixSet A(PETSC_COMM_WORLD);
-        A.GenerateMatrices(*fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
+        A.GenerateMatrices(fsp, repressilator_cme::SM, repressilator_cme::propensity, repressilator_cme::t_fun);
 
         Vec P, Q;
         VecCreate(PETSC_COMM_WORLD, &P);
-        VecSetSizes(P, fsp->GetNumLocalStates() + fsp->GetNumSpecies(), PETSC_DECIDE);
+        VecSetSizes(P, fsp.GetNumLocalStates() + fsp.GetShapeBounds().n_elem, PETSC_DECIDE);
         VecSetFromOptions(P);
         VecSet(P, 1.0);
         VecSetUp(P);
@@ -91,7 +82,6 @@ int main(int argc, char *argv[]) {
         PetscPrintf(PETSC_COMM_WORLD, "Q_sum = %.2f \n", Q_sum);
 
         A.Destroy();
-        delete fsp;
     }
     ierr = PetscFinalize();
     CHKERRQ(ierr);
