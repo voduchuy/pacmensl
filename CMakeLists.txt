@@ -1,68 +1,23 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
-PROJECT(Parallel_FSP)
-
-set(UTIL_LIBS
-        cme_util
-        )
-
-set(FSS_LIBS
-        FiniteStateSubset
-        FiniteStateSubsetFrontiers
-        FiniteStateSubsetGraph
-        FiniteStateSubsetHyperGraph
-        FiniteStateSubsetMigration
-        FiniteStateSubsetZoltanQuery
-        FiniteStateSubsetHelpers
-        )
-
-set(MAT_LIBS
-        MatrixSet
-        )
-
-set(SOLVER_LIBS
-        FiniteProblemSolver
-        CVODEFSP
-        )
-
-set(FSP_LIBRARIES
-        FSPSolver
-        )
-
-set(TEST_PROGRAMS
-        test_fss
-        test_mat
-        test_fps_cvode
-        test_fsp_solver
-        test_dd
-        )
-
-set(EXAMPLES
-        distribute_states
-        hog1p
-        repressilator
-        transcr_reg_6d
-        )
-
-set(EXT_LIBRARIES
-        -larmadillo
-        -lsundials_cvode
-        -lsundials_nvecpetsc
-        -lzoltan
-        -lparmetis)
-
+PROJECT(Parallel_FSP LANGUAGES CXX)
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_C_COMPILER mpicc)
 set(CMAKE_CXX_COMPILER mpicxx )
-set(CMAKE_CXX_FLAGS " -g -std=c++11 -fexceptions")
+set(CMAKE_CXX_FLAGS " -g -std=c++11 -O2 -fexceptions")
 
 FIND_PACKAGE(PETSc)
 INCLUDE_DIRECTORIES(${PETSC_INCLUDES})
 ADD_DEFINITIONS(${PETSC_DEFINITIONS})
 
+include_directories(./src)
+include_directories(src/FSS)
+include_directories(src/Matrix)
+include_directories(src/FSP)
+include_directories(src/OdeSolver)
+include_directories(src/util)
 
 # Set the directory to put our compiled files
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
@@ -76,45 +31,18 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # Where to put the executable files
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-# Where to find CMakelists.txt
-#set(CMAKE_SOURCE_DIR $ENV{MYDIR}/C++/PETScFSP)
+set(FSS_LIBS
+        StateSetBase
+        StateSetConstrained
+        )
 
-# Set the folders to include
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/include)
+set(UTIL_LIBS
+        cme_util
+        )
 
-foreach( LIB ${UTIL_LIBS})
-    add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/util/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/util/${LIB}.h)
-    target_link_libraries(${LIB}  ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-endforeach()
+# Add library
+add_subdirectory(src)
 
-foreach( LIB ${FSS_LIBS})
-    add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/FSS/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/FSS/${LIB}.h)
-    target_link_libraries(${LIB} ${UTIL_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-endforeach()
-
-foreach( LIB ${MAT_LIBS})
-    add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/Matrix/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/Matrix/${LIB}.h)
-    target_link_libraries(${LIB} ${UTIL_LIBS} ${FSS_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-endforeach()
-
-foreach( LIB ${SOLVER_LIBS})
-    add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/FPSolver/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/FPSolver/${LIB}.h)
-    target_link_libraries(${LIB} ${UTIL_LIBS} ${FSS_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-endforeach()
-
-foreach ( LIB ${FSP_LIBRARIES} )
-  add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/FSP/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/FSP/${LIB}.h)
-  target_link_libraries(${LIB} ${FSS_LIBS} ${MAT_LIBS} ${SOLVER_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-endforeach()
-
-foreach ( PROG ${TEST_PROGRAMS})
-  add_executable(${PROG} ${CMAKE_SOURCE_DIR}/test/${PROG}.cpp)
-  target_link_libraries(${PROG} ${UTIL_LIBS} ${FSS_LIBS} ${MAT_LIBS} ${SOLVER_LIBS} ${FSP_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-endforeach()
-
-foreach ( PROG ${EXAMPLES})
-    add_executable(${PROG} ${CMAKE_SOURCE_DIR}/examples/${PROG}.cpp)
-    target_link_libraries(${PROG} ${FSP_LIBRARIES} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
-endforeach()
-
+# Add tests and examples
+add_subdirectory(test)
+#add_subdirectory(examples)

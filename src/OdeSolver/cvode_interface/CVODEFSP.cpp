@@ -1,15 +1,15 @@
 //
 // Created by Huy Vo on 12/6/18.
 //
-#include <FPSolver/CVODEFSP.h>
+#include <FPSolver/cvode_interface/CVODEFSP.h>
 
-#include "FiniteProblemSolver.h"
+#include "FPSolver/OdeSolverBase.h"
 #include "CVODEFSP.h"
 
 namespace cme {
     namespace parallel {
 
-        CVODEFSP::CVODEFSP( MPI_Comm _comm, int lmm ) : FiniteProblemSolver( _comm ) {
+        CVODEFSP::CVODEFSP( MPI_Comm _comm, int lmm ) : OdeSolverBase( _comm ) {
             cvode_mem = CVodeCreate( lmm);
             if ( cvode_mem == nullptr ) {
                 throw std::runtime_error( "CVODE failed to initialize memory.\n" );
@@ -61,8 +61,8 @@ namespace cme {
             CVODECHKERR( comm, cvode_stat );
 
             // Advance the temporary solution until either reaching final time or FSP error exceeding tolerance
-            arma::Row< PetscReal > sink_values( fsp->GetNumConstraints( ));
-            arma::Row< PetscReal > sink_values_old( fsp->GetNumConstraints( ));
+            arma::Row< PetscReal > sink_values( fsp->get_num_constraints( ));
+            arma::Row< PetscReal > sink_values_old( fsp->get_num_constraints( ));
             PetscBool fsp_accept;
             expand_sink.fill( 0 );
             sink_values_old = fsp->SinkStatesReduce( solution_tmp_dat );
@@ -84,7 +84,7 @@ namespace cme {
                     sink_values(j) = round2digit(sink_values(j));
                 }
                 double target_error = round2digit(fsp_tol * t_now_tmp / t_final);
-                fsp_accept = ( PetscBool ) ( arma::max( sink_values )*double(fsp->GetNumConstraints()) <=  target_error);
+                fsp_accept = ( PetscBool ) ( arma::max( sink_values )*double( fsp->get_num_constraints( )) <=  target_error);
 
                 if ( !fsp_accept ) {
 //                    arma::Row< PetscReal > sink_increase = sink_values - sink_values_old;
@@ -97,7 +97,7 @@ namespace cme {
 //                        expand_sink( i_sink_sorted( i )) = 1;
 //                        x1 += sink_increase( i_sink_sorted( i ));
 //                    }
-                    arma::uvec iexpand = arma::find(sink_values > target_error/(double(fsp->GetNumConstraints())));
+                    arma::uvec iexpand = arma::find(sink_values > target_error/(double( fsp->get_num_constraints( ))));
                     expand_sink(iexpand).fill(1);
 
                     cvode_stat = CVodeGetDky( cvode_mem, t_now, 0, solution_tmp );
@@ -128,7 +128,7 @@ namespace cme {
             Vec udotdata = N_VGetVector_Petsc( udot );
             PetscReal usum;
             VecNorm( udata, NORM_1, &usum );
-            (( cme::parallel::FiniteProblemSolver * ) FPS )->RHSEval( t, udata, udotdata );
+            (( cme::parallel::OdeSolverBase * ) FPS )->RHSEval( t, udata, udotdata );
             VecNorm( udotdata, NORM_1, &usum );
             return 0;
         }
@@ -138,12 +138,12 @@ namespace cme {
                              N_Vector tmp ) {
             Vec vdata = N_VGetVector_Petsc( v );
             Vec Jvdata = N_VGetVector_Petsc( Jv );
-            (( cme::parallel::FiniteProblemSolver * ) FPS_ptr )->RHSEval( t, vdata, Jvdata );
+            (( cme::parallel::OdeSolverBase * ) FPS_ptr )->RHSEval( t, vdata, Jvdata );
             return 0;
         }
 
         void CVODEFSP::Free( ) {
-            FiniteProblemSolver::Free( );
+            OdeSolverBase::Free( );
             if ( solution_tmp ) N_VDestroy( solution_tmp );
             if ( linear_solver ) SUNLinSolFree( linear_solver );
         }

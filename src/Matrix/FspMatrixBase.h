@@ -11,7 +11,7 @@
 #include <petscmat.h>
 #include <petscis.h>
 #include "util/cme_util.h"
-#include "FSS/FiniteStateSubset.h"
+#include "FSS/StateSetBase.h"
 
 namespace cme {
     namespace parallel {
@@ -25,7 +25,7 @@ namespace cme {
         /**
          *
          **/
-        class MatrixSet {
+        class FspMatrixBase {
 
         protected:
             MPI_Comm comm{MPI_COMM_NULL};
@@ -52,9 +52,9 @@ namespace cme {
         public:
 
             /* constructors */
-            explicit MatrixSet(MPI_Comm _comm);
+            explicit FspMatrixBase(MPI_Comm _comm);
 
-            void GenerateMatrices(FiniteStateSubset &fsp, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun);
+            void GenerateMatrices(StateSetBase &fsp, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun);
 
             void Destroy();
 
@@ -62,7 +62,7 @@ namespace cme {
 
             PetscInt GetLocalGhostLength();
 
-            ~MatrixSet();
+            ~FspMatrixBase();
         };
     }
 }

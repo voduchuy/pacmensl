@@ -8,10 +8,10 @@
 #include<algorithm>
 #include<cstdlib>
 #include<cmath>
-#include"Matrix/MatrixSet.h"
-#include"FPSolver/FiniteProblemSolver.h"
-#include"FSS/FiniteStateSubset.h"
-#include"FPSolver/CVODEFSP.h"
+#include"Matrix/FspMatrixBase.h"
+#include"OdeSolver/OdeSolverBase.h"
+#include"FSS/StateSetBase.h"
+#include"OdeSolver/cvode_interface/CVODEFSP.h"
 #include"util/cme_util.h"
 
 namespace cme {
@@ -25,7 +25,7 @@ namespace cme {
             PetscReal TotalTime;
         };
 
-        class FSPSolver {
+        class FspSolverBase {
             using Real = PetscReal;
             using Int = PetscInt;
         private:
@@ -41,10 +41,10 @@ namespace cme {
             arma::Row<int> fsp_bounds;
             arma::Row<Real> fsp_expasion_factors;
 
-            FiniteStateSubset *fsp;
+            StateSetBase *fsp;
             Vec *p;
-            MatrixSet *A;
-            FiniteProblemSolver *ode_solver;
+            FspMatrixBase *A;
+            OdeSolverBase *ode_solver;
 
             Real t_final = 0.0;
             Real fsp_tol = 0.0;
@@ -70,7 +70,7 @@ namespace cme {
             PetscLogEvent Solving;
         public:
 
-            explicit FSPSolver(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
+            explicit FspSolverBase(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
 
             void SetFSPConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
 
@@ -100,7 +100,7 @@ namespace cme {
 
             Vec &GetP();
 
-            FiniteStateSubset *GetStateSubset();
+            StateSetBase *GetStateSubset();
 
             FSPSolverComponentTiming GetAvgComponentTiming();
 
@@ -110,11 +110,11 @@ namespace cme {
 
             void Destroy();
 
-            ~FSPSolver();
+            ~FspSolverBase();
 
-            friend FiniteStateSubset;
-            friend MatrixSet;
-            friend FiniteProblemSolver;
+            friend StateSetBase;
+            friend FspMatrixBase;
+            friend OdeSolverBase;
         };
     }
 }

@@ -14,8 +14,8 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"models/toggle_model.h"
 #include"models/repressilator_model.h"
 #include"util/cme_util.h"
-#include"FSS/FiniteStateSubset.h"
-#include"Matrix/MatrixSet.h"
+#include"FSS/FiniteStateSubsetBase.h"
+#include"Matrix/FspMatrixBase.h"
 
 using namespace cme::parallel;
 
@@ -42,32 +42,32 @@ int main(int argc, char *argv[]) {
     double Q_sum;
     {
 //        arma::Mat<PetscInt> X0(2, 1); X0.fill(0);
-//        FiniteStateSubset fsp(PETSC_COMM_WORLD, 2);
-//        fsp.SetLBType(fsp_par_type);
-//        fsp.SetShapeBounds(fsp_size);
-//        fsp.SetStoichiometry(toggle_cme::SM);
-//        fsp.SetInitialStates(X0);
-//        fsp.GenerateStatesAndOrdering();
+//        StateSetBase fsp(PETSC_COMM_WORLD, 2);
+//        fsp.set_lb_type(fsp_par_type);
+//        fsp.set_shape_bounds(fsp_size);
+//        fsp.set_stoichiometry(toggle_cme::SM);
+//        fsp.set_initial_states(X0);
+//        fsp.expand();
 //        PetscPrintf(PETSC_COMM_WORLD, "State Subset generated.\n");
 //
-//        MatrixSet A(PETSC_COMM_WORLD);
+//        FspMatrixBase A(PETSC_COMM_WORLD);
 //        A.GenerateMatrices(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
 
         arma::Mat<PetscInt> X0(3, 1); X0.fill(0); X0(0) = 20;
-        FiniteStateSubset fsp(PETSC_COMM_WORLD, 3);
-        fsp.SetLBType(fsp_par_type);
-        fsp.SetShape(&repressilator_cme::lhs_constr, repressilator_cme::rhs_constr);
-        fsp.SetStoichiometry(repressilator_cme::SM);
-        fsp.SetInitialStates(X0);
-        fsp.GenerateStatesAndOrdering();
+        FiniteStateSubsetBase fsp(PETSC_COMM_WORLD, 3);
+        fsp.set_lb_type( fsp_par_type );
+        fsp.set_shape( &repressilator_cme::lhs_constr, repressilator_cme::rhs_constr );
+        fsp.set_stoichiometry( repressilator_cme::SM );
+        fsp.set_initial_states( X0 );
+        fsp.expand( );
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated.\n");
 
-        MatrixSet A(PETSC_COMM_WORLD);
+        FspMatrixBase A(PETSC_COMM_WORLD);
         A.GenerateMatrices(fsp, repressilator_cme::SM, repressilator_cme::propensity, repressilator_cme::t_fun);
 
         Vec P, Q;
         VecCreate(PETSC_COMM_WORLD, &P);
-        VecSetSizes(P, fsp.GetNumLocalStates() + fsp.GetShapeBounds().n_elem, PETSC_DECIDE);
+        VecSetSizes(P, fsp.get_num_local_states( ) + fsp.get_shape_bounds( ).n_elem, PETSC_DECIDE);
         VecSetFromOptions(P);
         VecSet(P, 1.0);
         VecSetUp(P);

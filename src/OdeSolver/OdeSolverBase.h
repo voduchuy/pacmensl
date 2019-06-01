@@ -6,7 +6,7 @@
 #define PARALLEL_FSP_FINITEPROBLEMSOLVER_H
 
 #include "util/cme_util.h"
-#include "FSS/FiniteStateSubset.h"
+#include "FSS/StateSetBase.h"
 
 namespace cme{
     namespace parallel{
@@ -19,10 +19,10 @@ namespace cme{
             std::vector<PetscReal> model_time;
         };
 
-        class FiniteProblemSolver {
+        class OdeSolverBase {
         protected:
             MPI_Comm comm = MPI_COMM_NULL;
-            FiniteStateSubset *fsp = nullptr;
+            StateSetBase *fsp = nullptr;
             arma::Row<PetscInt> expand_sink;
             Vec *solution = nullptr;
             std::function<void (PetscReal t, Vec x, Vec y)> rhs;
@@ -37,9 +37,9 @@ namespace cme{
             PetscBool logging = PETSC_FALSE;
             FiniteProblemSolverPerfInfo perf_info;
         public:
-            explicit FiniteProblemSolver(MPI_Comm new_comm);
+            explicit OdeSolverBase(MPI_Comm new_comm);
 
-            void SetFiniteStateSubset(FiniteStateSubset *_fsp);
+            void SetFiniteStateSubset(StateSetBase *_fsp);
             void SetFinalTime(PetscReal _t_final);
             void SetFSPTolerance(PetscReal _fsp_tol);
             void SetInitSolution(Vec *sol0);
@@ -57,7 +57,7 @@ namespace cme{
             arma::Row<PetscInt> GetExpansionIndicator();
             virtual void Free(){};
 
-            ~FiniteProblemSolver();
+            ~OdeSolverBase();
         };
     }
 }

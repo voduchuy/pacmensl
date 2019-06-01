@@ -124,7 +124,7 @@ find_package_multipass (PETSc petsc_config_current
         STATES DIR ARCH
         DEPENDENTS INCLUDES LIBRARIES COMPILER MPIEXEC ${petsc_slaves})
 
-# Determine whether the PETSc layout is old-style (through 2.3.3) or
+# Determine whether the PETSc layout_ is old-style (through 2.3.3) or
 # new-style (>= 3.0.0)
 if (EXISTS "${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/petscvariables") # > 3.5
   set (petsc_conf_rules "${PETSC_DIR}/lib/petsc/conf/rules")

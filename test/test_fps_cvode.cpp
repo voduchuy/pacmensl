@@ -4,9 +4,9 @@
 static char help[] = "Test interface to CVODE for solving the CME of the toggle model.\n\n";
 
 #include "util/cme_util.h"
-#include "Matrix/MatrixSet.h"
-#include "FPSolver/FiniteProblemSolver.h"
-#include "FPSolver/CVODEFSP.h"
+#include "Matrix/FspMatrixBase.h"
+#include "FPSolver/OdeSolverBase.h"
+#include "FPSolver/cvode_interface/CVODEFSP.h"
 #include "models/toggle_model.h"
 
 using namespace cme::parallel;
@@ -23,14 +23,14 @@ int main(int argc, char *argv[]) {
         arma::Row<PetscInt> fsp_size = {30, 30};
         arma::Mat<PetscInt> X0(2, 1);
         X0.col(0).fill(0);
-        FiniteStateSubset fsp(PETSC_COMM_WORLD, 2);
-        fsp.SetShapeBounds(fsp_size);
-        fsp.SetStoichiometry(toggle_cme::SM);
-        fsp.SetInitialStates(X0);
-        fsp.GenerateStatesAndOrdering();
+        FiniteStateSubsetBase fsp(PETSC_COMM_WORLD, 2);
+        fsp.set_shape_bounds( fsp_size );
+        fsp.set_stoichiometry( toggle_cme::SM );
+        fsp.set_initial_states( X0 );
+        fsp.expand( );
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 
-        MatrixSet A(PETSC_COMM_WORLD);
+        FspMatrixBase A(PETSC_COMM_WORLD);
         A.GenerateMatrices(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
 
         auto AV = [&A](PetscReal t, Vec x, Vec y) {
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
         Vec P;
         VecCreate(PETSC_COMM_WORLD, &P);
-        VecSetSizes(P, fsp.GetNumLocalStates() + fsp.GetNumSpecies(), PETSC_DECIDE);
+        VecSetSizes(P, fsp.get_num_local_states( ) + fsp.get_num_species( ), PETSC_DECIDE);
         VecSetFromOptions(P);
         VecSetValue(P, 0, 1.0, INSERT_VALUES);
         VecSetUp(P);

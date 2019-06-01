@@ -12,7 +12,7 @@ static char help[] = "Generate Finite State Subset and output to files.\n\n";
 #include <util/cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include "FSP/FSPSolver.h"
+#include "FSP/FspSolverBase.h"
 #include "models/toggle_model.h"
 #include "models/hog1p_5d_model.h"
 #include "models/transcription_regulation_6d_model.h"
@@ -117,16 +117,16 @@ int main(int argc, char *argv[]) {
 
         PetscPrintf(comm, "Distributing to %d processors.\n", num_procs);
 
-        FiniteStateSubset state_set(comm, X0.n_rows);
-        state_set.SetStoichiometry(stoich_mat);
-        state_set.SetInitialStates(X0);
-        state_set.SetLBType(fsp_par_type);
-        state_set.SetRepartApproach(fsp_repart_approach);
-        state_set.SetShape(FSPConstraintFuns, FSPBounds);
+        FiniteStateSubsetBase state_set(comm, X0.n_rows);
+        state_set.set_stoichiometry( stoich_mat );
+        state_set.set_initial_states( X0 );
+        state_set.set_lb_type( fsp_par_type );
+        state_set.set_repart_approach( fsp_repart_approach );
+        state_set.set_shape( FSPConstraintFuns, FSPBounds );
 
-        state_set.GenerateStatesAndOrdering();
+        state_set.expand( );
 
-        local_states = state_set.GetLocalStates();
+        local_states = state_set.copy_states_on_proc( );
         local_states = local_states.t();
 
         filename = model_name + "_local_states_" + std::to_string(myRank) + "_of_" + std::to_string(num_procs) + "_" + part_option + ".dat";

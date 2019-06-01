@@ -1,20 +1,20 @@
 
-#include <Matrix/MatrixSet.h>
+#include <Matrix/FspMatrixBase.h>
 #include <petscblaslapack_stdcall.h>
 
-#include "Matrix/MatrixSet.h"
+#include "Matrix/FspMatrixBase.h"
 #include "util/cme_util.h"
-#include "MatrixSet.h"
+#include "FspMatrixBase.h"
 
 
 namespace cme {
     namespace parallel {
 
-        MatrixSet::MatrixSet(MPI_Comm _comm) {
+        FspMatrixBase::FspMatrixBase(MPI_Comm _comm) {
             MPI_Comm_dup(_comm, &comm);
         }
 
-        void MatrixSet::Action(PetscReal t, Vec x, Vec y) {
+        void FspMatrixBase::Action(PetscReal t, Vec x, Vec y) {
             Int ierr;
             ierr = VecGetLocalVectorRead(x, xx);
             CHKERRABORT(comm, ierr);
@@ -54,12 +54,12 @@ namespace cme {
             CHKERRABORT(comm, ierr);
         }
 
-        void MatrixSet::GenerateMatrices(FiniteStateSubset &fsp, const arma::Mat<Int> &SM, PropFun prop,
+        void FspMatrixBase::GenerateMatrices(StateSetBase &fsp, const arma::Mat<Int> &SM, PropFun prop,
                                          TcoefFun new_t_fun) {
             PetscInt ierr;
             PetscMPIInt rank;
             PetscInt n_local_states, n_constraints, own_start, own_end;
-            arma::Mat<Int> my_X = fsp.GetLocalStates();
+            arma::Mat<Int> my_X = fsp.copy_states_on_proc( );
             arma::Mat<Int> can_reach_X(my_X.n_rows, my_X.n_cols), reachable_from_X(my_X.n_rows, my_X.n_cols);
             // Number of nonzero entries on the diagonal and off-diagonal blocks
             arma::Mat<Int> d_nnz, o_nnz;
@@ -69,18 +69,18 @@ namespace cme {
             arma::Mat<PetscReal> mat_vals;
 
             //
-            std::vector<arma::Row<PetscInt>> sink_inz(fsp.GetNumReactions()*fsp.GetNumConstraints());
-            std::vector<arma::Row<PetscReal>> sink_rows(fsp.GetNumConstraints()*fsp.GetNumReactions());
+            std::vector<arma::Row<PetscInt>> sink_inz( fsp.get_num_reactions( )* fsp.get_num_constraints( ));
+            std::vector<arma::Row<PetscReal>> sink_rows( fsp.get_num_constraints( )* fsp.get_num_reactions( ));
 
             ISLocalToGlobalMapping local2global_rows, local2global_lvec;
 
-            n_local_states = fsp.GetNumLocalStates();
-            n_constraints = fsp.GetNumConstraints();
-            n_reactions = fsp.GetNumReactions();
+            n_local_states = fsp.get_num_local_states( );
+            n_constraints = fsp.get_num_constraints( );
+            n_reactions = fsp.get_num_reactions( );
             t_fun = new_t_fun;
             diag_mats.resize(n_reactions);
             offdiag_mats.resize(n_reactions);
-            fsp_bounds = fsp.GetShapeBounds();
+            fsp_bounds = fsp.get_shape_bounds( );
             n_rows_local = n_local_states + n_constraints;
 
 
@@ -120,7 +120,7 @@ namespace cme {
             arma::Col<PetscInt> nconstraints_satisfied;
             for (auto i_reaction{0}; i_reaction < n_reactions; ++i_reaction){
                 can_reach_X = my_X - arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
-                fsp.State2Petsc( can_reach_X, irnz.colptr( i_reaction ), true );
+                fsp.state2ordering( can_reach_X, irnz.colptr( i_reaction ), true );
 
                 // Count nnz for rows that represent CME states
                 for (auto i_state{0}; i_state < n_local_states; ++i_state){
@@ -140,7 +140,8 @@ namespace cme {
 
                 // Count nnz for rows that represent sink states
                 can_reach_X = my_X + arma::repmat(SM.col(i_reaction), 1, my_X.n_cols);
-                fsp.CheckConstraint(n_local_states, can_reach_X.colptr(0), constraints_satisfied.colptr(0));
+                fsp.check_constraint_on_proc( n_local_states, can_reach_X.colptr( 0 ),
+                                              constraints_satisfied.colptr( 0 ));
                 nconstraints_satisfied = arma::sum(constraints_satisfied, 1);
 
                 for ( int i_constr = 0; i_constr < n_constraints; ++i_constr ) {
@@ -276,12 +277,12 @@ namespace cme {
             }
         }
 
-        MatrixSet::~MatrixSet() {
+        FspMatrixBase::~FspMatrixBase() {
             MPI_Comm_free(&comm);
             Destroy();
         }
 
-        void MatrixSet::Destroy() {
+        void FspMatrixBase::Destroy() {
             for (PetscInt i{0}; i < n_reactions; ++i) {
                 if (diag_mats[i]) {
                     MatDestroy(&diag_mats[i]);
@@ -298,7 +299,7 @@ namespace cme {
             if (action_ctx) VecScatterDestroy(&action_ctx);
         }
 
-        PetscInt MatrixSet::GetLocalGhostLength() {
+        PetscInt FspMatrixBase::GetLocalGhostLength() {
             return lvec_length;
         }
     }

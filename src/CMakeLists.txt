@@ -1,0 +1,12 @@
+set(EXT_LIBRARIES
+        -larmadillo
+        -lsundials_cvode
+        -lsundials_nvecpetsc
+        -lzoltan
+        -lparmetis)
+#
+#add_subdirectory(OdeSolver)
+#add_subdirectory(Matrix)
+add_subdirectory(FSS)
+#add_subdirectory(FSP)
+add_subdirectory(util)

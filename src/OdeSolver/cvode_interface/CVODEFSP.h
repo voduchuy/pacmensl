@@ -11,7 +11,7 @@
 #include<sunlinsol/sunlinsol_spgmr.h>
 #include<sundials/sundials_nvector.h>
 #include<nvector/nvector_petsc.h>
-#include "FiniteProblemSolver.h"
+#include "FPSolver/OdeSolverBase.h"
 
 #ifndef NDEBUG
     #define CVODECHKERR(comm, flag){\
@@ -23,12 +23,12 @@
     }\
     }
 #else
-#define CVODECHKERR(comm, flag){while(0){}};
+#define CVODECHKERR(comm_, flag){while(0){}};
 #endif
 
 namespace cme{
     namespace parallel{
-        class CVODEFSP : public FiniteProblemSolver{
+        class CVODEFSP : public OdeSolverBase{
         protected:
             void* cvode_mem = nullptr;
             SUNLinearSolver linear_solver = nullptr;

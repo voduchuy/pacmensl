@@ -8,7 +8,7 @@
 static char help[] = "Test interface to CVODE for solving the CME of the toggle model.\n\n";
 
 #include "util/cme_util.h"
-#include "FSP/FSPSolver.h"
+#include "FSP/FspSolverBase.h"
 #include "models/toggle_model.h"
 
 using namespace cme::parallel;
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     {
         arma::Row<int> fsp_size = {30, 30};
         arma::Row<PetscReal> expansion_factors = {0.25,0.25};
-        FSPSolver fsp(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
+        FspSolverBase fsp(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
         fsp.SetInitFSPBounds(fsp_size);
         fsp.SetFSPTolerance(fsp_tol);
         fsp.SetFinalTime(t_final);
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
         /* Compute the marginal distributions */
         Vec P = fsp.GetP();
-        FiniteStateSubset* state_set = fsp.GetStateSubset();
+        FiniteStateSubsetBase* state_set = fsp.GetStateSubset();
         std::vector<arma::Col<PetscReal>> marginals(fsp_size.n_elem);
         for (PetscInt i{0}; i < marginals.size(); ++i) {
             marginals[i] = state_set->marginal(P, i);
