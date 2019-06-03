@@ -118,6 +118,7 @@ namespace cme {
             Zoltan_Set_Param( zoltan_lb_, "IMBALANCE_TOL", "1.01" );
             Zoltan_Set_Param( zoltan_lb_, "LB_METHOD", "BLOCK");
             Zoltan_Set_Param( zoltan_lb_, "LB_APPROACH", partapproach2str(approach).c_str() );
+            Zoltan_Set_Param( zoltan_lb_, "SCATTER_GRAPH", "2");
             // Register query functions to zoltan_lb_
             Zoltan_Set_Num_Obj_Fn( zoltan_lb_, &StatePartitionerBase::zoltan_num_obj, ( void * ) this );
             Zoltan_Set_Obj_List_Fn( zoltan_lb_, &StatePartitionerBase::zoltan_obj_list, ( void * ) this );

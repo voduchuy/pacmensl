@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
     // Begin PETSC context
     {
-        arma::Row<int> fsp_size = {30, 30};
+        arma::Row<int> fsp_size = {3, 3};
         arma::Row<PetscReal> expansion_factors = {0.25,0.25};
         FspSolverBase fsp(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
         fsp.SetInitFSPBounds(fsp_size);
@@ -55,23 +55,23 @@ int main(int argc, char *argv[]) {
         fsp.SetUp();
 
         fsp.Solve();
-
-        /* Compute the marginal distributions */
-        Vec P = fsp.GetP();
-        FiniteStateSubsetBase* state_set = fsp.GetStateSubset();
-        std::vector<arma::Col<PetscReal>> marginals(fsp_size.n_elem);
-        for (PetscInt i{0}; i < marginals.size(); ++i) {
-            marginals[i] = state_set->marginal(P, i);
-        }
-
-        MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-        if (rank == 0) {
-            for (PetscInt i{0}; i < marginals.size(); ++i) {
-                std::string filename =
-                        model_name + "_marginal_" + std::to_string(i) + "_" + std::to_string(num_procs) + ".dat";
-                marginals[i].save(filename, arma::raw_ascii);
-            }
-        }
+//
+//        /* Compute the marginal distributions */
+//        Vec P = fsp.GetP();
+//        FiniteStateSubsetBase* state_set = fsp.GetStateSubset();
+//        std::vector<arma::Col<PetscReal>> marginals(fsp_size.n_elem);
+//        for (PetscInt i{0}; i < marginals.size(); ++i) {
+//            marginals[i] = state_set->marginal(P, i);
+//        }
+//
+//        MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+//        if (rank == 0) {
+//            for (PetscInt i{0}; i < marginals.size(); ++i) {
+//                std::string filename =
+//                        model_name + "_marginal_" + std::to_string(i) + "_" + std::to_string(num_procs) + ".dat";
+//                marginals[i].save(filename, arma::raw_ascii);
+//            }
+//        }
     }
     //End PETSC context
     ierr = PetscFinalize();

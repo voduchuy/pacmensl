@@ -148,28 +148,30 @@ namespace cme {
 
             void set_initial_states( arma::Mat< PetscInt > X0 );
 
-            void add_states( arma::Mat< PetscInt > &X );
+            void add_states( const arma::Mat< int > &X );
 
-            arma::Row< PetscInt > state2ordering( arma::Mat< PetscInt > &state );
+            arma::Row< PetscInt > state2ordering( arma::Mat< PetscInt > &state ) const;
 
-            void state2ordering( arma::Mat< PetscInt > &state, PetscInt *indx );
+            void state2ordering( arma::Mat< PetscInt > &state, PetscInt *indx ) const;
 
             virtual void expand( ) = 0;
 
             /// Getters
-            MPI_Comm get_comm( );
+            MPI_Comm get_comm( ) const;
 
-            int get_num_local_states( );
+            int get_num_local_states( ) const;
 
-            int get_num_global_states( );
+            int get_num_global_states( ) const;
 
-            int get_num_species( );
+            int get_num_species( ) const;
 
-            int get_num_reactions( );
+            int get_num_reactions( ) const;
 
-            arma::Mat< PetscInt > copy_states_on_proc( );
+            const arma::Mat< int >& get_states_ref () const;
 
-            std::tuple< PetscInt, PetscInt > get_ordering_ends_on_proc( );
+            arma::Mat< int > copy_states_on_proc( ) const;
+
+            std::tuple< int, int > get_ordering_ends_on_proc( ) const;
 
             ~StateSetBase( );
         };

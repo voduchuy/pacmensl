@@ -1,3 +1,10 @@
+list(APPEND FSS_LIBS
+        StateSetBase
+        StateSetConstrained
+        )
+
+set (FSS_LIBS ${FSS_LIBS} PARENT_SCOPE)
+
 add_subdirectory(Partitioner)
 
 foreach(LIB ${FSS_LIBS})

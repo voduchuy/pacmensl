@@ -28,7 +28,7 @@ namespace toggle_cme {
     arma::Row<double> expansion_factors{0.2, 0.2, 0.2};
 
 // propensity function for toggle
-    PetscReal propensity(PetscInt *X, PetscInt k) {
+    PetscReal propensity(const PetscInt *X, const PetscInt k) {
         switch (k) {
             case 0:
                 return 1.0;

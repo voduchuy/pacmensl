@@ -9,8 +9,10 @@
 #include<cstdlib>
 #include<cmath>
 #include"Matrix/FspMatrixBase.h"
+#include"Matrix/FspMatrixConstrained.h"
 #include"OdeSolver/OdeSolverBase.h"
 #include"FSS/StateSetBase.h"
+#include"FSS/StateSetConstrained.h"
 #include"OdeSolver/cvode_interface/CVODEFSP.h"
 #include"util/cme_util.h"
 
@@ -25,39 +27,54 @@ namespace cme {
             PetscReal TotalTime;
         };
 
+        struct FspSolution{
+            MPI_Comm comm;
+            double t;
+            arma::Mat<int> states;
+            Vec p;
+        };
+
         class FspSolverBase {
             using Real = PetscReal;
             using Int = PetscInt;
         private:
 
-            MPI_Comm comm = MPI_COMM_NULL;
+            MPI_Comm comm_ = MPI_COMM_NULL;
+            int my_rank_;
+            int comm_size_;
 
-            PartitioningType partitioning_type = Graph;
-            PartitioningApproach repart_approach = FromScratch;
+            PartitioningType partitioning_type_ = Graph;
+            PartitioningApproach repart_approach_ = Repartition;
             ODESolverType odes_type = CVODE_BDF;
 
-            bool custom_constraints = false;
-            fsp_constr_multi_fn *fsp_constr_funs;
-            arma::Row<int> fsp_bounds;
-            arma::Row<Real> fsp_expasion_factors;
-
-            StateSetBase *fsp;
-            Vec *p;
-            FspMatrixBase *A;
-            OdeSolverBase *ode_solver;
+            StateSetBase *state_set_;
+            Vec *p_;
+            FspMatrixBase *A_;
+            OdeSolverBase *ode_solver_;
 
             Real t_final = 0.0;
             Real fsp_tol = 0.0;
 
             arma::Mat<Int> stoich_mat;
-            PropFun propensity;
-            TcoefFun t_fun;
+            PropFun propensity_;
+            TcoefFun t_fun_;
 
-            std::function<void(PetscReal, Vec, Vec)> tmatvec;
-            arma::Mat<Int> init_states;
+            std::function<void(PetscReal, Vec, Vec)> tmatvec_;
+            arma::Mat<Int> init_states_;
 
-            arma::Col<PetscReal> init_probs;
+            arma::Col<PetscReal> init_probs_;
             int verbosity = 0;
+
+            bool have_custom_constraints_ = false;
+            fsp_constr_multi_fn *fsp_constr_funs_;
+            arma::Row<int> fsp_bounds_;
+            arma::Row<Real> fsp_expasion_factors_;
+
+            // For error checking and expansion parameters
+            int check_fsp_tolerance_(PetscReal t, Vec p);
+
+            arma::Row<PetscReal> sinks_;
+            arma::Row<int> to_expand_;
 
             // For logging events using PETSc LogEvent
             PetscBool log_fsp_events = PETSC_FALSE;

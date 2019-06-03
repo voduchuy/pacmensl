@@ -95,9 +95,22 @@ void cme::parallel::StateSetConstrained::set_shape_bounds( arma::Row< int > &rhs
  * This function also distribute the states into the processors to improve the load-balance of matrix-vector multplications.
  */
 void cme::parallel::StateSetConstrained::expand( ) {
-    init_zoltan_parameters( );
-
     bool frontier_empty;
+
+    // Switch states with status -1 to 1, for they may expand to new states when the shape constraints are relaxed
+    retrieve_state_status( );
+    arma::uvec iupdate = find( local_states_status_ == -1 );
+    arma::Mat< int > states_update;
+    arma::Row< char > new_status;
+    if ( iupdate.n_elem > 0 ) {
+        new_status.set_size( iupdate.n_elem );
+        new_status.fill( 1 );
+        states_update = local_states_.cols( iupdate );
+    } else {
+        states_update.set_size( num_species_, 0 );
+        new_status.set_size( 0 );
+    }
+    update_state_status( states_update, new_status );
 
     retrieve_state_status( );
     frontier_lids_ = find( local_states_status_ == 1 );
@@ -160,19 +173,4 @@ void cme::parallel::StateSetConstrained::expand( ) {
         }
     }
     logger_.event_end( logger_.call_partitioner_event );
-
-    // Switch states with status -1 to 1, for they may expand to new states when the shape constraints are relaxed
-    retrieve_state_status( );
-    arma::uvec iupdate = find( local_states_status_ == -1 );
-    arma::Mat< int > states_update;
-    arma::Row< char > new_status;
-    if ( iupdate.n_elem > 0 ) {
-        new_status.set_size( iupdate.n_elem );
-        new_status.fill( 1 );
-        states_update = local_states_.cols( iupdate );
-    } else {
-        states_update.set_size( num_species_, 0 );
-        new_status.set_size( 0 );
-    }
-    update_state_status( states_update, new_status );
 }

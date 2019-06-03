@@ -12,11 +12,12 @@
 #include <petscis.h>
 #include "util/cme_util.h"
 #include "FSS/StateSetBase.h"
+#include "FSS/StateSetConstrained.h"
 
 namespace cme {
     namespace parallel {
-        using PropFun = std::function<PetscReal(PetscInt *, PetscInt)>;
-        using TcoefFun = std::function<arma::Row<PetscReal>(PetscReal t)>;
+        using PropFun = std::function< PetscReal( const PetscInt *, const PetscInt ) >;
+        using TcoefFun = std::function< arma::Row< PetscReal >( PetscReal t ) >;
         using Real = PetscReal;
         using Int = PetscInt;
 
@@ -28,41 +29,46 @@ namespace cme {
         class FspMatrixBase {
 
         protected:
-            MPI_Comm comm{MPI_COMM_NULL};
+            MPI_Comm comm_{MPI_COMM_NULL};
+            int my_rank_;
+            int comm_size_;
 
-            arma::Row<int> fsp_bounds;
-
-            Int n_reactions;
-            Int n_rows_global;
-            Int n_rows_local;
+            Int n_reactions_;
+            Int n_rows_global_;
+            Int n_rows_local_;
 
             // Local data of the matrix
-            std::vector<Mat> diag_mats;
-            std::vector<Mat> offdiag_mats;
+            std::vector< Mat > diag_mats_;
+            std::vector< Mat > offdiag_mats_;
 
             // Data for computing the matrix action
-            Vec work; ///< Work vector for computing operator times vector
-            Vec lvec; ///< Local vector to receive scattered data from the input vec
-            PetscInt lvec_length; ///< Number of ghost entries owned by the local process
-            VecScatter action_ctx; ///< Scatter context for computing matrix action
+            Vec work_; ///< Work vector for computing operator times vector
+            Vec lvec_; ///< Local vector to receive scattered data from the input vec
+            PetscInt lvec_length_; ///< Number of ghost entries owned by the local process
+            VecScatter action_ctx_; ///< Scatter context for computing matrix action
             Vec xx, yy, zz; ///< Local portion of the vectors
 
-            TcoefFun t_fun = NULL;
+            TcoefFun t_fun_ = nullptr;
 
+            virtual void determine_layout(const StateSetBase &fsp);
         public:
 
             /* constructors */
-            explicit FspMatrixBase(MPI_Comm _comm);
+            explicit FspMatrixBase( MPI_Comm comm );
 
-            void GenerateMatrices(StateSetBase &fsp, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun);
+            virtual void
+            generate_values( const StateSetBase &fsp, const arma::Mat< Int > &SM, PropFun prop, TcoefFun new_t_fun );
 
-            void Destroy();
+            virtual void destroy( );
 
-            void Action(PetscReal t, Vec x, Vec y);
+            virtual void action( PetscReal t, Vec x, Vec y );
 
-            PetscInt GetLocalGhostLength();
+            PetscInt get_local_ghost_length( ) const;
 
-            ~FspMatrixBase();
+            int get_num_rows_local() const {return n_rows_local_;};
+
+            ~FspMatrixBase( );
         };
+
     }
 }

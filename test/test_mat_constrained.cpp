@@ -13,7 +13,7 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<armadillo>
 #include"util/cme_util.h"
 #include"FSS/StateSetConstrained.h"
-#include"Matrix/FspMatrixBase.h"
+#include"Matrix/FspMatrixConstrained.h"
 
 using namespace cme::parallel;
 
@@ -43,6 +43,8 @@ int main(int argc, char *argv[]) {
     CHKERRQ(ierr);
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+    int comm_size;
+    MPI_Comm_size(PETSC_COMM_WORLD, &comm_size);
 
     // Read options for state_set_
     char opt[100];
@@ -64,13 +66,14 @@ int main(int argc, char *argv[]) {
         fsp.set_initial_states( X0 );
         fsp.expand( );
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated.\n");
-                
-        FspMatrixBase A(PETSC_COMM_WORLD);
-        A.generate_values( fsp, stoichiometry, propensity, t_fun );
+
+        FspMatrixConstrained A(PETSC_COMM_WORLD);
+        A.generate_matrices( fsp, stoichiometry, propensity, t_fun );
 
         Vec P, Q;
         VecCreate(PETSC_COMM_WORLD, &P);
-        VecSetSizes(P, fsp.get_num_local_states( ), PETSC_DECIDE);
+        int i = (rank == comm_size-1)? 1 : 0;
+        VecSetSizes(P, fsp.get_num_local_states( ) + i, PETSC_DECIDE);
         VecSetFromOptions(P);
         VecSet(P, 1.0);
         VecSetUp(P);
@@ -88,6 +91,6 @@ int main(int argc, char *argv[]) {
     }
     ierr = PetscFinalize();
     CHKERRQ(ierr);
-    if (Q_sum != -1.0*rate_right) return -1;
+    if (Q_sum != 0.0) return -1;
     return 0;
 }

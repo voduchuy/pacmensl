@@ -19,26 +19,10 @@ include_directories(src/FSP)
 include_directories(src/OdeSolver)
 include_directories(src/util)
 
-# Set the directory to put our compiled files
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
-
-# Where to put .a files (archive for static libraries)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
-# Where to put .so files (dynamic libraries)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
-# Where to put the executable files
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-
-set(FSS_LIBS
-        StateSetBase
-        StateSetConstrained
-        )
-
-set(UTIL_LIBS
-        cme_util
-        )
 
 # Add library
 add_subdirectory(src)

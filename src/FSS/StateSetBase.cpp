@@ -7,8 +7,7 @@
 namespace cme {
     namespace parallel {
         StateSetBase::StateSetBase( MPI_Comm new_comm, int _num_species, PartitioningType lb_type,
-                                    PartitioningApproach lb_approach ) :
-                partitioner_( new_comm ) {
+                                    PartitioningApproach lb_approach ) : partitioner_( new_comm ) {
             int ierr;
             MPI_Comm_dup( new_comm, &comm_ );
             MPI_Comm_size( comm_, &comm_size_ );
@@ -29,6 +28,8 @@ namespace cme {
 
             partitioner_.set_up( lb_type, lb_approach );
 
+            init_zoltan_parameters();
+
             logger_.register_all( comm_ );
         };
 
@@ -46,8 +47,8 @@ namespace cme {
          * Each processor enters its own set of initial states. Initial state could be empty, but at least one processor
          * must insert at least one state. Initial states from different processors must not overlap.
          */
-        void StateSetBase::set_initial_states( arma::Mat< PetscInt > X0 ) {
-            PetscInt my_rank;
+        void StateSetBase::set_initial_states( arma::Mat< int > X0 ) {
+            int my_rank;
             MPI_Comm_rank( comm_, &my_rank );
 
             if ( X0.n_rows != num_species_ ) {
@@ -60,32 +61,30 @@ namespace cme {
             PetscPrintf( comm_, "Initial states set...\n" );
         }
 
-        arma::Mat< PetscInt > StateSetBase::copy_states_on_proc( ) {
-            arma::Mat< PetscInt > states_return( num_species_, num_local_states_ );
+        const arma::Mat< int > &StateSetBase::get_states_ref( ) const {
+            return local_states_;
+        }
+
+        arma::Mat< int > StateSetBase::copy_states_on_proc( ) const {
+            arma::Mat< int > states_return( num_species_, num_local_states_ );
             for ( auto j{0}; j < num_local_states_; ++j ) {
                 for ( auto i{0}; i < num_species_; ++i ) {
-                    states_return( i, j ) = ( PetscInt ) local_states_( i, j );
+                    states_return( i, j ) = ( int ) local_states_( i, j );
                 }
             }
             return states_return;
         }
 
         StateSetBase::~StateSetBase( ) {
-            PetscMPIInt ierr;
+            int ierr;
             ierr = MPI_Comm_free( &comm_ );
             MPICHKERRABORT( comm_, ierr );
             Zoltan_Destroy( &zoltan_explore_ );
             Zoltan_DD_Destroy( &state_directory_ );
         }
 
-        PetscInt StateSetBase::get_num_global_states( ) {
-            return num_global_states_;
-        }
-
-        /// Expand from the existing states to all reachable states that satisfy the constraints.
-
-
         /// Distribute the frontier states to all processors for state space exploration
+
         /**
          * Call level: collective.
          */
@@ -101,18 +100,17 @@ namespace cme {
             int *import_procs, *import_to_part, *export_procs, *export_to_part;
 
             zoltan_err = Zoltan_LB_Partition( zoltan_explore_, &changes, &num_gid_entries, &num_lid_entries,
-                                              &num_import,
-                                              &import_global_ids, &import_local_ids,
-                                              &import_procs, &import_to_part, &num_export, &export_global_ids,
-                                              &export_local_ids, &export_procs, &export_to_part );
+                                              &num_import, &import_global_ids, &import_local_ids, &import_procs,
+                                              &import_to_part, &num_export, &export_global_ids, &export_local_ids,
+                                              &export_procs, &export_to_part );
             ZOLTANCHKERRABORT( comm_, zoltan_err );
 
             Zoltan_LB_Free_Part( &import_global_ids, &import_local_ids, &import_procs, &import_to_part );
             Zoltan_LB_Free_Part( &export_global_ids, &export_local_ids, &export_procs, &export_to_part );
             PetscLogEventEnd( logger_.distribute_frontiers_event, 0, 0, 0, 0 );
         }
-
         /// Distribute the frontier states to all processors in FSS's communication context for state space exploration
+
         /**
          * Call level: collective.
          */
@@ -123,17 +121,19 @@ namespace cme {
             PetscMPIInt nsglobal;
             MPI_Allreduce( &nslocal, &nsglobal, 1, MPI_INT, MPI_SUM, comm_ );
             num_global_states_ = nsglobal;
+
             // Update state global ids
+            update_layout( );
             update_state_indices( );
         }
-
         /// Add a set of states to the global and local state set
+
         /**
          * Call level: collective.
          * @param X : armadillo matrix of states to be added. X.n_rows = number of species. Each processor input its own
          * local X. Different input sets from different processors may overlap.
          */
-        void StateSetBase::add_states( arma::Mat< PetscInt > &X ) {
+        void StateSetBase::add_states( const arma::Mat< int > &X ) {
             PetscLogEventBegin( logger_.add_states_event, 0, 0, 0, 0 );
             int zoltan_err;
 
@@ -151,37 +151,36 @@ namespace cme {
             ZOLTANCHKERRABORT( comm_, zoltan_err );
 
             // Shed any states that are already included
-            X = X.cols( iselect );
+            arma::Mat< int > Xadd = X.cols( iselect );
             local_dd_gids = local_dd_gids.cols( iselect );
 
             // Add local states to Zoltan directory (only 1 state from 1 processor will be added in case of overlapping)
-            parts.resize( X.n_cols );
+            parts.resize( Xadd.n_cols );
             parts.fill( my_rank_ );
             PetscLogEventBegin( logger_.zoltan_dd_stuff_event, 0, 0, 0, 0 );
             zoltan_err = Zoltan_DD_Update( state_directory_, &local_dd_gids[ 0 ], nullptr, nullptr, parts.memptr( ),
-                                           X.n_cols );
+                                           Xadd.n_cols );
             ZOLTANCHKERRABORT( comm_, zoltan_err );
             PetscLogEventEnd( logger_.zoltan_dd_stuff_event, 0, 0, 0, 0 );
 
             // Remove overlaps between processors
-            parts.resize( X.n_cols );
+            parts.resize( Xadd.n_cols );
             zoltan_err = Zoltan_DD_Find( state_directory_, &local_dd_gids[ 0 ], nullptr, nullptr, parts.memptr( ),
-                                         X.n_cols,
-                                         nullptr );
+                                         Xadd.n_cols, nullptr );
             ZOLTANCHKERRABORT( comm_, zoltan_err );
 
             iselect = arma::find( parts == my_rank_ );
-            X = X.cols( iselect );
+            Xadd = Xadd.cols( iselect );
 
-            arma::Row< char > X_status( X.n_cols );
-            if ( X.n_cols > 0 ) {
+            arma::Row< char > X_status( Xadd.n_cols );
+            if ( Xadd.n_cols > 0 ) {
                 // Append X to local states
                 X_status.fill( 1 );
-                local_states_ = arma::join_horiz( local_states_, X );
+                local_states_ = arma::join_horiz( local_states_, Xadd );
             }
 
-            PetscInt nstate_local_old = num_local_states_;
-            num_local_states_ = ( PetscInt ) local_states_.n_cols;
+            int nstate_local_old = num_local_states_;
+            num_local_states_ = ( int ) local_states_.n_cols;
             PetscMPIInt nslocal = num_local_states_;
             PetscMPIInt nsglobal;
             MPI_Allreduce( &nslocal, &nsglobal, 1, MPI_INT, MPI_SUM, comm_ );
@@ -191,22 +190,22 @@ namespace cme {
             update_layout( );
 
             // Update local ids and status
-            arma::Row< PetscInt > local_ids;
+            arma::Row< int > local_ids;
             if ( num_local_states_ > nstate_local_old ) {
-                local_ids = arma::regspace< arma::Row< PetscInt>>( nstate_local_old, num_local_states_ - 1 );
+                local_ids = arma::regspace< arma::Row< int>>( nstate_local_old, num_local_states_ - 1 );
             } else {
                 local_ids.resize( 0 );
             }
 
-            update_state_indices_status( X, local_ids, X_status );
+            update_state_indices_status( Xadd, local_ids, X_status );
             PetscLogEventEnd( logger_.add_states_event, 0, 0, 0, 0 );
         }
-
         /// Check if a state satisfies all constraints
 
         /// Check if a list of states satisfy a constraint
 
         /// Initialize the number of GIDs and the Load-balancing method in Zoltan
+
         /**
          * Call level: collective.
          */
@@ -237,13 +236,14 @@ namespace cme {
         }
 
         /// Generate the indices of the states in the Petsc vector ordering.
+
         /**
          * Call level: collective.
          * @param state: matrix of input states. Each column represent a state. Each processor inputs its own set of states.
          * @return Armadillo row vector of indices. The index of each state is nonzero of the state is a member of the finite state subset. Otherwise, the index is -1 (if state does not exist in the subset, or some entries of the state are 0) or -2-i if the state violates constraint i.
          */
-        arma::Row< PetscInt > StateSetBase::state2ordering( arma::Mat< PetscInt > &state ) {
-            arma::Row< PetscInt > indices( state.n_cols );
+        arma::Row< int > StateSetBase::state2ordering( arma::Mat< int > &state ) const {
+            arma::Row< int > indices( state.n_cols );
             indices.fill( 0 );
 
             for ( int i{0}; i < state.n_cols; ++i ) {
@@ -264,8 +264,7 @@ namespace cme {
                     state.cols( i_vaild_constr ));
 
             Zoltan_DD_Find( state_directory_, gids.memptr( ), state_indices.memptr( ), nullptr, parts.memptr( ),
-                            i_vaild_constr.n_elem,
-                            owners.memptr( ));
+                            i_vaild_constr.n_elem, owners.memptr( ));
 
             for ( int i{0}; i < i_vaild_constr.n_elem; i++ ) {
                 int indx = i_vaild_constr( i );
@@ -278,17 +277,17 @@ namespace cme {
 
             return indices;
         }
-
         /// Generate the indices of the states in the Petsc vector ordering.
+
         /**
          * Call level: collective.
          * @param state: matrix of input states. Each column represent a state. Each processor inputs its own set of states.
          * indx: output array of indices.
          * @return none.
          */
-        void StateSetBase::state2ordering( arma::Mat< PetscInt > &state, PetscInt *indx ) {
+        void StateSetBase::state2ordering( arma::Mat< int > &state, int *indx ) const {
 
-            arma::Row< PetscInt > ipositive( state.n_cols );
+            arma::Row< int > ipositive( state.n_cols );
             ipositive.fill( 0 );
 
             for ( int i{0}; i < ipositive.n_cols; ++i ) {
@@ -310,8 +309,7 @@ namespace cme {
                     state.cols( i_vaild_constr ));
 
             Zoltan_DD_Find( state_directory_, gids.memptr( ), state_indices.memptr( ), nullptr, parts.memptr( ),
-                            i_vaild_constr.n_elem,
-                            owners.memptr( ));
+                            i_vaild_constr.n_elem, owners.memptr( ));
 
             for ( int i{0}; i < i_vaild_constr.n_elem; i++ ) {
                 auto ii = i_vaild_constr( i );
@@ -323,10 +321,8 @@ namespace cme {
             }
         }
 
-
-        std::tuple< PetscInt, PetscInt > StateSetBase::get_ordering_ends_on_proc( ) {
-            PetscInt start, end, ierr;
-            update_layout( );
+        std::tuple< int, int > StateSetBase::get_ordering_ends_on_proc( ) const {
+            int start, end, ierr;
             start = 0;
             for ( int i{0}; i < my_rank_; ++i ) {
                 start += state_layout_[ i ];
@@ -336,19 +332,24 @@ namespace cme {
         }
 
 
-        MPI_Comm StateSetBase::get_comm( ) {
+        MPI_Comm StateSetBase::get_comm( ) const {
             return comm_;
         }
 
-        PetscInt StateSetBase::get_num_local_states( ) {
+
+        int StateSetBase::get_num_local_states( ) const {
             return num_local_states_;
         }
 
-        PetscInt StateSetBase::get_num_species( ) {
-            return ( PetscInt( num_species_ ));
+        int StateSetBase::get_num_global_states( ) const {
+            return num_global_states_;
         }
 
-        PetscInt StateSetBase::get_num_reactions( ) {
+        int StateSetBase::get_num_species( ) const {
+            return ( int( num_species_ ));
+        }
+
+        int StateSetBase::get_num_reactions( ) const {
             return stoichiometry_matrix_.n_cols;
         }
 
@@ -375,12 +376,12 @@ namespace cme {
             logger_.event_end( logger_.total_update_dd_event );
         }
 
-        void StateSetBase::update_state_status( arma::Mat< PetscInt > states, arma::Row< char > status ) {
+        void StateSetBase::update_state_status( arma::Mat< int > states, arma::Row< char > status ) {
             logger_.event_begin( logger_.total_update_dd_event );
             int zoltan_err;
 
             // Update hash table
-            PetscInt n_update = status.n_elem;
+            int n_update = status.n_elem;
             if ( n_update != states.n_cols ) {
                 PetscPrintf( comm_,
                              "FSS: update_state_status: states and status arrays have incompatible dimensions.\n" );
@@ -388,28 +389,25 @@ namespace cme {
             arma::Mat< ZOLTAN_ID_TYPE > local_dd_gids( num_species_, n_update );
 
             if ( n_update > 0 ) {
-                for ( PetscInt i = 0; i < n_update; ++i ) {
-                    local_dd_gids.col( i ) = arma::conv_to< arma::Col< ZOLTAN_ID_TYPE>>::from(
-                            states.col( i ));
+                for ( int i = 0; i < n_update; ++i ) {
+                    local_dd_gids.col( i ) = arma::conv_to< arma::Col< ZOLTAN_ID_TYPE>>::from( states.col( i ));
                 }
             }
 
             zoltan_err = Zoltan_DD_Update( state_directory_, local_dd_gids.memptr( ), nullptr, status.memptr( ),
-                                           nullptr,
-                                           n_update );
+                                           nullptr, n_update );
             ZOLTANCHKERRABORT( comm_, zoltan_err );
             logger_.event_end( logger_.total_update_dd_event );
         }
 
 
-        void StateSetBase::update_state_indices_status( arma::Mat< PetscInt > states,
-                                                        arma::Row< PetscInt > local_ids,
+        void StateSetBase::update_state_indices_status( arma::Mat< int > states, arma::Row< int > local_ids,
                                                         arma::Row< char > status ) {
             logger_.event_begin( logger_.total_update_dd_event );
             int zoltan_err;
 
             // Update hash table
-            PetscInt n_update = local_ids.n_elem;
+            int n_update = local_ids.n_elem;
             arma::Mat< ZOLTAN_ID_TYPE > local_dd_gids( num_species_, n_update );
             arma::Row< ZOLTAN_ID_TYPE > lids( n_update );
             if ( n_update != states.n_cols ) {
@@ -418,9 +416,8 @@ namespace cme {
             }
 
             if ( n_update > 0 ) {
-                for ( PetscInt i = 0; i < n_update; ++i ) {
-                    local_dd_gids.col( i ) = arma::conv_to< arma::Col< ZOLTAN_ID_TYPE>>::from(
-                            states.col( i ));
+                for ( int i = 0; i < n_update; ++i ) {
+                    local_dd_gids.col( i ) = arma::conv_to< arma::Col< ZOLTAN_ID_TYPE>>::from( states.col( i ));
                     lids( i ) = ( ZOLTAN_ID_TYPE ) local_ids( i );
                 }
             } else {
@@ -449,10 +446,8 @@ namespace cme {
             return ( int ) (( StateSetBase * ) data )->frontiers_.n_cols;
         }
 
-        int
-        StateSetBase::zoltan_frontier_size( void *data, int num_gid_entries, int num_lid_entries,
-                                            ZOLTAN_ID_PTR global_id,
-                                            ZOLTAN_ID_PTR local_id, int *ierr ) {
+        int StateSetBase::zoltan_frontier_size( void *data, int num_gid_entries, int num_lid_entries,
+                                                ZOLTAN_ID_PTR global_id, ZOLTAN_ID_PTR local_id, int *ierr ) {
             return (( StateSetBase * ) data )->num_species_ * sizeof( int );
         }
 
@@ -474,15 +469,13 @@ namespace cme {
             *ierr = ZOLTAN_OK;
         }
 
-        void
-        StateSetBase::pack_frontiers( void *data, int num_gid_entries, int num_lid_entries, int num_ids,
-                                      ZOLTAN_ID_PTR global_ids,
-                                      ZOLTAN_ID_PTR local_ids, int *dest, int *sizes, int *idx, char *buf,
-                                      int *ierr ) {
+        void StateSetBase::pack_frontiers( void *data, int num_gid_entries, int num_lid_entries, int num_ids,
+                                           ZOLTAN_ID_PTR global_ids, ZOLTAN_ID_PTR local_ids, int *dest, int *sizes,
+                                           int *idx, char *buf, int *ierr ) {
             *ierr = ZOLTAN_FATAL;
             auto my_data = ( StateSetBase * ) data;
             for ( int i{0}; i < num_ids; ++i ) {
-                auto ptr = ( PetscInt * ) &buf[ idx[ i ]];
+                auto ptr = ( int * ) &buf[ idx[ i ]];
                 for ( int j{0}; j < my_data->num_species_; ++j ) {
                     *( ptr + j ) = my_data->frontiers_( j, local_ids[ i ] );
                 }
@@ -490,14 +483,11 @@ namespace cme {
             *ierr = ZOLTAN_OK;
         }
 
-        void StateSetBase::mid_frontier_migration( void *data, int num_gid_entries, int num_lid_entries,
-                                                   int num_import,
+        void StateSetBase::mid_frontier_migration( void *data, int num_gid_entries, int num_lid_entries, int num_import,
                                                    ZOLTAN_ID_PTR import_global_ids, ZOLTAN_ID_PTR import_local_ids,
-                                                   int *import_procs,
-                                                   int *import_to_part, int num_export,
-                                                   ZOLTAN_ID_PTR export_global_ids,
-                                                   ZOLTAN_ID_PTR export_local_ids, int *export_procs,
-                                                   int *export_to_part, int *ierr ) {
+                                                   int *import_procs, int *import_to_part, int num_export,
+                                                   ZOLTAN_ID_PTR export_global_ids, ZOLTAN_ID_PTR export_local_ids,
+                                                   int *export_procs, int *export_to_part, int *ierr ) {
             auto my_data = ( StateSetBase * ) data;
             // remove the packed states from local data structure
             arma::uvec i_keep( my_data->frontier_lids_.n_elem );
@@ -510,10 +500,8 @@ namespace cme {
             my_data->frontiers_ = my_data->frontiers_.cols( i_keep );
         }
 
-        void
-        StateSetBase::unpack_frontiers( void *data, int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids,
-                                        int *sizes, int *idx,
-                                        char *buf, int *ierr ) {
+        void StateSetBase::unpack_frontiers( void *data, int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids,
+                                             int *sizes, int *idx, char *buf, int *ierr ) {
 
             auto my_data = ( StateSetBase * ) data;
             int nfrontier_old = my_data->frontiers_.n_cols;
@@ -522,7 +510,7 @@ namespace cme {
 
             // Unpack new local states
             for ( int i{0}; i < num_ids; ++i ) {
-                auto ptr = ( PetscInt * ) &buf[ idx[ i ]];
+                auto ptr = ( int * ) &buf[ idx[ i ]];
                 for ( int j{0}; j < my_data->num_species_; ++j ) {
                     my_data->frontiers_( j, nfrontier_old + i ) = *( ptr + j );
                 }

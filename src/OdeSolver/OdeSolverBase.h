@@ -5,8 +5,8 @@
 #ifndef PARALLEL_FSP_FINITEPROBLEMSOLVER_H
 #define PARALLEL_FSP_FINITEPROBLEMSOLVER_H
 
+#include <sundials/sundials_nvector.h>
 #include "util/cme_util.h"
-#include "FSS/StateSetBase.h"
 
 namespace cme{
     namespace parallel{
@@ -21,41 +21,49 @@ namespace cme{
 
         class OdeSolverBase {
         protected:
-            MPI_Comm comm = MPI_COMM_NULL;
-            StateSetBase *fsp = nullptr;
-            arma::Row<PetscInt> expand_sink;
-            Vec *solution = nullptr;
-            std::function<void (PetscReal t, Vec x, Vec y)> rhs;
-            PetscReal t_now = 0.0;
-            PetscReal t_final = 0.0;
+            MPI_Comm comm_ = MPI_COMM_NULL;
+            int my_rank_;
+            int comm_size_;
+
+            Vec *solution_ = nullptr;
+            std::function<void (PetscReal t, Vec x, Vec y)> rhs_;
+            PetscReal t_now_ = 0.0;
+            PetscReal t_final_ = 0.0;
             PetscReal fsp_tol = 0.0;
             ODESolverType solver_type;
 
             // For logging and monitoring
             int print_intermediate = 0;
 
+            /*
+             * Function to check early stopping condition.
+             */
+            std::function<int (PetscReal t, Vec p, void* data)> stop_check_ = nullptr;
+            void* stop_data_ = nullptr;
+
             PetscBool logging = PETSC_FALSE;
+
             FiniteProblemSolverPerfInfo perf_info;
+            N_Vector solution_tmp = nullptr;
         public:
             explicit OdeSolverBase(MPI_Comm new_comm);
 
-            void SetFiniteStateSubset(StateSetBase *_fsp);
-            void SetFinalTime(PetscReal _t_final);
-            void SetFSPTolerance(PetscReal _fsp_tol);
-            void SetInitSolution(Vec *sol0);
-            void SetRHS(std::function<void (PetscReal, Vec, Vec)>_rhs);
-            void SetCurrentTime(PetscReal t);
-            void SetPrintIntermediateSteps(int iprint);
-            void EnableLogging();
+            void set_final_time( PetscReal _t_final );
+            void set_initial_solution( Vec *sol0 );
+            void set_rhs( std::function< void( PetscReal, Vec, Vec ) > _rhs );
+            void set_current_time( PetscReal t );
+            void set_print_intermediate( int iprint );
+            void enable_logging( );
+            void set_stop_condition( const std::function< int( PetscReal, Vec, void * ) > &stop_check_, void* stop_data_);
 
-            void RHSEval(PetscReal t, Vec x, Vec y);
+            void evaluate_rhs( PetscReal t, Vec x, Vec y );
 
-            virtual PetscInt Solve(); // Advance the solution toward final time. Return 0 if reaching final time, 1 if the FSP criteria fails before reaching final time.
-            PetscReal GetCurrentTime();
-            FiniteProblemSolverPerfInfo GetAvgPerfInfo();
+            virtual PetscInt solve( ); // Advance the solution_ toward final time. Return 0 if reaching final time, 1 if the FSP criteria fails before reaching final time.
 
-            arma::Row<PetscInt> GetExpansionIndicator();
-            virtual void Free(){};
+            PetscReal get_current_time( ) const;
+            FiniteProblemSolverPerfInfo get_avg_perf_info( );
+
+            virtual void free( ){};
 
             ~OdeSolverBase();
         };
