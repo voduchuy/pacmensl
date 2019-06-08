@@ -2,13 +2,15 @@
 // Created by Huy Vo on 5/31/19.
 //
 
-#ifndef PARALLEL_FSP_STATESETPARTITIONER_H
-#define PARALLEL_FSP_STATESETPARTITIONER_H
+#ifndef PFSPAT_STATESETPARTITIONER_H
+#define PFSPAT_STATESETPARTITIONER_H
 
 #include "StatePartitionerBase.h"
 #include "StatePartitionerGraph.h"
 #include "StatePartitionerHyperGraph.h"
 #include "mpi.h"
+
+// Added something
 
 namespace cme {
     namespace parallel {
@@ -29,4 +31,4 @@ namespace cme {
     }
 }
 
-#endif //PARALLEL_FSP_STATESETPARTITIONER_H
+#endif //PFSPAT_STATESETPARTITIONER_H

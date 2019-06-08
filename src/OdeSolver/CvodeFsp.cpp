@@ -1,15 +1,15 @@
 //
 // Created by Huy Vo on 12/6/18.
 //
-#include <OdeSolver/cvode_interface/CVODEFSP.h>
+#include <OdeSolver/CvodeFsp.h>
 #include "OdeSolver/OdeSolverBase.h"
-#include "CVODEFSP.h"
+#include "CvodeFsp.h"
 
 
 namespace cme {
     namespace parallel {
 
-        CVODEFSP::CVODEFSP( MPI_Comm _comm, int lmm ) : OdeSolverBase( _comm ) {
+        CvodeFsp::CvodeFsp( MPI_Comm _comm, int lmm ) : OdeSolverBase( _comm ) {
             cvode_mem = CVodeCreate( lmm);
             if ( cvode_mem == nullptr ) {
                 throw std::runtime_error( "CVODE failed to initialize memory.\n" );
@@ -17,7 +17,7 @@ namespace cme {
             solver_type = CVODE_BDF;
         }
 
-        PetscInt CVODEFSP::solve( ) {
+        PetscInt CvodeFsp::solve( ) {
             // Make sure the necessary data has been set
             assert( solution_ != nullptr );
             assert( rhs_ );
@@ -95,7 +95,7 @@ namespace cme {
             return stop;
         }
 
-        int CVODEFSP::cvode_rhs( double t, N_Vector u, N_Vector udot, void *solver ) {
+        int CvodeFsp::cvode_rhs( double t, N_Vector u, N_Vector udot, void *solver ) {
             Vec udata = N_VGetVector_Petsc( u );
             Vec udotdata = N_VGetVector_Petsc( udot );
             PetscReal usum;
@@ -106,7 +106,7 @@ namespace cme {
         }
 
         int
-        CVODEFSP::cvode_jac( N_Vector v, N_Vector Jv, realtype t, N_Vector u, N_Vector fu, void *FPS_ptr,
+        CvodeFsp::cvode_jac( N_Vector v, N_Vector Jv, realtype t, N_Vector u, N_Vector fu, void *FPS_ptr,
                              N_Vector tmp ) {
             Vec vdata = N_VGetVector_Petsc( v );
             Vec Jvdata = N_VGetVector_Petsc( Jv );
@@ -114,18 +114,18 @@ namespace cme {
             return 0;
         }
 
-        void CVODEFSP::free( ) {
+        void CvodeFsp::free( ) {
             OdeSolverBase::free( );
             if ( solution_tmp ) N_VDestroy( solution_tmp );
             if ( linear_solver ) SUNLinSolFree( linear_solver );
         }
 
-        void CVODEFSP::SetCVodeTolerances( PetscReal _r_tol, PetscReal _abs_tol ) {
+        void CvodeFsp::SetCVodeTolerances( PetscReal _r_tol, PetscReal _abs_tol ) {
             rel_tol = _r_tol;
             abs_tol = _abs_tol;
         }
 
-        CVODEFSP::~CVODEFSP( ) {
+        CvodeFsp::~CvodeFsp( ) {
             if ( cvode_mem ) CVodeFree( &cvode_mem );
             free( );
         }

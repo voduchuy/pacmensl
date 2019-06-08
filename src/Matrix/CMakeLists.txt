@@ -3,9 +3,11 @@ set(MAT_LIBS
         FspMatrixConstrained
         )
 
-set(MAT_LIBS ${MAT_LIBS} PARENT_SCOPE)
-
 foreach( LIB ${MAT_LIBS})
-    add_library(${LIB} ${CMAKE_SOURCE_DIR}/src/Matrix/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/Matrix/${LIB}.h)
-    target_link_libraries(${LIB} ${UTIL_LIBS} ${FSS_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+    list(APPEND mat_srcs ${LIB}.cpp)
+    list(APPEND mat_headers ${LIB}.h)
 endforeach()
+
+add_library(MAT_OBJ OBJECT ${mat_srcs} ${mat_headers})
+
+install(FILES ${mat_headers} DESTINATION include/pfspat/Matrix)

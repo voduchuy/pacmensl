@@ -7,7 +7,8 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <util/cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include "FSP/FspSolverBase.h"
+#include "pfspat_all.h"
+//#include "FSP/FspSolverBase.h"
 #include "Models/hog1p_5d_model.h"
 
 using arma::dvec;

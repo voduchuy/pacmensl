@@ -3,10 +3,11 @@ set(FSP_LIBS
         FspSolverBase
         )
 
-set(FSP_LIBS ${FSP_LIBS} PARENT_SCOPE)
-
-foreach ( LIB ${FSP_LIBS} )
-    add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/FSP/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/FSP/${LIB}.h)
-    target_link_libraries(${LIB} ${MODEL_LIBS} ${FSS_LIBS} ${MAT_LIBS} ${SOLVER_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+foreach(LIB ${FSP_LIBS})
+    list(APPEND fsp_srcs ${LIB}.cpp)
+    list(APPEND fsp_headers ${LIB}.h)
 endforeach()
-target_link_libraries(FspSolverBase DiscreteDistribution)
+
+add_library(FSP_OBJ ${fsp_srcs} ${fsp_headers})
+
+install(FILES ${fsp_headers} DESTINATION include/pfspat/FSP)

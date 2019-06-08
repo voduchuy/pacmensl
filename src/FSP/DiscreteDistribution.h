@@ -2,8 +2,8 @@
 // Created by Huy Vo on 6/4/19.
 //
 
-#ifndef PARALLEL_FSP_FSPSOLUTION_H
-#define PARALLEL_FSP_FSPSOLUTION_H
+#ifndef PFSPAT_FSPSOLUTION_H
+#define PFSPAT_FSPSOLUTION_H
 
 #include<armadillo>
 #include<petsc.h>
@@ -29,4 +29,4 @@ namespace cme{
     }
 }
 
-#endif //PARALLEL_FSP_FSPSOLUTION_H
+#endif //PFSPAT_FSPSOLUTION_H

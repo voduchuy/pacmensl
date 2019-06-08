@@ -2,8 +2,8 @@
 // Created by Huy Vo on 5/29/18.
 //
 
-#ifndef PARALLEL_FSP_FSP_H
-#define PARALLEL_FSP_FSP_H
+#ifndef PFSPAT_FSP_H
+#define PFSPAT_FSP_H
 
 #include<algorithm>
 #include<cstdlib>
@@ -15,7 +15,7 @@
 #include"OdeSolver/OdeSolverBase.h"
 #include"FSS/StateSetBase.h"
 #include"FSS/StateSetConstrained.h"
-#include"OdeSolver/cvode_interface/CVODEFSP.h"
+#include"OdeSolver/CvodeFsp.h"
 #include"util/cme_util.h"
 
 namespace cme {
@@ -132,4 +132,4 @@ namespace cme {
 }
 
 
-#endif //PARALLEL_FSP_FSP_H
+#endif //PFSPAT_FSP_H

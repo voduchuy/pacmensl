@@ -2,8 +2,8 @@
 // Created by Huy Vo on 12/6/18.
 //
 
-#ifndef PARALLEL_FSP_CVODEFSP_H
-#define PARALLEL_FSP_CVODEFSP_H
+#ifndef PFSPAT_CVODEFSP_H
+#define PFSPAT_CVODEFSP_H
 
 #include<cvode/cvode.h>
 #include<cvode/cvode_spils.h>
@@ -29,7 +29,7 @@
 
 namespace cme{
     namespace parallel{
-        class CVODEFSP : public OdeSolverBase{
+        class CvodeFsp : public OdeSolverBase{
         protected:
             void* cvode_mem = nullptr;
             SUNLinearSolver linear_solver = nullptr;
@@ -39,7 +39,7 @@ namespace cme{
             PetscReal abs_tol = 1.0e-14;
             int cvode_stat;
         public:
-            explicit CVODEFSP( MPI_Comm _comm, int lmm = CV_BDF );
+            explicit CvodeFsp( MPI_Comm _comm, int lmm = CV_BDF );
             void SetCVodeTolerances(PetscReal _r_tol, PetscReal _abs_tol);
 
             PetscInt solve( ) override;
@@ -48,11 +48,11 @@ namespace cme{
             static int cvode_jac(N_Vector v, N_Vector Jv, realtype t,
                                  N_Vector u, N_Vector fu,
                                  void *FPS_ptr, N_Vector tmp);
-            ~CVODEFSP();
+            ~CvodeFsp();
         };
     }
 }
 
 
 
-#endif //PARALLEL_FSP_CVODEFSP_H
+#endif //PFSPAT_CVODEFSP_H

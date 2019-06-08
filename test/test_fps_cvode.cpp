@@ -6,7 +6,7 @@ static char help[] = "Test interface to CVODE for solving the CME of the toggle 
 #include "util/cme_util.h"
 #include "Matrix/FspMatrixBase.h"
 #include "OdeSolverBase.h"
-#include "cvode_interface/CVODEFSP.h"
+#include "OdeSolver/CvodeFsp.h"
 #include "models/toggle_model.h"
 
 using namespace cme::parallel;
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         PetscPrintf(PETSC_COMM_WORLD, "Initial vector set.\n");
 
         PetscReal fsp_tol = 1.0e-2, t_final = 1000.0;
-        CVODEFSP cvode_solver( PETSC_COMM_WORLD, CV_BDF );
+        CvodeFsp cvode_solver( PETSC_COMM_WORLD, CV_BDF );
         cvode_solver.set_final_time(t_final);
         cvode_solver.set_initial_solution(&P);
         cvode_solver.set_rhs(AV);

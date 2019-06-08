@@ -2,8 +2,8 @@
 // Created by Huy Vo on 12/4/18.
 //
 
-#ifndef PARALLEL_FSP_FINITESTATESUBSET_H
-#define PARALLEL_FSP_FINITESTATESUBSET_H
+#ifndef PFSPAT_FINITESTATESUBSET_H
+#define PFSPAT_FINITESTATESUBSET_H
 
 #include <zoltan.h>
 #include <petscis.h>
@@ -174,4 +174,4 @@ namespace cme {
 }
 
 
-#endif //PARALLEL_FSP_FINITESTATESUBSET_H
+#endif //PFSPAT_FINITESTATESUBSET_H

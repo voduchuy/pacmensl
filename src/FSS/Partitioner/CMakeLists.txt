@@ -5,9 +5,10 @@ set(PART_LIBS
         )
 
 foreach(LIB ${PART_LIBS})
-    add_library(${LIB} ${LIB}.cpp ${LIB}.h)
-    target_link_libraries(${LIB} ${UTIL_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+    list(APPEND partitioner_srcs ${LIB}.cpp)
+    list(APPEND partitioner_headers ${LIB}.h)
 endforeach()
 
-add_library(StatePartitioner StatePartitioner.cpp StatePartitioner.h)
-target_link_libraries(StatePartitioner ${PART_LIBS})
+add_library(StatePartitioner OBJECT StatePartitioner.h StatePartitioner.cpp ${partitioner_srcs} ${partitioner_headers})
+
+install(FILES ${partitioner_headers} DESTINATION include/pfspat/FSS/Partitioner)

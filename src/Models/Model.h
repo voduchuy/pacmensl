@@ -2,8 +2,8 @@
 // Created by Huy Vo on 6/3/19.
 //
 
-#ifndef PARALLEL_FSP_MODELS_H
-#define PARALLEL_FSP_MODELS_H
+#ifndef PFSPAT_MODELS_H
+#define PFSPAT_MODELS_H
 
 #include <armadillo>
 
@@ -27,4 +27,4 @@ namespace cme{
 
 
 
-#endif //PARALLEL_FSP_MODELS_H
+#endif //PFSPAT_MODELS_H

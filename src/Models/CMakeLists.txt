@@ -1,6 +1,3 @@
-set(MODEL_LIBS "Model")
-set(MODEL_LIBS ${MODEL_LIBS} PARENT_SCOPE)
-message("${MODEL_LIBS}")
-foreach( LIB ${MODEL_LIBS})
-    add_library(${LIB} ${LIB}.cpp ${LIB}.h)
-endforeach()
+add_library(MODEL_OBJ Model.h Model.cpp)
+
+install(FILES Model.h DESTINATION include/pfspat/Models)

@@ -2,8 +2,8 @@
 // Created by Huy Vo on 12/6/18.
 //
 
-#ifndef PARALLEL_FSP_FINITEPROBLEMSOLVER_H
-#define PARALLEL_FSP_FINITEPROBLEMSOLVER_H
+#ifndef PFSPAT_ODESOLVERBASE_H
+#define PFSPAT_ODESOLVERBASE_H
 
 #include <sundials/sundials_nvector.h>
 #include "util/cme_util.h"
@@ -70,4 +70,4 @@ namespace cme{
     }
 }
 
-#endif //PARALLEL_FSP_FINITEPROBLEMSOLVER_H
+#endif //PFSPAT_ODESOLVERBASE_H

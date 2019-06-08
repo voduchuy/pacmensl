@@ -2,8 +2,8 @@
 // Created by Huy Vo on 5/7/19.
 //
 
-#ifndef PARALLEL_FSP_STATEPARTITIONERGRAPH_H
-#define PARALLEL_FSP_STATEPARTITIONERGRAPH_H
+#ifndef PFSPAT_STATEPARTITIONERGRAPH_H
+#define PFSPAT_STATEPARTITIONERGRAPH_H
 
 #include "StatePartitionerBase.h"
 
@@ -37,4 +37,4 @@ namespace cme {
         };
     }
 }
-#endif //PARALLEL_FSP_FINITESTATESUBSETGRAPH_H
+#endif //PFSPAT_FINITESTATESUBSETGRAPH_H

@@ -9,5 +9,5 @@ set(TEST_PROGRAMS
 
 foreach ( PROG ${TEST_PROGRAMS})
     add_executable(${PROG} ${PROG}.cpp)
-    target_link_libraries(${PROG} ${UTIL_LIBS} ${FSS_LIBS} ${MAT_LIBS} ${FSP_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+    target_link_libraries(${PROG} PfspatLib ${PETSC_LIBRARIES} ${EXT_LIBRARIES} ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES})
 endforeach()

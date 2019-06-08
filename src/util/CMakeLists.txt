@@ -1,8 +1,13 @@
 list(APPEND UTIL_LIBS cme_util)
 
-set (UTIL_LIBS ${UTIL_LIBS} PARENT_SCOPE)
-
+set(util_srcs)
 foreach( LIB ${UTIL_LIBS})
-    add_library(${LIB} SHARED ${CMAKE_SOURCE_DIR}/src/util/${LIB}.cpp ${CMAKE_SOURCE_DIR}/src/util/${LIB}.h)
-    target_link_libraries(${LIB}  ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+    list(APPEND util_srcs ${LIB}.cpp)
+    list(APPEND util_headers ${LIB}.h)
 endforeach()
+
+add_library(CME_UTIL_OBJ ${util_srcs})
+install(FILES ${util_headers} DESTINATION include/pfspat/util)
+
+
+

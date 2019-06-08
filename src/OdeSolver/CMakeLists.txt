@@ -1,12 +1,13 @@
-list(APPEND SOLVER_LIBS
+set(SOLVER_LIBS
         OdeSolverBase
-        CVODEFSP
+        CvodeFsp
         )
 
-set(SOLVER_LIBS ${SOLVER_LIBS} PARENT_SCOPE)
+foreach (LIB ${SOLVER_LIBS})
+    list(APPEND ode_solver_srcs ${LIB}.cpp)
+    list(APPEND ode_solver_headers ${LIB}.h)
+endforeach()
 
-add_library(OdeSolverBase OdeSolverBase.cpp OdeSolverBase.h)
-target_link_libraries(OdeSolverBase ${UTIL_LIBS} ${FSS_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+add_library(ODE_OBJ OBJECT ${ode_solver_srcs} ${ode_solver_headers})
 
-add_library(CVODEFSP cvode_interface/CVODEFSP.cpp cvode_interface/CVODEFSP.h)
-target_link_libraries(CVODEFSP ${UTIL_LIBS} ${FSS_LIBS} ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+install(FILES ${ode_solver_headers} DESTINATION include/pfspat/OdeSolver/)

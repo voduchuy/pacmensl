@@ -2,8 +2,8 @@
 // Created by Huy Vo on 5/7/19.
 //
 
-#ifndef PARALLEL_FSP_STATEPARTITIONERHYPERGRAPH_H
-#define PARALLEL_FSP_STATEPARTITIONERHYPERGRAPH_H
+#ifndef PFSPAT_STATEPARTITIONERHYPERGRAPH_H
+#define PFSPAT_STATEPARTITIONERHYPERGRAPH_H
 
 #include "StatePartitionerBase.h"
 
@@ -34,4 +34,4 @@ namespace cme { namespace parallel {
         ~StatePartitionerHyperGraph( );
     };
 }}
-#endif //PARALLEL_FSP_FINITESTATESUBSETHYPERGRAPH_H
+#endif //PFSPAT_FINITESTATESUBSETHYPERGRAPH_H

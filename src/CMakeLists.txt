@@ -12,8 +12,13 @@ add_subdirectory(Matrix)
 add_subdirectory(OdeSolver)
 add_subdirectory(FSP)
 
-set(MODEL_LIBS ${MODEL_LIBS} PARENT_SCOPE)
-set(FSS_LIBS ${FSS_LIBS} PARENT_SCOPE)
-set(FSP_LIBS ${FSP_LIBS} PARENT_SCOPE)
-set(MAT_LIBS ${MAT_LIBS} PARENT_SCOPE)
-set(UTIL_LIBS ${UTIL_LIBS} PARENT_SCOPE)
+add_library(PfspatLib SHARED )
+target_link_libraries(PfspatLib FSS_OBJ MAT_OBJ FSP_OBJ CME_UTIL_OBJ MODEL_OBJ ODE_OBJ ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+
+## Rules for installing FSP library
+SET_TARGET_PROPERTIES(PfspatLib
+        PROPERTIES OUTPUT_NAME pfspat CLEAN_DIRECT_OUTPUT 1)
+install(TARGETS PfspatLib DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+install(FILES pfspat_all.h DESTINATION include/pfspat)
+install(FILES pfspat.h DESTINATION include/)
