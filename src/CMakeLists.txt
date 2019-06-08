@@ -5,12 +5,14 @@ set(EXT_LIBRARIES
         -lzoltan
         -lparmetis)
 #
-add_subdirectory(OdeSolver)
+add_subdirectory(util)
+add_subdirectory(Models)
 add_subdirectory(FSS)
 add_subdirectory(Matrix)
+add_subdirectory(OdeSolver)
 add_subdirectory(FSP)
-add_subdirectory(util)
 
+set(MODEL_LIBS ${MODEL_LIBS} PARENT_SCOPE)
 set(FSS_LIBS ${FSS_LIBS} PARENT_SCOPE)
 set(FSP_LIBS ${FSP_LIBS} PARENT_SCOPE)
 set(MAT_LIBS ${MAT_LIBS} PARENT_SCOPE)

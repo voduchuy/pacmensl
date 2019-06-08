@@ -45,8 +45,8 @@ PetscInt cme::parallel::StateSetConstrained::check_state( PetscInt *x ) {
  * @return void.
  */
 void
-cme::parallel::StateSetConstrained::check_constraint_on_proc( PetscInt num_states, PetscInt *x,
-                                                                 PetscInt *satisfied ) {
+cme::parallel::StateSetConstrained::CheckConstraints(PetscInt num_states, PetscInt *x,
+                                                     PetscInt *satisfied) {
     auto *fval = new int[num_states * rhs_constr.n_elem];
     lhs_constr( num_species_, rhs_constr.n_elem, num_states, x, fval );
     for ( int iconstr = 0; iconstr < rhs_constr.n_elem; ++iconstr ) {
@@ -63,11 +63,11 @@ cme::parallel::StateSetConstrained::check_constraint_on_proc( PetscInt num_state
     delete[] fval;
 }
 
-arma::Row< int > cme::parallel::StateSetConstrained::get_shape_bounds( ) {
+arma::Row< int > cme::parallel::StateSetConstrained::GetShapeBounds() const {
     return arma::Row< int >( rhs_constr );
 }
 
-PetscInt cme::parallel::StateSetConstrained::get_num_constraints( ) {
+PetscInt cme::parallel::StateSetConstrained::GetNumConstraints() const {
     return rhs_constr.n_elem;
 }
 
@@ -79,14 +79,14 @@ cme::parallel::StateSetConstrained::default_constr_fun( int num_species, int num
     }
 }
 
-void cme::parallel::StateSetConstrained::set_shape(
+void cme::parallel::StateSetConstrained::SetShape(
         fsp_constr_multi_fn *lhs_fun,
-        arma::Row< int > &rhs_bounds ) {
+        arma::Row<int> &rhs_bounds) {
     lhs_constr = lhs_fun;
     rhs_constr = rhs_bounds;
 }
 
-void cme::parallel::StateSetConstrained::set_shape_bounds( arma::Row< int > &rhs_bounds ) {
+void cme::parallel::StateSetConstrained::SetShapeBounds(arma::Row<int> &rhs_bounds) {
     rhs_constr = rhs_bounds;
 }
 
@@ -94,10 +94,10 @@ void cme::parallel::StateSetConstrained::set_shape_bounds( arma::Row< int > &rhs
  * Call level: collective.
  * This function also distribute the states into the processors to improve the load-balance of matrix-vector multplications.
  */
-void cme::parallel::StateSetConstrained::expand( ) {
+void cme::parallel::StateSetConstrained::Expand() {
     bool frontier_empty;
 
-    // Switch states with status -1 to 1, for they may expand to new states when the shape constraints are relaxed
+    // Switch states with status -1 to 1, for they may Expand to new states when the shape constraints are relaxed
     retrieve_state_status( );
     arma::uvec iupdate = find( local_states_status_ == -1 );
     arma::Mat< int > states_update;
@@ -147,7 +147,7 @@ void cme::parallel::StateSetConstrained::expand( ) {
         }
         Y = Y.cols( find( ystatus == 0 ));
         Y = unique_columns( Y );
-        add_states( Y );
+        AddStates(Y);
 
         // Deactivate states whose neighbors have all been explored and added to the state set
         update_state_status( frontiers_, frontier_status );
@@ -168,7 +168,6 @@ void cme::parallel::StateSetConstrained::expand( ) {
     if ( comm_size_ > 1 ) {
         if ( num_global_states_old_ * ( 1.0 + lb_threshold_ ) <= 1.0 * num_global_states_ || num_global_states_old_ == 0 ) {
             num_global_states_old_ = num_global_states_;
-            PetscPrintf( comm_, "Repartitioning...\n" );
             load_balance( );
         }
     }

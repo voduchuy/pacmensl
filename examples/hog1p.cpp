@@ -8,8 +8,7 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <armadillo>
 #include <cmath>
 #include "FSP/FspSolverBase.h"
-
-#include "models/hog1p_5d_model.h"
+#include "Models/hog1p_5d_model.h"
 
 using arma::dvec;
 using arma::Col;
@@ -21,40 +20,37 @@ using std::endl;
 using namespace hog1p_cme;
 using namespace cme::parallel;
 
-void output_marginals( MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach,
-                       std::string constraint_type, FspSolverBase &fsp_solver );
+void output_marginals(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type, PartitioningApproach fsp_repart_approach, std::string constraint_type, DiscreteDistribution& solution);
 
-void output_performance( MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach,
-                         std::string constraint_type, FspSolverBase &fsp_solver );
+void output_time(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type, PartitioningApproach fsp_repart_approach, std::string constraint_type, FspSolverBase& fsp_solver);
 
-void output_time( MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach,
-                  std::string constraint_type, FspSolverBase &fsp_solver );
+void output_performance(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type, PartitioningApproach fsp_repart_approach, std::string constraint_type, FspSolverBase& fsp_solver);
 
-void petscvec_to_file( MPI_Comm comm, Vec x, const char *filename );
+int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningApproach &fsp_repart_approach,
+                 PetscBool &output_marginal, PetscBool &fsp_log_events);
 
-int main( int argc, char *argv[] ) {
+int main(int argc, char *argv[]) {
 
     PetscMPIInt ierr, myRank, num_procs;
 
-    ierr = cme::ParaFSP_init( &argc, &argv, help );
-    CHKERRQ( ierr );
+    ierr = cme::ParaFSP_init(&argc, &argv, help);
+    CHKERRQ(ierr);
 
     MPI_Comm comm;
-    MPI_Comm_dup( PETSC_COMM_WORLD, &comm );
-    MPI_Comm_size( comm, &num_procs );
-    PetscPrintf( comm, "\n ================ \n" );
+    MPI_Comm_dup(PETSC_COMM_WORLD, &comm);
+    MPI_Comm_size(comm, &num_procs);
+    PetscPrintf(comm, "\n ================ \n");
+    PetscPrintf(comm, "Solving with %d processors.\n", num_procs);
 
-    std::string part_type;
-    std::string part_approach;
     std::string model_name = "hog1p";
-    PetscReal t_final = 60.00 * 2;
+    Model hog1p_model(hog1p_cme::SM, hog1p_cme::t_fun, hog1p_cme::propensity);
+
+    PetscReal t_final = 60*5.0;
     PetscReal fsp_tol = 1.0e-4;
-    arma::Mat< PetscInt > X0 = {0, 0, 0, 0, 0};
-    X0 = X0.t( );
-    arma::Col< PetscReal > p0 = {1.0};
-    arma::Mat< PetscInt > stoich_mat = hog1p_cme::SM;
-    TcoefFun t_fun = hog1p_cme::t_fun;
-    PropFun propensity = hog1p_cme::propensity;
+    arma::Mat<PetscInt> X0 = {0, 0, 0, 0, 0};
+    X0 = X0.t();
+    arma::Col<PetscReal> p0 = {1.0};
+
 
     // Default options
     PartitioningType fsp_par_type = Graph;
@@ -62,212 +58,154 @@ int main( int argc, char *argv[] ) {
     ODESolverType fsp_odes_type = CVODE_BDF;
     PetscBool output_marginal = PETSC_FALSE;
     PetscBool fsp_log_events = PETSC_FALSE;
-    // Read options for fsp
-    char opt[100];
-    PetscBool opt_set;
 
-    ierr = PetscOptionsGetString( NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set );
-    CHKERRQ( ierr );
-    if ( opt_set ) {
-        fsp_par_type = str2part( std::string( opt ));
-    }
+    ierr = ParseOptions(comm, fsp_par_type, fsp_repart_approach, output_marginal, fsp_log_events);
+    CHKERRQ(ierr);
 
-    ierr = PetscOptionsGetString( NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set );
-    CHKERRQ( ierr );
-    if ( opt_set ) {
-        fsp_repart_approach = str2partapproach( std::string( opt ));
-    }
-
-    ierr = PetscOptionsGetString( NULL, PETSC_NULL, "-fsp_output_marginal", opt, 100, &opt_set );
-    CHKERRQ( ierr );
-    if ( opt_set ) {
-        if ( strcmp( opt, "1" ) == 0 || strcmp( opt, "true" ) == 0 ) {
-            output_marginal = PETSC_TRUE;
-        }
-    }
-    PetscPrintf( comm, "Solving with %d processors.\n", num_procs );
-
-    ierr = PetscOptionsGetString( NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set );
-    CHKERRQ( ierr );
-    if ( opt_set ) {
-        if ( strcmp( opt, "1" ) == 0 || strcmp( opt, "true" ) == 0 ) {
-            fsp_log_events = PETSC_TRUE;
-        }
-    }
-
-    part_type = part2str( fsp_par_type );
-    part_approach = partapproach2str( fsp_repart_approach );
-    PetscPrintf( comm, "Partitiniong option %s \n", part2str( fsp_par_type ).c_str( ));
-    PetscPrintf( comm, "Repartitoning option %s \n", partapproach2str( fsp_repart_approach ).c_str( ));
     {
-    // Solve using adaptive custom constraints
-    FspSolverBase fsp_solver( PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type );
-    fsp_solver.SetInitFSPBounds( rhs_constr );
-    fsp_solver.SetFSPConstraintFunctions( &lhs_constr );
-    fsp_solver.SetExpansionFactors( expansion_factors );
-    fsp_solver.SetFSPTolerance( fsp_tol );
-    fsp_solver.SetFinalTime( t_final );
-    fsp_solver.SetStoichiometry( stoich_mat );
-    fsp_solver.SetTimeFunc( t_fun );
-    fsp_solver.SetPropensity( propensity );
-    fsp_solver.SetInitProbabilities( X0, p0 );
-    fsp_solver.SetFromOptions( );
-    fsp_solver.SetUp( );
-    fsp_solver.Solve( );
+        FspSolverBase fsp_solver(comm, fsp_par_type, CVODE_BDF);
+        fsp_solver.SetFromOptions();
+        DiscreteDistribution solution;
 
-    if ( fsp_log_events ) {
-        output_time( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "adaptive_custom" ), fsp_solver );
-        output_performance( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "adaptive_custom" ),
-                            fsp_solver );
-    }
-    if ( output_marginal ) {
-        output_marginals( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "adaptive_custom" ),
-                          fsp_solver );
-    }
+        // Solve using adaptive custom constraints
+        fsp_solver.SetConstraintFunctions(&hog1p_cme::lhs_constr);
+        fsp_solver.SetModel(hog1p_model);
+        fsp_solver.SetInitialBounds(hog1p_cme::rhs_constr);
+        fsp_solver.SetExpansionFactors(hog1p_cme::expansion_factors);
+        fsp_solver.SetInitialDistribution(X0, p0);
+        fsp_solver.SetUp();
+        solution = fsp_solver.Solve(t_final, fsp_tol);
 
-    // Solve using fixed custom constraints
-    FiniteStateSubsetBase *fss = fsp_solver.GetStateSubset( );
-    arma::Row< int > final_custom_constr = fss->get_shape_bounds( );
-    fsp_solver.Destroy( );
-    fsp_solver.SetInitFSPBounds( final_custom_constr );
-    fsp_solver.SetFSPConstraintFunctions( &lhs_constr );
-    fsp_solver.SetExpansionFactors( expansion_factors );
-    fsp_solver.SetFSPTolerance( fsp_tol );
-    fsp_solver.SetFinalTime( t_final );
-    fsp_solver.SetStoichiometry( stoich_mat );
-    fsp_solver.SetTimeFunc( t_fun );
-    fsp_solver.SetPropensity( propensity );
-    fsp_solver.SetInitProbabilities( X0, p0 );
-    fsp_solver.SetFromOptions( );
-    fsp_solver.SetUp( );
-    fsp_solver.Solve( );
-    if ( fsp_log_events ) {
-        output_time( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "fixed_custom" ), fsp_solver );
-        output_performance( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "fixed_custom" ),
-                            fsp_solver );
-    }
-    if ( output_marginal ) {
-        output_marginals( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "fixed_custom" ),
-                          fsp_solver );
-    }
-    fsp_solver.Destroy( );
+        if (fsp_log_events) {
+            output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_custom"),
+                        fsp_solver);
+            output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_custom"),
+                               fsp_solver);
+        }
+        if (output_marginal) {
+            output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_custom"),
+                             solution);
+        }
+        // Solve using fixed custom constraints
+        const StateSetConstrained* fss = (StateSetConstrained*) fsp_solver.GetStateSet();
+        arma::Row<int> final_custom_constr = fss->GetShapeBounds();
+        fsp_solver.Destroy();
+        fsp_solver.SetConstraintFunctions(&hog1p_cme::lhs_constr);
+        fsp_solver.SetInitialBounds(final_custom_constr);
+        fsp_solver.SetUp();
+        solution = fsp_solver.Solve(t_final, fsp_tol);
+        if (fsp_log_events) {
+            output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_custom"),
+                        fsp_solver);
+            output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_custom"),
+                               fsp_solver);
+        }
+        if (output_marginal) {
+            output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_custom"),
+                             solution);
+        }
 
-    // Solve using adaptive default constraints
-    fsp_solver.SetInitFSPBounds( rhs_constr_hyperrec );
-    fsp_solver.SetExpansionFactors( expansion_factors_hyperrec );
-    fsp_solver.SetFSPTolerance( fsp_tol );
-    fsp_solver.SetFinalTime( t_final );
-    fsp_solver.SetStoichiometry( stoich_mat );
-    fsp_solver.SetTimeFunc( t_fun );
-    fsp_solver.SetPropensity( propensity );
-    fsp_solver.SetInitProbabilities( X0, p0 );
-    fsp_solver.SetFromOptions( );
-    fsp_solver.SetUp( );
-    fsp_solver.Solve( );
+        // Solve using adaptive default constraints
+        fsp_solver.Destroy();
+        fsp_solver.SetInitialBounds(rhs_constr_hyperrec);
+        fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
+        fsp_solver.SetFromOptions();
+        fsp_solver.SetUp();
+        solution = fsp_solver.Solve(t_final, fsp_tol);
 
-    if ( fsp_log_events ) {
-        output_time( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "adaptive_default" ),
-                     fsp_solver );
-        output_performance( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "adaptive_default" ),
-                            fsp_solver );
-    }
-    if ( output_marginal ) {
-        output_marginals( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "adaptive_default" ),
-                          fsp_solver );
-    }
+        if (fsp_log_events) {
+            output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),
+                        fsp_solver);
+            output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),
+                               fsp_solver);
+        }
+        if (output_marginal) {
+            output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),
+                             solution);
+        }
 
-    PetscPrintf( comm, "\n ================ \n" );
-
-    // Solve using fixed default constraints
-    fss = fsp_solver.GetStateSubset( );
-    arma::Row< int > final_hyperrec_constr = fss->get_shape_bounds( );
-    fsp_solver.Destroy( );
-    fsp_solver.SetInitFSPBounds( final_hyperrec_constr );
-    fsp_solver.SetExpansionFactors( expansion_factors_hyperrec );
-    fsp_solver.SetFSPTolerance( fsp_tol );
-    fsp_solver.SetFinalTime( t_final );
-    fsp_solver.SetStoichiometry( stoich_mat );
-    fsp_solver.SetTimeFunc( t_fun );
-    fsp_solver.SetPropensity( propensity );
-    fsp_solver.SetInitProbabilities( X0, p0 );
-    fsp_solver.SetFromOptions( );
-    fsp_solver.SetUp( );
-    fsp_solver.Solve( );
-    if ( fsp_log_events ) {
-        output_time( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "fixed_hyperrec" ), fsp_solver );
-        output_performance( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "fixed_hyperrec" ),
-                            fsp_solver );
+        PetscPrintf(comm, "\n ================ \n");
+//
+//        // Solve using fixed default constraints
+        fss = (StateSetConstrained*) fsp_solver.GetStateSet();
+        arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
+        fsp_solver.Destroy();
+        fsp_solver.SetConstraintFunctions(&hog1p_cme::lhs_constr);
+        fsp_solver.SetInitialBounds(final_custom_constr);
+        fsp_solver.SetUp();
+        solution = fsp_solver.Solve(t_final, fsp_tol);
+        if (fsp_log_events) {
+            output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_hyperrec"),
+                        fsp_solver);
+            output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_hyperrec"),
+                               fsp_solver);
+        }
+        if (output_marginal) {
+            output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_hyperrec"),
+                             solution);
+        }
+        fsp_solver.Destroy();
     }
-    if ( output_marginal ) {
-        output_marginals( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string( "fixed_hyperrec" ),
-                          fsp_solver );
-    }
-    fsp_solver.Destroy( );
-}
-    ierr = cme::ParaFSP_finalize( );
+    ierr = cme::ParaFSP_finalize();
     return ierr;
 }
 
-void output_marginals( MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach,
-                       std::string constraint_type, FspSolverBase &fsp_solver ) {
-    int myRank, num_procs;
-    MPI_Comm_rank( comm, &myRank );
-    MPI_Comm_size( comm, &num_procs );
-    /* Compute the marginal distributions */
-    Vec P = fsp_solver.GetP( );
-    FiniteStateSubsetBase *state_set = fsp_solver.GetStateSubset( );
-    std::vector< arma::Col< PetscReal>> marginals( state_set->get_num_species( ));
-    for ( PetscInt i{0}; i < marginals.size( ); ++i ) {
-        marginals[ i ] = state_set->marginal( P, i );
+int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningApproach &fsp_repart_approach,
+                 PetscBool &output_marginal, PetscBool &fsp_log_events) {
+    std::string part_type;
+    std::string part_approach;
+    part_type = part2str(fsp_par_type);
+    part_approach = partapproach2str(fsp_repart_approach);
+
+    // Read options for fsp
+    char opt[100];
+    PetscBool opt_set;
+    int ierr;
+    ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
+    CHKERRQ(ierr);
+    if (opt_set) {
+        fsp_par_type = str2part(std::string(opt));
     }
 
-    MPI_Comm_rank( PETSC_COMM_WORLD, &myRank );
-    if ( myRank == 0 ) {
-        for ( PetscInt i{0}; i < marginals.size( ); ++i ) {
-            std::string filename =
-                    model_name + "_marginal_" + std::to_string( i ) + "_" +
-                    std::to_string( num_procs ) +
-                    "_" +
-                    part_type + "_" + part_approach + "_" + constraint_type + ".dat";
-            marginals[ i ].save( filename, arma::raw_ascii );
-        }
-        std::string filename =
-                model_name + "_bounds_" + std::to_string( num_procs ) + "_" + part_type + "_" + part_approach + "_" +
-                constraint_type + ".dat";
-        state_set->get_shape_bounds( ).save( filename, arma::raw_ascii );
+    ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
+    CHKERRQ(ierr);
+    if (opt_set) {
+        fsp_repart_approach = str2partapproach(std::string(opt));
     }
-}
 
-void output_time( MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach,
-                  std::string constraint_type, FspSolverBase &fsp_solver ) {
-    int myRank, num_procs;
-    MPI_Comm_rank( comm, &myRank );
-    MPI_Comm_size( comm, &num_procs );
-
-    FSPSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming( );
-    FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo( );
-    double solver_time = timings.TotalTime;
-
-    if ( myRank == 0 ) {
-        {
-            std::string filename =
-                    model_name + "_time_" + std::to_string( num_procs ) + "_" + part_type +
-                    "_" + part_approach + "_" + constraint_type + ".dat";
-            std::ofstream file;
-            file.open( filename, std::ios_base::app );
-            file << solver_time << "\n";
-            file.close( );
+    ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_output_marginal", opt, 100, &opt_set);
+    CHKERRQ(ierr);
+    if (opt_set) {
+        if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
+            output_marginal = PETSC_TRUE;
         }
     }
+
+    ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set);
+    CHKERRQ(ierr);
+    if (opt_set) {
+        if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
+            fsp_log_events = PETSC_TRUE;
+        }
+    }
+    PetscPrintf(comm, "Partitiniong option %s \n", part2str(fsp_par_type).c_str());
+    PetscPrintf(comm, "Repartitoning option %s \n", partapproach2str(fsp_repart_approach).c_str());
+    return 0;
 }
 
-void output_performance( MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach,
-                         std::string constraint_type, FspSolverBase &fsp_solver ) {
+void output_performance(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type,
+                        PartitioningApproach fsp_repart_approach, std::string constraint_type,
+                        FspSolverBase &fsp_solver) {
     int myRank, num_procs;
-    MPI_Comm_rank( comm, &myRank );
-    MPI_Comm_size( comm, &num_procs );
+    MPI_Comm_rank(comm, &myRank);
+    MPI_Comm_size(comm, &num_procs);
 
-    FSPSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming( );
+    std::string part_type;
+    std::string part_approach;
+    part_type = part2str(fsp_par_type);
+    part_approach = partapproach2str(fsp_repart_approach);
+
+    FspSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming( );
     FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo( );
     double solver_time = timings.TotalTime;
     if ( myRank == 0 ) {
@@ -310,10 +248,61 @@ void output_performance( MPI_Comm comm, std::string model_name, std::string part
     }
 }
 
-void petscvec_to_file( MPI_Comm comm, Vec x, const char *filename ) {
-    PetscViewer viewer;
-    PetscViewerCreate( comm, &viewer );
-    PetscViewerBinaryOpen( comm, filename, FILE_MODE_WRITE, &viewer );
-    VecView( x, viewer );
-    PetscViewerDestroy( &viewer );
+void output_time(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type,
+                 PartitioningApproach fsp_repart_approach, std::string constraint_type, FspSolverBase &fsp_solver) {
+    int myRank, num_procs;
+    MPI_Comm_rank(comm, &myRank);
+    MPI_Comm_size(comm, &num_procs);
+
+    std::string part_type;
+    std::string part_approach;
+    part_type = part2str(fsp_par_type);
+    part_approach = partapproach2str(fsp_repart_approach);
+
+    FspSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming( );
+    FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo( );
+    double solver_time = timings.TotalTime;
+
+    if ( myRank == 0 ) {
+        {
+            std::string filename =
+                    model_name + "_time_" + std::to_string( num_procs ) + "_" + part_type +
+                    "_" + part_approach + "_" + constraint_type + ".dat";
+            std::ofstream file;
+            file.open( filename, std::ios_base::app );
+            file << solver_time << "\n";
+            file.close( );
+        }
+    }
+}
+
+void output_marginals(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type,
+                      PartitioningApproach fsp_repart_approach, std::string constraint_type,
+                      DiscreteDistribution &solution) {
+    int myRank, num_procs;
+    MPI_Comm_rank(comm, &myRank);
+    MPI_Comm_size(comm, &num_procs);
+
+    std::string part_type;
+    std::string part_approach;
+    part_type = part2str(fsp_par_type);
+    part_approach = partapproach2str(fsp_repart_approach);
+
+    /* Compute the marginal distributions */
+    std::vector< arma::Col< PetscReal>> marginals( solution.states.n_rows);
+    for ( PetscInt i{0}; i < marginals.size( ); ++i ) {
+        marginals[ i ] = Compute1DMarginal(solution, i);
+    }
+
+    MPI_Comm_rank( PETSC_COMM_WORLD, &myRank );
+    if ( myRank == 0 ) {
+        for ( PetscInt i{0}; i < marginals.size( ); ++i ) {
+            std::string filename =
+                    model_name + "_marginal_" + std::to_string( i ) + "_" +
+                    std::to_string( num_procs ) +
+                    "_" +
+                    part_type + "_" + part_approach + "_" + constraint_type + ".dat";
+            marginals[ i ].save( filename, arma::raw_ascii );
+        }
+    }
 }

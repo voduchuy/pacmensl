@@ -25,7 +25,7 @@ namespace hog1p_cme {
             r1{6.9e-5}, r2{7.1e-3}, eta{3.1}, Ahog{9.3e09}, Mhog{6.4e-4};
 
 // propensity function
-    PetscReal propensity( PetscInt *X, PetscInt k ) {
+    PetscReal propensity( const PetscInt *X, const PetscInt k ) {
         switch ( k ) {
             case 0:
                 return k12 * double( X[ 0 ] == 0 ) + k23 * double( X[ 0 ] == 1 ) + k34 * double( X[ 0 ] == 2 );

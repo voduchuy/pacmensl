@@ -33,7 +33,7 @@ namespace cme {
             logger_.register_all( comm_ );
         };
 
-        void StateSetBase::set_stoichiometry( arma::Mat< int > SM ) {
+        void StateSetBase::SetStoichiometryMatrix(arma::Mat<int> SM) {
             stoichiometry_matrix_ = SM;
             num_species_ = ( int ) SM.n_rows;
             num_reactions_ = ( int ) SM.n_cols;
@@ -47,25 +47,25 @@ namespace cme {
          * Each processor enters its own set of initial states. Initial state could be empty, but at least one processor
          * must insert at least one state. Initial states from different processors must not overlap.
          */
-        void StateSetBase::set_initial_states( arma::Mat< int > X0 ) {
+        void StateSetBase::SetInitialStates(arma::Mat<int> X0) {
             int my_rank;
             MPI_Comm_rank( comm_, &my_rank );
 
             if ( X0.n_rows != num_species_ ) {
                 throw std::runtime_error(
-                        "set_initial_states: number of rows in input array is not the same as the number of species.\n" );
+                        "SetInitialStates: number of rows in input array is not the same as the number of species.\n" );
             }
 
             PetscPrintf( comm_, "Adding initial states...\n" );
-            add_states( X0 );
+            AddStates(X0);
             PetscPrintf( comm_, "Initial states set...\n" );
         }
 
-        const arma::Mat< int > &StateSetBase::get_states_ref( ) const {
+        const arma::Mat< int > &StateSetBase::GetStatesRef() const {
             return local_states_;
         }
 
-        arma::Mat< int > StateSetBase::copy_states_on_proc( ) const {
+        arma::Mat< int > StateSetBase::CopyStatesOnProc() const {
             arma::Mat< int > states_return( num_species_, num_local_states_ );
             for ( auto j{0}; j < num_local_states_; ++j ) {
                 for ( auto i{0}; i < num_species_; ++i ) {
@@ -91,7 +91,7 @@ namespace cme {
         void StateSetBase::distribute_frontiers( ) {
             PetscLogEventBegin( logger_.distribute_frontiers_event, 0, 0, 0, 0 );
 
-            local_frontier_gids_ = state2ordering( frontiers_ );
+            local_frontier_gids_ = State2Index(frontiers_);
 
             // Variables to store Zoltan's output
             int zoltan_err, ierr;
@@ -133,7 +133,7 @@ namespace cme {
          * @param X : armadillo matrix of states to be added. X.n_rows = number of species. Each processor input its own
          * local X. Different input sets from different processors may overlap.
          */
-        void StateSetBase::add_states( const arma::Mat< int > &X ) {
+        void StateSetBase::AddStates(const arma::Mat<int> &X) {
             PetscLogEventBegin( logger_.add_states_event, 0, 0, 0, 0 );
             int zoltan_err;
 
@@ -242,7 +242,7 @@ namespace cme {
          * @param state: matrix of input states. Each column represent a state. Each processor inputs its own set of states.
          * @return Armadillo row vector of indices. The index of each state is nonzero of the state is a member of the finite state subset. Otherwise, the index is -1 (if state does not exist in the subset, or some entries of the state are 0) or -2-i if the state violates constraint i.
          */
-        arma::Row< int > StateSetBase::state2ordering( arma::Mat< int > &state ) const {
+        arma::Row< int > StateSetBase::State2Index(arma::Mat<int> &state) const {
             arma::Row< int > indices( state.n_cols );
             indices.fill( 0 );
 
@@ -285,7 +285,7 @@ namespace cme {
          * indx: output array of indices.
          * @return none.
          */
-        void StateSetBase::state2ordering( arma::Mat< int > &state, int *indx ) const {
+        void StateSetBase::State2Index(arma::Mat<int> &state, int *indx) const {
 
             arma::Row< int > ipositive( state.n_cols );
             ipositive.fill( 0 );
@@ -321,7 +321,7 @@ namespace cme {
             }
         }
 
-        std::tuple< int, int > StateSetBase::get_ordering_ends_on_proc( ) const {
+        std::tuple< int, int > StateSetBase::GetOrderingStartEnd() const {
             int start, end, ierr;
             start = 0;
             for ( int i{0}; i < my_rank_; ++i ) {
@@ -332,24 +332,24 @@ namespace cme {
         }
 
 
-        MPI_Comm StateSetBase::get_comm( ) const {
+        MPI_Comm StateSetBase::GetComm() const {
             return comm_;
         }
 
 
-        int StateSetBase::get_num_local_states( ) const {
+        int StateSetBase::GetNumLocalStates() const {
             return num_local_states_;
         }
 
-        int StateSetBase::get_num_global_states( ) const {
+        int StateSetBase::GetNumGlobalStates() const {
             return num_global_states_;
         }
 
-        int StateSetBase::get_num_species( ) const {
+        int StateSetBase::GetNumSpecies() const {
             return ( int( num_species_ ));
         }
 
-        int StateSetBase::get_num_reactions( ) const {
+        int StateSetBase::GetNumReactions() const {
             return stoichiometry_matrix_.n_cols;
         }
 

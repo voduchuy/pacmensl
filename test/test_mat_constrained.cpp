@@ -61,10 +61,10 @@ int main(int argc, char *argv[]) {
     {
         arma::Mat<PetscInt> X0(1, 1); X0.fill(0); X0(0) = 0;
         StateSetConstrained fsp(PETSC_COMM_WORLD, 1, fsp_par_type);
-        fsp.set_stoichiometry( stoichiometry );
-        fsp.set_shape_bounds(fsp_size);
-        fsp.set_initial_states( X0 );
-        fsp.expand( );
+        fsp.SetStoichiometryMatrix(stoichiometry);
+        fsp.SetShapeBounds(fsp_size);
+        fsp.SetInitialStates(X0);
+        fsp.Expand();
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated.\n");
 
         FspMatrixConstrained A(PETSC_COMM_WORLD);
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
         Vec P, Q;
         VecCreate(PETSC_COMM_WORLD, &P);
         int i = (rank == comm_size-1)? 1 : 0;
-        VecSetSizes(P, fsp.get_num_local_states( ) + i, PETSC_DECIDE);
+        VecSetSizes(P, fsp.GetNumLocalStates() + i, PETSC_DECIDE);
         VecSetFromOptions(P);
         VecSet(P, 1.0);
         VecSetUp(P);

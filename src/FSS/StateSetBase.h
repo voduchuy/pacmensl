@@ -105,7 +105,6 @@ namespace cme {
 
             void retrieve_state_status( );
 
-            // TODO: frontier distribution use multi-dimensional gids
             static int zoltan_num_frontier( void *data, int *ierr );
 
             static void zoltan_frontier_list( void *data, int num_gid_entries, int num_lid_entries,
@@ -134,51 +133,43 @@ namespace cme {
                                                 int *ierr );
 
         public:
-            // Not copyable or movable
-            StateSetBase( const StateSetBase & ) = delete;
-
-            StateSetBase &operator=( const StateSetBase & )
-            = delete;
+            NOT_COPYABLE_NOT_MOVABLE(StateSetBase);
 
             // Generic Interface
             explicit StateSetBase( MPI_Comm new_comm, int num_species, PartitioningType lb_type = Graph,
                                    PartitioningApproach lb_approach = Repartition );
 
-            void set_stoichiometry( arma::Mat< int > SM );
+            void SetStoichiometryMatrix(arma::Mat<int> SM);
 
-            void set_initial_states( arma::Mat< PetscInt > X0 );
+            void SetInitialStates(arma::Mat<PetscInt> X0);
 
-            void add_states( const arma::Mat< int > &X );
+            void AddStates(const arma::Mat<int> &X);
 
-            arma::Row< PetscInt > state2ordering( arma::Mat< PetscInt > &state ) const;
+            arma::Row< PetscInt > State2Index(arma::Mat<PetscInt> &state) const;
 
-            void state2ordering( arma::Mat< PetscInt > &state, PetscInt *indx ) const;
+            void State2Index(arma::Mat<PetscInt> &state, PetscInt *indx) const;
 
-            virtual void expand( ) = 0;
+            virtual void Expand() = 0;
 
-            /// Getters
-            MPI_Comm get_comm( ) const;
+            MPI_Comm GetComm() const;
 
-            int get_num_local_states( ) const;
+            int GetNumLocalStates() const;
 
-            int get_num_global_states( ) const;
+            int GetNumGlobalStates() const;
 
-            int get_num_species( ) const;
+            int GetNumSpecies() const;
 
-            int get_num_reactions( ) const;
+            int GetNumReactions() const;
 
-            const arma::Mat< int >& get_states_ref () const;
+            const arma::Mat< int >& GetStatesRef() const;
 
-            arma::Mat< int > copy_states_on_proc( ) const;
+            arma::Mat< int > CopyStatesOnProc() const;
 
-            std::tuple< int, int > get_ordering_ends_on_proc( ) const;
+            std::tuple< int, int > GetOrderingStartEnd() const;
 
             ~StateSetBase( );
         };
 
-
-        /// Compute the marginal distributions from a given finite state subset and parallel probability vector
-        arma::Col< PetscReal > marginal( StateSetBase &set, Vec P, PetscInt species );
     }
 }
 

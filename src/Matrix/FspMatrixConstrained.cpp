@@ -42,15 +42,15 @@ namespace cme {
             PetscErrorCode ierr;
 
             sinks_rank_ = comm_size_ - 1; // rank of the processor that holds sink states
-            num_constraints_ = fsp.get_num_constraints( );
+            num_constraints_ = fsp.GetNumConstraints();
 
             // Generate the entries corresponding to usual states
             FspMatrixBase::generate_values( fsp, SM, prop, new_t_fun );
 
             // Generate the extra blocks corresponding to sink states
-            const arma::Mat< int > &state_list = fsp.get_states_ref( );
-            int n_local_states = fsp.get_num_local_states( );
-            int n_constraints = fsp.get_num_constraints( );
+            const arma::Mat< int > &state_list = fsp.GetStatesRef();
+            int n_local_states = fsp.GetNumLocalStates();
+            int n_constraints = fsp.GetNumConstraints();
             arma::Mat< int > can_reach_my_state;
 
             arma::Mat< Int > reachable_from_X( state_list.n_rows, state_list.n_cols );
@@ -73,8 +73,8 @@ namespace cme {
             for ( int i_reaction{0}; i_reaction < n_reactions_; ++i_reaction ) {
                 // Count nnz for rows that represent sink states
                 can_reach_my_state = state_list + arma::repmat( SM.col( i_reaction ), 1, state_list.n_cols );
-                fsp.check_constraint_on_proc( n_local_states, can_reach_my_state.colptr( 0 ),
-                                              constraints_satisfied.colptr( 0 ));
+                fsp.CheckConstraints(n_local_states, can_reach_my_state.colptr(0),
+                                     constraints_satisfied.colptr(0));
                 nconstraints_satisfied = arma::sum( constraints_satisfied, 1 );
 
                 for ( int i_constr = 0; i_constr < n_constraints; ++i_constr ) {
@@ -117,7 +117,7 @@ namespace cme {
             // Scatter context for adding sink values
             int *sink_global_indices = new int[n_constraints];
             for ( int i{0}; i < n_constraints; ++i ) {
-                sink_global_indices[ i ] = fsp.get_num_global_states( ) + i;
+                sink_global_indices[ i ] = fsp.GetNumGlobalStates() + i;
             }
             IS sink_is;
             Vec tmp;
@@ -134,7 +134,7 @@ namespace cme {
         void FspMatrixConstrained::determine_layout( const StateSetBase &fsp ) {
             PetscErrorCode ierr;
 
-            n_rows_local_ = fsp.get_num_local_states( );
+            n_rows_local_ = fsp.GetNumLocalStates();
             if ( my_rank_ == sinks_rank_ ) n_rows_local_ += num_constraints_;
 
             // Generate matrix layout from FSP's layout

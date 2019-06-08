@@ -18,6 +18,7 @@ include_directories(src/Matrix)
 include_directories(src/FSP)
 include_directories(src/OdeSolver)
 include_directories(src/util)
+include_directories(src/Models)
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -29,4 +30,4 @@ add_subdirectory(src)
 
 # Add tests and examples
 add_subdirectory(test)
-#add_subdirectory(examples)
+add_subdirectory(examples)

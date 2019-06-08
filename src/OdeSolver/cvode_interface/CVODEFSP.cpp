@@ -22,8 +22,8 @@ namespace cme {
             assert( solution_ != nullptr );
             assert( rhs_ );
 
-            PetscInt petsc_err;
 
+            PetscInt petsc_err;
             // N_Vector wrapper for the solution_
             solution_wrapper = N_VMake_Petsc( *solution_ );
 
@@ -73,7 +73,6 @@ namespace cme {
                 // Check that the temporary solution_ satisfies FSP tolerance
                 if (stop_check_ != nullptr) stop = stop_check_(t_now_tmp, solution_tmp_dat, stop_data_);
                 if ( stop == 1) {
-                    PetscPrintf(comm_,"Stop prematurely\n");
                     cvode_stat = CVodeGetDky( cvode_mem, t_now_, 0, solution_tmp );
                     break;
                 } else {

@@ -36,12 +36,12 @@ int main( int argc, char *argv[] ) {
         X0.col( 1 ).fill( my_rank + 1 );
 
         StateSetConstrained fsp( comm, 2, Graph, Repartition );
-        fsp.set_stoichiometry( SM );
-        fsp.set_initial_states( X0 );
+        fsp.SetStoichiometryMatrix(SM);
+        fsp.SetInitialStates(X0);
 
         // Generate a small FSP
         arma::Row< int > fsp_size = {3, 3};
-        fsp.set_shape_bounds( fsp_size );
+        fsp.SetShapeBounds(fsp_size);
         PetscPrintf( comm, "Initial states:\n" );
         PetscPrintf( comm, "State | Petsc ordering \n" );
         auto print_states = []( void *data ) -> void {
@@ -49,13 +49,13 @@ int main( int argc, char *argv[] ) {
             std::cout << *mat_data;
             return;
         };
-        arma::Mat< PetscInt > local_states = fsp.copy_states_on_proc( );
-        arma::Row< PetscInt > petsc_indices = fsp.state2ordering( local_states );
+        arma::Mat< PetscInt > local_states = fsp.CopyStatesOnProc();
+        arma::Row< PetscInt > petsc_indices = fsp.State2Index(local_states);
         arma::Mat< PetscInt > local_table = arma::join_horiz( local_states.t( ), petsc_indices.t( ));
         cme::sequential_action( comm, print_states, ( void * ) &local_table );
-        fsp.expand( );
-        local_states = fsp.copy_states_on_proc( );
-        petsc_indices = fsp.state2ordering( local_states );
+        fsp.Expand();
+        local_states = fsp.CopyStatesOnProc();
+        petsc_indices = fsp.State2Index(local_states);
         local_table = arma::join_horiz( local_states.t( ), petsc_indices.t( ));
         cme::sequential_action( comm, print_states, ( void * ) &local_table );
     }

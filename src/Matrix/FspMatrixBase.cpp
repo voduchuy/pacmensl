@@ -59,7 +59,7 @@ namespace cme {
             PetscInt ierr;
             PetscMPIInt rank;
             PetscInt n_local_states, own_start, own_end;
-            const arma::Mat< Int > &state_list = fsp.get_states_ref( );
+            const arma::Mat< Int > &state_list = fsp.GetStatesRef();
             arma::Mat< Int > can_reach_my_state( state_list.n_rows, state_list.n_cols );
 
             // arrays for counting nonzero entries on the diagonal and off-diagonal blocks
@@ -73,8 +73,8 @@ namespace cme {
 
             ISLocalToGlobalMapping local2global_rows, local2global_lvec;
 
-            n_local_states = fsp.get_num_local_states( );
-            n_reactions_ = fsp.get_num_reactions( );
+            n_local_states = fsp.GetNumLocalStates();
+            n_reactions_ = fsp.GetNumReactions();
             t_fun_ = new_t_fun;
             diag_mats_.resize( n_reactions_ );
             offdiag_mats_.resize( n_reactions_ );
@@ -104,7 +104,7 @@ namespace cme {
             // Count nnz for matrix rows
             for ( auto i_reaction{0}; i_reaction < n_reactions_; ++i_reaction ) {
                 can_reach_my_state = state_list - arma::repmat( SM.col( i_reaction ), 1, state_list.n_cols );
-                fsp.state2ordering( can_reach_my_state, irnz.colptr( i_reaction ));
+                fsp.State2Index(can_reach_my_state, irnz.colptr(i_reaction));
 
                 for ( auto i_state{0}; i_state < n_local_states; ++i_state ) {
                     if ( irnz( i_state, i_reaction ) >= own_start && irnz( i_state, i_reaction ) < own_end ) {
@@ -271,7 +271,7 @@ namespace cme {
         void FspMatrixBase::determine_layout( const StateSetBase &fsp ) {
             PetscErrorCode ierr;
 
-            n_rows_local_ = fsp.get_num_local_states();
+            n_rows_local_ = fsp.GetNumLocalStates();
 
             // Generate matrix layout from FSP's layout
             ierr = VecCreate( comm_, &work_ );

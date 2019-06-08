@@ -10,14 +10,13 @@
 #include <mpi.h>
 #include <petscmat.h>
 #include <petscis.h>
+#include "Model.h"
 #include "util/cme_util.h"
 #include "FSS/StateSetBase.h"
 #include "FSS/StateSetConstrained.h"
 
 namespace cme {
     namespace parallel {
-        using PropFun = std::function< PetscReal( const PetscInt *, const PetscInt ) >;
-        using TcoefFun = std::function< arma::Row< PetscReal >( PetscReal t ) >;
         using Real = PetscReal;
         using Int = PetscInt;
 
@@ -52,6 +51,7 @@ namespace cme {
 
             virtual void determine_layout(const StateSetBase &fsp);
         public:
+            NOT_COPYABLE_NOT_MOVABLE(FspMatrixBase);
 
             /* constructors */
             explicit FspMatrixBase( MPI_Comm comm );

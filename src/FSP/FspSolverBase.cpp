@@ -14,11 +14,11 @@ namespace cme {
             odes_type = _solve_type;
         }
 
-        void FspSolverBase::SetInitFSPBounds(arma::Row<int> &_fsp_size) {
+        void FspSolverBase::SetInitialBounds(arma::Row<int> &_fsp_size) {
             fsp_bounds_ = _fsp_size;
         }
 
-        void FspSolverBase::SetFSPConstraintFunctions(fsp_constr_multi_fn *lhs_constr) {
+        void FspSolverBase::SetConstraintFunctions(fsp_constr_multi_fn *lhs_constr) {
             fsp_constr_funs_ = lhs_constr;
             have_custom_constraints_ = true;
         }
@@ -27,39 +27,20 @@ namespace cme {
             fsp_expasion_factors_ = _expansion_factors;
         }
 
-        void FspSolverBase::SetFSPTolerance(PetscReal _fsp_tol) {
-            fsp_tol = _fsp_tol;
-        }
-
-        void FspSolverBase::SetStoichiometry(arma::Mat<Int> &stoich) {
-            stoich_mat = stoich;
-        }
-
-        void FspSolverBase::SetPropensity(PropFun _prop) {
-            propensity_ = _prop;
-        }
-
-        void FspSolverBase::SetTimeFunc(TcoefFun _t_fun) {
-            t_fun_ = _t_fun;
-        }
-
-        void FspSolverBase::SetFinalTime(PetscReal t) {
-            t_final = t;
-        }
-
-
-        void FspSolverBase::Solve() {
+        DiscreteDistribution FspSolverBase::Solve(PetscReal t_final, PetscReal fsp_tol) {
+            Int ierr;
             if (log_fsp_events) {
                 CHKERRABORT(comm_, PetscLogEventBegin(Solving, 0, 0, 0, 0));
             }
 
-            Int ierr;
-            PetscInt solver_stat = 1;
-            PetscReal t = 0.0e0;
-
-            if (verbosity > 1) {
+            if (verbosity_ > 1) {
                 ode_solver_->set_print_intermediate(1);
             }
+
+            fsp_tol_ = fsp_tol;
+            t_final_ = t_final;
+            ode_solver_->set_final_time(t_final);
+            PetscInt solver_stat = 1;
 
             while (solver_stat) {
                 if (log_fsp_events) {
@@ -79,7 +60,7 @@ namespace cme {
                         }
                     }
 
-                    if (verbosity) {
+                    if (verbosity_) {
                         PetscPrintf(comm_, "\n ------------- \n");
                         PetscPrintf(comm_, "At time t = %.2f expansion to new state_set_ size: \n",
                                     ode_solver_->get_current_time());
@@ -89,18 +70,18 @@ namespace cme {
                         PetscPrintf(comm_, "\n ------------- \n");
                     }
                     // Get local states corresponding to the current solution_
-                    arma::Mat<PetscInt> states_old = state_set_->copy_states_on_proc();
+                    arma::Mat<PetscInt> states_old = state_set_->CopyStatesOnProc();
                     if (log_fsp_events) {
                         CHKERRABORT(comm_, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
                     }
-                    ((StateSetConstrained *) state_set_)->set_shape_bounds(fsp_bounds_);
-                    state_set_->expand();
+                    ((StateSetConstrained *) state_set_)->SetShapeBounds(fsp_bounds_);
+                    state_set_->Expand();
                     if (log_fsp_events) {
                         CHKERRABORT(comm_, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
                     }
-                    if (verbosity) {
+                    if (verbosity_) {
                         PetscPrintf(comm_, "\n ------------- \n");
-                        PetscPrintf(comm_, "New FSP number of states: %d \n", state_set_->get_num_global_states());
+                        PetscPrintf(comm_, "New FSP number of states: %d \n", state_set_->GetNumGlobalStates());
                         PetscPrintf(comm_, "\n ------------- \n");
                     }
 
@@ -111,7 +92,7 @@ namespace cme {
                         CHKERRABORT(comm_, PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
                     }
                     ((FspMatrixConstrained *) A_)
-                            ->generate_matrices(*((StateSetConstrained *) state_set_), stoich_mat, propensity_, t_fun_);
+                            ->generate_matrices(*((StateSetConstrained *) state_set_), model_.stoichiometry_matrix_, model_.prop_, model_.t_fun_);
                     if (log_fsp_events) {
                         CHKERRABORT(comm_, PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
                     }
@@ -127,7 +108,7 @@ namespace cme {
                     VecSet(Pnew, 0.0);
 
                     IS new_locations;
-                    arma::Row<Int> new_states_locations = state_set_->state2ordering(states_old);
+                    arma::Row<Int> new_states_locations = state_set_->State2Index(states_old);
                     arma::Row<Int> new_sinks_locations;
 
                     if (my_rank_ == comm_size_ - 1) {
@@ -177,6 +158,8 @@ namespace cme {
             if (log_fsp_events) {
                 CHKERRABORT(comm_, PetscLogEventEnd(Solving, 0, 0, 0, 0));
             }
+
+            return MakeOutputDistribution(0, *state_set_, *p_);
         }
 
         FspSolverBase::~FspSolverBase() {
@@ -201,9 +184,9 @@ namespace cme {
 
         void FspSolverBase::SetUp() {
             // Make sure all the necessary parameters have been set
-            assert(t_fun_);
-            assert(propensity_);
-            assert(stoich_mat.n_elem > 0);
+            assert(model_.t_fun_);
+            assert(model_.prop_);
+            assert(model_.stoichiometry_matrix_.n_elem > 0);
             assert(init_states_.n_elem > 0);
             assert(init_probs_.n_elem > 0);
             assert(fsp_bounds_.n_elem > 0);
@@ -217,7 +200,7 @@ namespace cme {
                 CHKERRABORT(comm_, ierr);
                 ierr = PetscLogEventRegister("Generate FSP matrices", 0, &MatrixGeneration);
                 CHKERRABORT(comm_, ierr);
-                ierr = PetscLogEventRegister("solve reduced problem", 0, &ODESolve);
+                ierr = PetscLogEventRegister("Solve reduced problem", 0, &ODESolve);
                 CHKERRABORT(comm_, ierr);
                 ierr = PetscLogEventRegister("FSP RHS evaluation", 0, &RHSEvaluation);
                 CHKERRABORT(comm_, ierr);
@@ -231,18 +214,18 @@ namespace cme {
                 CHKERRABORT(comm_, ierr);
             }
 
-            state_set_ = new StateSetConstrained(comm_, stoich_mat.n_rows, partitioning_type_, repart_approach_);
-            state_set_->set_stoichiometry(stoich_mat);
+            state_set_ = new StateSetConstrained(comm_, model_.stoichiometry_matrix_.n_rows, partitioning_type_, repart_approach_);
+            state_set_->SetStoichiometryMatrix(model_.stoichiometry_matrix_);
             if (have_custom_constraints_) {
-                ((StateSetConstrained *) state_set_)->set_shape(fsp_constr_funs_, fsp_bounds_);
+                ((StateSetConstrained *) state_set_)->SetShape(fsp_constr_funs_, fsp_bounds_);
             } else {
-                ((StateSetConstrained *) state_set_)->set_shape_bounds(fsp_bounds_);
+                ((StateSetConstrained *) state_set_)->SetShapeBounds(fsp_bounds_);
             }
-            state_set_->set_initial_states(init_states_);
+            state_set_->SetInitialStates(init_states_);
             if (log_fsp_events) {
                 CHKERRABORT(comm_, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
             }
-            state_set_->expand();
+            state_set_->Expand();
             if (log_fsp_events) {
                 CHKERRABORT(comm_, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
             }
@@ -252,7 +235,7 @@ namespace cme {
                 CHKERRABORT(comm_, PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
             }
             ((FspMatrixConstrained *) A_)
-                    ->generate_matrices(*((StateSetConstrained *) state_set_), stoich_mat, propensity_, t_fun_);
+                    ->generate_matrices(*((StateSetConstrained *) state_set_), model_.stoichiometry_matrix_, model_.prop_, model_.t_fun_);
             if (log_fsp_events) {
                 CHKERRABORT(comm_, PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
             }
@@ -269,7 +252,7 @@ namespace cme {
             }
 
             p_ = new Vec;
-            arma::Row<Int> indices = state_set_->state2ordering(init_states_);
+            arma::Row<Int> indices = state_set_->State2Index(init_states_);
             ierr = VecCreate(comm_, p_);
             CHKERRABORT(comm_, ierr);
             ierr = VecSetSizes(*p_, A_->get_num_rows_local(), PETSC_DECIDE);
@@ -286,11 +269,12 @@ namespace cme {
             CHKERRABORT(comm_, ierr);
 
             ode_solver_ = new CVODEFSP(PETSC_COMM_WORLD, CV_BDF);
-            ode_solver_->set_final_time(t_final);
+            ode_solver_->set_current_time(0.0);
+            ode_solver_->set_final_time(t_final_);
             ode_solver_->set_initial_solution(p_);
             ode_solver_->set_rhs(this->tmatvec_);
             auto error_checking_fp = [&](PetscReal t, Vec p, void *data) {
-                return check_fsp_tolerance_(t, p);
+                return CheckFspTolerance_(t, p);
             };
             ode_solver_->set_stop_condition(error_checking_fp, nullptr);
             if (log_fsp_events) {
@@ -299,23 +283,23 @@ namespace cme {
                 CHKERRABORT(comm_, ierr);
             }
 
-            sinks_.set_size(((StateSetConstrained *) state_set_)->get_num_constraints());
+            sinks_.set_size(((StateSetConstrained *) state_set_)->GetNumConstraints());
             to_expand_.set_size(sinks_.n_elem);
             PetscPrintf(comm_, "Num constraints %d \n", sinks_.n_elem);
         }
 
-        void FspSolverBase::SetVerbosityLevel(int verbosity_level) {
-            verbosity = verbosity_level;
+        void FspSolverBase::SetVerbosity(int verbosity_level) {
+            verbosity_ = verbosity_level;
         }
 
         void
-        FspSolverBase::SetInitProbabilities(arma::Mat<Int> &_init_states, arma::Col<PetscReal> &_init_probs) {
+        FspSolverBase::SetInitialDistribution(arma::Mat<Int> &_init_states, arma::Col<PetscReal> &_init_probs) {
             init_states_ = _init_states;
             init_probs_ = _init_probs;
             assert(init_probs_.n_elem == init_states_.n_cols);
         }
 
-        StateSetBase *FspSolverBase::GetStateSubset() {
+        const StateSetBase * FspSolverBase::GetStateSet() {
             return state_set_;
         }
 
@@ -323,8 +307,8 @@ namespace cme {
             log_fsp_events = logging;
         }
 
-        FSPSolverComponentTiming FspSolverBase::GetAvgComponentTiming() {
-            FSPSolverComponentTiming timings;
+        FspSolverComponentTiming FspSolverBase::GetAvgComponentTiming() {
+            FspSolverComponentTiming timings;
             PetscMPIInt comm_size;
             MPI_Comm_size(comm_, &comm_size);
 
@@ -380,10 +364,10 @@ namespace cme {
             CHKERRABORT(comm_, ierr);
             if (opt_set) {
                 if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
-                    verbosity = 1;
+                    verbosity_ = 1;
                 }
                 if (strcmp(opt, "2") == 0) {
-                    verbosity = 2;
+                    verbosity_ = 2;
                 }
             }
 
@@ -397,7 +381,7 @@ namespace cme {
 
         }
 
-        int FspSolverBase::check_fsp_tolerance_(PetscReal t, Vec p) {
+        int FspSolverBase::CheckFspTolerance_(PetscReal t, Vec p) {
             to_expand_.fill(0);
             // Find the sink states
             arma::Row<PetscReal> sinks_of_p(sinks_.n_elem);
@@ -415,9 +399,35 @@ namespace cme {
             int ierr = MPI_Allreduce(&sinks_of_p[0], &sinks_[0], sinks_of_p.n_elem, MPI_DOUBLE, MPI_SUM, comm_);
             MPICHKERRABORT(comm_, ierr);
             for (int i{0}; i < (int) sinks_.n_elem; ++i) {
-                if (double(sinks_.n_elem)*sinks_(i) > (t / t_final) * fsp_tol) to_expand_(i) = 1;
+                if (double(sinks_.n_elem)*sinks_(i) > (t / t_final_) * fsp_tol_) to_expand_(i) = 1;
             }
             return to_expand_.max();
+        }
+
+        void FspSolverBase::SetModel(Model &model) {
+            FspSolverBase::model_ = model;
+        }
+
+        DiscreteDistribution FspSolverBase::MakeOutputDistribution(PetscReal t, const StateSetBase &state_set, Vec const &p) {
+            int ierr;
+            DiscreteDistribution solution;
+            MPI_Comm_dup(comm_, &solution.comm);
+            solution.t = t;
+            solution.states = state_set.CopyStatesOnProc();
+            ierr = VecDuplicate(p, &solution.p); CHKERRABORT(comm_, ierr);
+            ierr = VecSetUp(solution.p); CHKERRABORT(comm_, ierr);
+            ierr = VecCopy(p, solution.p); CHKERRABORT(comm_, ierr);
+            return solution;
+        }
+
+        std::vector<DiscreteDistribution> FspSolverBase::Solve(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol) {
+            std::vector<DiscreteDistribution> outputs;
+            int num_time_points = tspan.n_elem;
+            outputs.reserve(num_time_points);
+            for (int i = 0; i < num_time_points; ++i){
+                outputs.emplace_back(FspSolverBase::Solve(tspan(i), tspan(i)*fsp_tol/tspan.max()));
+            }
+            return outputs;
         }
     }
 }

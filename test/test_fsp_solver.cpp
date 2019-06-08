@@ -40,38 +40,28 @@ int main(int argc, char *argv[]) {
 
     // Begin PETSC context
     {
+        Model toggle_model(toggle_cme::SM, toggle_cme::t_fun, toggle_cme::propensity);
         arma::Row<int> fsp_size = {3, 3};
         arma::Row<PetscReal> expansion_factors = {0.25,0.25};
         FspSolverBase fsp(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
-        fsp.SetInitFSPBounds(fsp_size);
-        fsp.SetFSPTolerance(fsp_tol);
-        fsp.SetFinalTime(t_final);
-        fsp.SetStoichiometry(toggle_cme::SM);
-        fsp.SetTimeFunc(toggle_cme::t_fun);
-        fsp.SetPropensity(toggle_cme::propensity);
+        fsp.SetModel(toggle_model);
+        fsp.SetInitialBounds(fsp_size);
         fsp.SetExpansionFactors(expansion_factors);
-        fsp.SetVerbosityLevel(2);
-        fsp.SetInitProbabilities(X0, p0);
+        fsp.SetVerbosity(2);
+        fsp.SetInitialDistribution(X0, p0);
         fsp.SetUp();
+        DiscreteDistribution p_final = fsp.Solve(t_final, fsp_tol);
+        fsp.Destroy();
 
-        fsp.Solve();
-//
-//        /* Compute the marginal distributions */
-//        Vec P = fsp.GetP();
-//        FiniteStateSubsetBase* state_set = fsp.GetStateSubset();
-//        std::vector<arma::Col<PetscReal>> marginals(fsp_size.n_elem);
-//        for (PetscInt i{0}; i < marginals.size(); ++i) {
-//            marginals[i] = state_set->marginal(P, i);
-//        }
-//
-//        MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-//        if (rank == 0) {
-//            for (PetscInt i{0}; i < marginals.size(); ++i) {
-//                std::string filename =
-//                        model_name + "_marginal_" + std::to_string(i) + "_" + std::to_string(num_procs) + ".dat";
-//                marginals[i].save(filename, arma::raw_ascii);
-//            }
-//        }
+        fsp.SetModel(toggle_model);
+        fsp.SetInitialBounds(fsp_size);
+        fsp.SetExpansionFactors(expansion_factors);
+        fsp.SetVerbosity(2);
+        fsp.SetInitialDistribution(X0, p0);
+        fsp.SetUp();
+        arma::Row<PetscReal> tspan = arma::linspace<arma::Row<PetscReal>>(0.0, 100.0, 10);
+        std::vector<DiscreteDistribution> p_snapshots = fsp.Solve(tspan, fsp_tol);
+        fsp.Destroy();
     }
     //End PETSC context
     ierr = PetscFinalize();

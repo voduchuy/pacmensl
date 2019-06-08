@@ -117,16 +117,14 @@ int main(int argc, char *argv[]) {
 
         PetscPrintf(comm, "Distributing to %d processors.\n", num_procs);
 
-        FiniteStateSubsetBase state_set(comm, X0.n_rows);
-        state_set.set_stoichiometry( stoich_mat );
-        state_set.set_initial_states( X0 );
-        state_set.set_lb_type( fsp_par_type );
-        state_set.set_repart_approach( fsp_repart_approach );
-        state_set.set_shape( FSPConstraintFuns, FSPBounds );
+        StateSetConstrained state_set(comm, X0.n_rows, fsp_par_type, fsp_repart_approach);
+        state_set.SetStoichiometryMatrix( stoich_mat );
+        state_set.SetInitialStates( X0 );
+        state_set.SetShape(FSPConstraintFuns, FSPBounds);
 
-        state_set.expand( );
+        state_set.Expand( );
 
-        local_states = state_set.copy_states_on_proc( );
+        local_states = state_set.CopyStatesOnProc( );
         local_states = local_states.t();
 
         filename = model_name + "_local_states_" + std::to_string(myRank) + "_of_" + std::to_string(num_procs) + "_" + part_option + ".dat";

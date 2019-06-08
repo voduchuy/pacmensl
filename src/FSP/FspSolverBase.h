@@ -8,6 +8,8 @@
 #include<algorithm>
 #include<cstdlib>
 #include<cmath>
+#include"Model.h"
+#include"DiscreteDistribution.h"
 #include"Matrix/FspMatrixBase.h"
 #include"Matrix/FspMatrixConstrained.h"
 #include"OdeSolver/OdeSolverBase.h"
@@ -18,20 +20,13 @@
 
 namespace cme {
     namespace parallel {
-        struct FSPSolverComponentTiming {
+        struct FspSolverComponentTiming {
             PetscReal StatePartitioningTime;
             PetscReal MatrixGenerationTime;
             PetscReal ODESolveTime;
             PetscReal SolutionScatterTime;
             PetscReal RHSEvalTime;
             PetscReal TotalTime;
-        };
-
-        struct FspSolution{
-            MPI_Comm comm;
-            double t;
-            arma::Mat<int> states;
-            Vec p;
         };
 
         class FspSolverBase {
@@ -52,29 +47,32 @@ namespace cme {
             FspMatrixBase *A_;
             OdeSolverBase *ode_solver_;
 
-            Real t_final = 0.0;
-            Real fsp_tol = 0.0;
-
-            arma::Mat<Int> stoich_mat;
-            PropFun propensity_;
-            TcoefFun t_fun_;
+            Model model_;
 
             std::function<void(PetscReal, Vec, Vec)> tmatvec_;
+
             arma::Mat<Int> init_states_;
-
             arma::Col<PetscReal> init_probs_;
-            int verbosity = 0;
 
+            int verbosity_ = 0;
             bool have_custom_constraints_ = false;
+
             fsp_constr_multi_fn *fsp_constr_funs_;
             arma::Row<int> fsp_bounds_;
             arma::Row<Real> fsp_expasion_factors_;
 
             // For error checking and expansion parameters
-            int check_fsp_tolerance_(PetscReal t, Vec p);
+            int CheckFspTolerance_(PetscReal t, Vec p);
+
+            virtual void set_expansion_parameters_() {};
+            Real fsp_tol_ = 1.0;
+            Real t_final_ = 0.0;
 
             arma::Row<PetscReal> sinks_;
             arma::Row<int> to_expand_;
+
+
+            DiscreteDistribution MakeOutputDistribution(PetscReal t, const StateSetBase &state_set, Vec const &p);
 
             // For logging events using PETSc LogEvent
             PetscBool log_fsp_events = PETSC_FALSE;
@@ -85,29 +83,23 @@ namespace cme {
             PetscLogEvent RHSEvaluation;
             PetscLogEvent SettingUp;
             PetscLogEvent Solving;
+
         public:
+            NOT_COPYABLE_NOT_MOVABLE(FspSolverBase);
 
             explicit FspSolverBase(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
 
-            void SetFSPConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
+            void SetConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
 
-            void SetInitFSPBounds( arma::Row< int > &_fsp_size );
-
-            void SetFinalTime(PetscReal t);
+            void SetInitialBounds(arma::Row<int> &_fsp_size);
 
             void SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors);
 
-            void SetFSPTolerance(PetscReal _fsp_tol);
+            void SetModel(Model &model);
 
-            void SetStoichiometry(arma::Mat<Int> &stoich);
+            void SetVerbosity(int verbosity_level);
 
-            void SetPropensity(PropFun _prop);
-
-            void SetTimeFunc(TcoefFun _t_fun);
-
-            void SetVerbosityLevel(int verbosity_level);
-
-            void SetInitProbabilities(arma::Mat<Int> &_init_states, arma::Col<PetscReal> &_init_probs);
+            void SetInitialDistribution(arma::Mat<Int> &_init_states, arma::Col<PetscReal> &_init_probs);
 
             void SetLogging(PetscBool logging);
 
@@ -117,13 +109,15 @@ namespace cme {
 
             Vec &GetP();
 
-            StateSetBase *GetStateSubset();
+            const StateSetBase *GetStateSet();
 
-            FSPSolverComponentTiming GetAvgComponentTiming();
+            FspSolverComponentTiming GetAvgComponentTiming();
 
             FiniteProblemSolverPerfInfo GetSolverPerfInfo();
 
-            void Solve();
+            DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol);
+
+            std::vector<DiscreteDistribution> Solve(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol);
 
             void Destroy();
 
@@ -131,6 +125,7 @@ namespace cme {
 
             friend StateSetBase;
             friend FspMatrixBase;
+
             friend OdeSolverBase;
         };
     }

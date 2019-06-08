@@ -24,10 +24,10 @@ int main(int argc, char *argv[]) {
         arma::Mat<PetscInt> X0(2, 1);
         X0.col(0).fill(0);
         StateSetConstrained fsp(PETSC_COMM_WORLD, 2);
-        fsp.set_shape_bounds( fsp_size );
-        fsp.set_stoichiometry( toggle_cme::SM );
-        fsp.set_initial_states( X0 );
-        fsp.expand( );
+        fsp.SetShapeBounds(fsp_size);
+        fsp.SetStoichiometryMatrix(toggle_cme::SM);
+        fsp.SetInitialStates(X0);
+        fsp.Expand();
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 
         FspMatrixBase A(PETSC_COMM_WORLD);
