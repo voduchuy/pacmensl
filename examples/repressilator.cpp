@@ -7,7 +7,7 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <util/cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include "FSP/FSPSolver.h"
+#include "FSP/FspSolverBase.h"
 
 #include "models/repressilator_model.h"
 
@@ -21,9 +21,9 @@ using std::endl;
 using namespace repressilator_cme;
 using namespace cme::parallel;
 
-void output_marginals(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FSPSolver& fsp_solver);
-void output_performance(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FSPSolver& fsp_solver);
-void output_time(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FSPSolver& fsp_solver);
+void output_marginals(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FspSolverBase& fsp_solver);
+void output_performance(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FspSolverBase& fsp_solver);
+void output_time(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FspSolverBase& fsp_solver);
 void petscvec_to_file( MPI_Comm comm, Vec x, const char *filename );
 
 int main( int argc, char *argv[] ) {
@@ -96,7 +96,7 @@ int main( int argc, char *argv[] ) {
         PetscPrintf( comm, "Repartitoning option %s \n", partapproach2str( fsp_repart_approach ).c_str( ));
 
         // Solve using adaptive custom constraints
-        FSPSolver fsp_solver( PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type );
+        FspSolverBase fsp_solver( PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type );
         fsp_solver.SetInitFSPBounds( rhs_constr );
         fsp_solver.SetFSPConstraintFunctions( &lhs_constr );
         fsp_solver.SetExpansionFactors( expansion_factors );
@@ -119,8 +119,8 @@ int main( int argc, char *argv[] ) {
         }
 
         // Solve using fixed custom constraints
-        FiniteStateSubset* fss = fsp_solver.GetStateSubset();
-        arma::Row<int> final_custom_constr = fss->GetShapeBounds();
+        FiniteStateSubsetBase* fss = fsp_solver.GetStateSubset();
+        arma::Row<int> final_custom_constr = fss->get_shape_bounds( );
         fsp_solver.Destroy();
         fsp_solver.SetInitFSPBounds( final_custom_constr );
         fsp_solver.SetFSPConstraintFunctions( &lhs_constr );
@@ -168,7 +168,7 @@ int main( int argc, char *argv[] ) {
 
         // Solve using fixed default constraints
         fss = fsp_solver.GetStateSubset();
-        arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
+        arma::Row<int> final_hyperrec_constr = fss->get_shape_bounds( );
         fsp_solver.Destroy();
         fsp_solver.SetInitFSPBounds( final_hyperrec_constr );
         fsp_solver.SetExpansionFactors( expansion_factors_hyperrec );
@@ -195,14 +195,14 @@ int main( int argc, char *argv[] ) {
     return ierr;
 }
 
-void output_marginals(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FSPSolver& fsp_solver){
+void output_marginals(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FspSolverBase& fsp_solver){
     int myRank, num_procs;
     MPI_Comm_rank(comm, &myRank);
     MPI_Comm_size(comm, &num_procs);
     /* Compute the marginal distributions */
     Vec P = fsp_solver.GetP( );
-    FiniteStateSubset *state_set = fsp_solver.GetStateSubset( );
-    std::vector< arma::Col< PetscReal>> marginals( state_set->GetNumSpecies( ));
+    FiniteStateSubsetBase *state_set = fsp_solver.GetStateSubset( );
+    std::vector< arma::Col< PetscReal>> marginals( state_set->get_num_species( ));
     for ( PetscInt i{0}; i < marginals.size( ); ++i ) {
         marginals[ i ] = state_set->marginal( P, i );
     }
@@ -219,11 +219,11 @@ void output_marginals(MPI_Comm comm, std::string model_name, std::string part_ty
         }
 
         std::string filename = model_name + "_bounds_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach + "_" + constraint_type + ".dat";
-        state_set->GetShapeBounds().save(filename, arma::raw_ascii);
+        state_set->get_shape_bounds( ).save(filename, arma::raw_ascii);
     }
 }
 
-void output_time(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FSPSolver& fsp_solver){
+void output_time(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FspSolverBase& fsp_solver){
     int myRank, num_procs;
     MPI_Comm_rank(comm, &myRank);
     MPI_Comm_size(comm, &num_procs);
@@ -245,7 +245,7 @@ void output_time(MPI_Comm comm, std::string model_name, std::string part_type, s
     }
 }
 
-void output_performance(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FSPSolver& fsp_solver){
+void output_performance(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, FspSolverBase& fsp_solver){
     int myRank, num_procs;
     MPI_Comm_rank(comm, &myRank);
     MPI_Comm_size(comm, &num_procs);

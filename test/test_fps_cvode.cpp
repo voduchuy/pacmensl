@@ -4,9 +4,9 @@
 static char help[] = "Test interface to CVODE for solving the CME of the toggle model.\n\n";
 
 #include "util/cme_util.h"
-#include "Matrix/MatrixSet.h"
-#include "FPSolver/FiniteProblemSolver.h"
-#include "FPSolver/CVODEFSP.h"
+#include "Matrix/FspMatrixBase.h"
+#include "OdeSolverBase.h"
+#include "OdeSolver/CvodeFsp.h"
 #include "models/toggle_model.h"
 
 using namespace cme::parallel;
@@ -23,24 +23,24 @@ int main(int argc, char *argv[]) {
         arma::Row<PetscInt> fsp_size = {30, 30};
         arma::Mat<PetscInt> X0(2, 1);
         X0.col(0).fill(0);
-        FiniteStateSubset fsp(PETSC_COMM_WORLD, 2);
+        StateSetConstrained fsp(PETSC_COMM_WORLD, 2);
         fsp.SetShapeBounds(fsp_size);
-        fsp.SetStoichiometry(toggle_cme::SM);
+        fsp.SetStoichiometryMatrix(toggle_cme::SM);
         fsp.SetInitialStates(X0);
-        fsp.GenerateStatesAndOrdering();
+        fsp.Expand();
         PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 
-        MatrixSet A(PETSC_COMM_WORLD);
-        A.GenerateMatrices(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
+        FspMatrixBase A(PETSC_COMM_WORLD);
+        A.generate_values(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
 
         auto AV = [&A](PetscReal t, Vec x, Vec y) {
-            A.Action(t, x, y);
+            A.action(t, x, y);
         };
 
 
         Vec P;
         VecCreate(PETSC_COMM_WORLD, &P);
-        VecSetSizes(P, fsp.GetNumLocalStates() + fsp.GetNumSpecies(), PETSC_DECIDE);
+        VecSetSizes(P, A.get_num_rows_local(), PETSC_DECIDE);
         VecSetFromOptions(P);
         VecSetValue(P, 0, 1.0, INSERT_VALUES);
         VecSetUp(P);
@@ -50,17 +50,15 @@ int main(int argc, char *argv[]) {
         PetscPrintf(PETSC_COMM_WORLD, "Initial vector set.\n");
 
         PetscReal fsp_tol = 1.0e-2, t_final = 1000.0;
-        CVODEFSP cvode_solver( PETSC_COMM_WORLD, CV_BDF );
-        cvode_solver.SetFinalTime(t_final);
-        cvode_solver.SetFSPTolerance(fsp_tol);
-        cvode_solver.SetInitSolution(&P);
-        cvode_solver.SetRHS(AV);
-        cvode_solver.SetFiniteStateSubset(&fsp);
-        cvode_solver.SetPrintIntermediateSteps(1);
+        CvodeFsp cvode_solver( PETSC_COMM_WORLD, CV_BDF );
+        cvode_solver.set_final_time(t_final);
+        cvode_solver.set_initial_solution(&P);
+        cvode_solver.set_rhs(AV);
+        cvode_solver.set_print_intermediate(1);
         PetscPrintf(PETSC_COMM_WORLD, "Solver parameters set.\n");
-        PetscInt solver_stat = cvode_solver.Solve();
+        PetscInt solver_stat = cvode_solver.solve();
         PetscPrintf(PETSC_COMM_WORLD, "\n Solver returns with status %d and time %.2e \n", solver_stat,
-                    cvode_solver.GetCurrentTime());
+                    cvode_solver.get_current_time());
     }
     //End PETSC context
     ierr = PetscFinalize();
