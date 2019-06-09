@@ -1,3 +1,3 @@
-# PFspAt
+# PECMEAL
 
-PFspAt: Parallel Finite State Projection Analysis Toolkit.
+PeCmeAL : Parallel extensible Chemical master equation Analysis Library.
