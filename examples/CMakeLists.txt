@@ -12,5 +12,6 @@ set(EXAMPLES ${EXAMPLES} PARENT_SCOPE)
 
 foreach ( PROG ${EXAMPLES})
     add_executable(${PROG} ${CMAKE_SOURCE_DIR}/examples/${PROG}.cpp)
-    target_link_libraries(${PROG} PfspatLib ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+    target_link_libraries(${PROG} Pecmeal)
+    install(TARGETS ${PROG} DESTINATION ${EXAMPLES_INSTALL_DIR})
 endforeach()

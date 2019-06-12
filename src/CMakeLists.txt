@@ -3,22 +3,31 @@ set(EXT_LIBRARIES
         -lsundials_cvode
         -lsundials_nvecpetsc
         -lzoltan
-        -lparmetis)
+        -lparmetis
+        ${PETSC_LIBRARIES}
+        )
 #
-add_subdirectory(util)
+add_subdirectory(Util)
 add_subdirectory(Models)
-add_subdirectory(FSS)
+add_subdirectory(Partitioner)
+add_subdirectory(StateSet)
 add_subdirectory(Matrix)
 add_subdirectory(OdeSolver)
 add_subdirectory(FSP)
+add_subdirectory(SmFish)
 
-add_library(PfspatLib SHARED )
-target_link_libraries(PfspatLib FSS_OBJ MAT_OBJ FSP_OBJ CME_UTIL_OBJ MODEL_OBJ ODE_OBJ ${PETSC_LIBRARIES} ${EXT_LIBRARIES})
+if (BUILD_SHARED_LIBS)
+    add_library(Pecmeal SHARED pecmeal.h ${PECMEAL_OBJECTS})
+    target_link_libraries(Pecmeal ${EXT_LIBRARIES})
+else (BUILD_SHARED_LIBS)
+    add_library(Pecmeal STATIC pecmeal.h ${PECMEAL_OBJECTS})
+    target_link_libraries(Pecmeal ${EXT_LIBRARIES})
+endif (BUILD_SHARED_LIBS)
 
 ## Rules for installing FSP library
-SET_TARGET_PROPERTIES(PfspatLib
-        PROPERTIES OUTPUT_NAME pfspat CLEAN_DIRECT_OUTPUT 1)
-install(TARGETS PfspatLib DESTINATION ${CMAKE_INSTALL_LIBDIR})
+SET_TARGET_PROPERTIES(Pecmeal
+        PROPERTIES OUTPUT_NAME pecmeal CLEAN_DIRECT_OUTPUT 1)
+install(TARGETS Pecmeal DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-install(FILES pfspat_all.h DESTINATION include/pfspat)
-install(FILES pfspat.h DESTINATION include/)
+install(FILES pecmeal_all.h DESTINATION include/pecmeal)
+install(FILES pecmeal.h DESTINATION include/)

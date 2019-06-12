@@ -2,15 +2,14 @@
 // Created by Huy Vo on 12/6/18.
 //
 
-#ifndef PFSPAT_ODESOLVERBASE_H
-#define PFSPAT_ODESOLVERBASE_H
+#ifndef PECMEAL_ODESOLVERBASE_H
+#define PECMEAL_ODESOLVERBASE_H
 
 #include <sundials/sundials_nvector.h>
-#include "util/cme_util.h"
+#include "cme_util.h"
 
-namespace cme{
-    namespace parallel{
-        enum ODESolverType {Magnus4, CVODE_BDF};
+    namespace pecmeal{
+        enum ODESolverType {KRYLOV, CVODE_BDF};
 
         struct FiniteProblemSolverPerfInfo{
             PetscInt n_step;
@@ -29,10 +28,8 @@ namespace cme{
             std::function<void (PetscReal t, Vec x, Vec y)> rhs_;
             PetscReal t_now_ = 0.0;
             PetscReal t_final_ = 0.0;
-            PetscReal fsp_tol = 0.0;
-            ODESolverType solver_type;
 
-            // For logging and monitoring
+          // For logging and monitoring
             int print_intermediate = 0;
 
             /*
@@ -44,8 +41,7 @@ namespace cme{
             PetscBool logging = PETSC_FALSE;
 
             FiniteProblemSolverPerfInfo perf_info;
-            N_Vector solution_tmp = nullptr;
-        public:
+         public:
             explicit OdeSolverBase(MPI_Comm new_comm);
 
             void set_final_time( PetscReal _t_final );
@@ -61,13 +57,12 @@ namespace cme{
             virtual PetscInt solve( ); // Advance the solution_ toward final time. Return 0 if reaching final time, 1 if the FSP criteria fails before reaching final time.
 
             PetscReal get_current_time( ) const;
-            FiniteProblemSolverPerfInfo get_avg_perf_info( );
+            FiniteProblemSolverPerfInfo get_avg_perf_info( ) const;
 
             virtual void free( ){};
 
             ~OdeSolverBase();
         };
     }
-}
 
-#endif //PFSPAT_ODESOLVERBASE_H
+#endif //PECMEAL_ODESOLVERBASE_H

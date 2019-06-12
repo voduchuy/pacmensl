@@ -2,7 +2,7 @@
 // Created by Huy Vo on 5/17/19.
 //
 
-static char help[] = "Solve CME of signal-activated bursting gene expression example.\n\n";
+static char help[] = "Advance_ CME of signal-activated bursting gene expression example.\n\n";
 
 #include<iomanip>
 #include <petscmat.h>
@@ -20,7 +20,7 @@ using arma::Row;
 using std::cout;
 using std::endl;
 
-using namespace cme::parallel;
+using namespace pecmeal;
 using FspSolver = FspSolverBase;
 
 void output_marginals(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, DiscreteDistribution& solution);
@@ -32,7 +32,7 @@ int main( int argc, char *argv[] ) {
 
     PetscMPIInt ierr, myRank, num_procs;
 
-    ierr = cme::ParaFSP_init( &argc, &argv, help );
+    ierr = pecmeal::PecmealInit(&argc, &argv, help);
     CHKERRQ( ierr );
 
     // Begin Parallel FSP context
@@ -146,7 +146,15 @@ int main( int argc, char *argv[] ) {
         fsp_solver.SetInitialBounds(bounds);
         fsp_solver.SetFromOptions( );
         fsp_solver.SetUp( );
-        DiscreteDistribution solution = fsp_solver.Solve( t_final, fsp_tol);
+        DiscreteDistribution solution;
+
+        double t1, t2;
+        PetscTime(&t1);
+        for (int j{0}; j < 10; ++j){
+          solution = fsp_solver.Solve(t_final, fsp_tol);
+          PetscTime(&t2);
+          PetscPrintf(comm, "Elapsed time: %.2f \n", t2 - t1);
+        }
 
         if ( fsp_log_events ) {
             output_time( PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string("adaptive_custom"), fsp_solver);
@@ -159,7 +167,7 @@ int main( int argc, char *argv[] ) {
         fsp_solver.Destroy();
     }
     //End Parallel FSP context
-    ierr = cme::ParaFSP_finalize( );
+    ierr = pecmeal::PecmealFinalize();
     return ierr;
 }
 

@@ -7,11 +7,11 @@
 //
 static char help[] = "Test interface to CVODE for solving the CME of the toggle model.\n\n";
 
-#include "util/cme_util.h"
-#include "FSP/FspSolverBase.h"
-#include "models/toggle_model.h"
+#include "pecmeal_all.h"
+#include "FspSolverBase.h"
+#include "toggle_model.h"
 
-using namespace cme::parallel;
+using namespace pecmeal;
 
 int main(int argc, char *argv[]) {
     std::string model_name = "toggle_switch";

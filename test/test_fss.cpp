@@ -12,7 +12,7 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"StateSetConstrained.h"
 
 
-using namespace cme::parallel;
+using namespace pecmeal;
 
 arma::Mat< PetscInt > SM{
         {1, -1, 0, 0},
@@ -23,7 +23,7 @@ int main( int argc, char *argv[] ) {
     int ierr;
     float ver;
 
-    cme::ParaFSP_init( &argc, &argv, help );
+  pecmeal::PecmealInit(&argc, &argv, help);
 
     MPI_Comm comm;
     ierr = MPI_Comm_dup(MPI_COMM_WORLD, &comm );
@@ -52,15 +52,15 @@ int main( int argc, char *argv[] ) {
         arma::Mat< PetscInt > local_states = fsp.CopyStatesOnProc();
         arma::Row< PetscInt > petsc_indices = fsp.State2Index(local_states);
         arma::Mat< PetscInt > local_table = arma::join_horiz( local_states.t( ), petsc_indices.t( ));
-        cme::sequential_action( comm, print_states, ( void * ) &local_table );
+        pecmeal::sequential_action( comm, print_states, ( void * ) &local_table );
         fsp.Expand();
         local_states = fsp.CopyStatesOnProc();
         petsc_indices = fsp.State2Index(local_states);
         local_table = arma::join_horiz( local_states.t( ), petsc_indices.t( ));
-        cme::sequential_action( comm, print_states, ( void * ) &local_table );
+        pecmeal::sequential_action( comm, print_states, ( void * ) &local_table );
     }
     CHKERRQ( ierr );
     MPI_Comm_free( &comm );
 
-    cme::ParaFSP_finalize( );
+  pecmeal::PecmealFinalize();
 }

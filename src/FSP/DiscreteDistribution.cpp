@@ -4,11 +4,11 @@
 
 #include "DiscreteDistribution.h"
 
-cme::parallel::DiscreteDistribution::~DiscreteDistribution() {
+pecmeal::DiscreteDistribution::~DiscreteDistribution() {
     VecDestroy(&p);
 }
 
-cme::parallel::DiscreteDistribution::DiscreteDistribution(const cme::parallel::DiscreteDistribution &dist) {
+pecmeal::DiscreteDistribution::DiscreteDistribution(const pecmeal::DiscreteDistribution &dist) {
     MPI_Comm_dup(dist.comm, &comm);
     t = dist.t;
     VecDuplicate(dist.p, &p);
@@ -16,11 +16,11 @@ cme::parallel::DiscreteDistribution::DiscreteDistribution(const cme::parallel::D
     states = dist.states;
 }
 
-cme::parallel::DiscreteDistribution::DiscreteDistribution() {
+pecmeal::DiscreteDistribution::DiscreteDistribution() {
     comm = nullptr;
 }
 
-cme::parallel::DiscreteDistribution::DiscreteDistribution(cme::parallel::DiscreteDistribution &&dist) {
+pecmeal::DiscreteDistribution::DiscreteDistribution(pecmeal::DiscreteDistribution &&dist) noexcept {
     comm = dist.comm;
     t = dist.t;
     states = std::move(dist.states);
@@ -31,8 +31,8 @@ cme::parallel::DiscreteDistribution::DiscreteDistribution(cme::parallel::Discret
     PetscPrintf(comm, "Move constructor is called.\n");
 }
 
-cme::parallel::DiscreteDistribution &
-cme::parallel::DiscreteDistribution::operator=(const cme::parallel::DiscreteDistribution &dist) {
+pecmeal::DiscreteDistribution &
+pecmeal::DiscreteDistribution::operator=(const pecmeal::DiscreteDistribution &dist) {
     MPI_Comm_dup(dist.comm, &comm);
     t = dist.t;
     VecDuplicate(dist.p, &p);
@@ -41,8 +41,8 @@ cme::parallel::DiscreteDistribution::operator=(const cme::parallel::DiscreteDist
     return *this;
 }
 
-cme::parallel::DiscreteDistribution &
-cme::parallel::DiscreteDistribution::operator=(cme::parallel::DiscreteDistribution &&dist) noexcept {
+pecmeal::DiscreteDistribution &
+pecmeal::DiscreteDistribution::operator=(pecmeal::DiscreteDistribution &&dist) noexcept {
     if (comm) MPI_Comm_free(&comm);
     if (p) VecDestroy(&p);
     states.set_size(0, 0);
@@ -58,7 +58,7 @@ cme::parallel::DiscreteDistribution::operator=(cme::parallel::DiscreteDistributi
     return *this;
 }
 
-arma::Col<PetscReal> cme::parallel::Compute1DMarginal(const cme::parallel::DiscreteDistribution dist, int species) {
+arma::Col<PetscReal> pecmeal::Compute1DMarginal(const pecmeal::DiscreteDistribution dist, int species) {
     arma::Col<PetscReal> md_on_proc;
     // Find the max molecular count
     int num_species = dist.states.n_rows;

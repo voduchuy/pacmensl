@@ -11,9 +11,9 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<petscmat.h>
 #include<petscao.h>
 #include<armadillo>
-#include"pfspat_all.h"
+#include"pecmeal_all.h"
 
-using namespace cme::parallel;
+using namespace pecmeal;
 
 int main(int argc, char *argv[]) {
     int ierr;

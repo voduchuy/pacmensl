@@ -1,3 +1,5 @@
-add_library(MODEL_OBJ Model.h Model.cpp)
-
-install(FILES Model.h DESTINATION include/pfspat/Models)
+add_library(MODEL_OBJ OBJECT Model.h Model.cpp)
+target_link_libraries(MODEL_OBJ ${PETSC_LIBRARIES})
+list(APPEND PECMEAL_OBJECTS "$<TARGET_OBJECTS:MODEL_OBJ>")
+set(PECMEAL_OBJECTS ${PECMEAL_OBJECTS} PARENT_SCOPE)
+install(FILES Model.h DESTINATION include/pecmeal/)

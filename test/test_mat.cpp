@@ -11,11 +11,11 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<petscmat.h>
 #include<petscao.h>
 #include<armadillo>
-#include"util/cme_util.h"
-#include"FSS/StateSetConstrained.h"
-#include"Matrix/FspMatrixBase.h"
+#include"cme_util.h"
+#include"StateSetConstrained.h"
+#include"FspMatrixBase.h"
 
-using namespace cme::parallel;
+using namespace pecmeal;
 
 int main(int argc, char *argv[]) {
     int ierr;

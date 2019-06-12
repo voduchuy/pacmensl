@@ -1,15 +1,13 @@
-static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
+static char help[] = "Advance_ small CMEs to benchmark intranode performance.\n\n";
 
 #include<iomanip>
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>
-#include <util/cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include "pfspat_all.h"
-//#include "FSP/FspSolverBase.h"
-#include "Models/hog1p_5d_model.h"
+#include "pecmeal_all.h"
+#include "hog1p_5d_model.h"
 
 using arma::dvec;
 using arma::Col;
@@ -19,7 +17,7 @@ using std::cout;
 using std::endl;
 
 using namespace hog1p_cme;
-using namespace cme::parallel;
+using namespace pecmeal;
 
 void output_marginals(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type, PartitioningApproach fsp_repart_approach, std::string constraint_type, DiscreteDistribution& solution);
 
@@ -34,7 +32,7 @@ int main(int argc, char *argv[]) {
 
     PetscMPIInt ierr, myRank, num_procs;
 
-    ierr = cme::ParaFSP_init(&argc, &argv, help);
+    ierr = pecmeal::PecmealInit(&argc, &argv, help);
     CHKERRQ(ierr);
 
     MPI_Comm comm;
@@ -68,7 +66,7 @@ int main(int argc, char *argv[]) {
         fsp_solver.SetFromOptions();
         DiscreteDistribution solution;
 
-        // Solve using adaptive custom constraints
+        // Advance_ using adaptive custom constraints
         fsp_solver.SetConstraintFunctions(&hog1p_cme::lhs_constr);
         fsp_solver.SetModel(hog1p_model);
         fsp_solver.SetInitialBounds(hog1p_cme::rhs_constr);
@@ -87,7 +85,7 @@ int main(int argc, char *argv[]) {
             output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_custom"),
                              solution);
         }
-        // Solve using fixed custom constraints
+        // Advance_ using fixed custom constraints
         const StateSetConstrained* fss = (StateSetConstrained*) fsp_solver.GetStateSet();
         arma::Row<int> final_custom_constr = fss->GetShapeBounds();
         fsp_solver.Destroy();
@@ -106,7 +104,7 @@ int main(int argc, char *argv[]) {
                              solution);
         }
 
-        // Solve using adaptive default constraints
+        // Advance_ using adaptive default constraints
         fsp_solver.Destroy();
         fsp_solver.SetInitialBounds(rhs_constr_hyperrec);
         fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
@@ -127,7 +125,7 @@ int main(int argc, char *argv[]) {
 
         PetscPrintf(comm, "\n ================ \n");
 //
-//        // Solve using fixed default constraints
+//        // Advance_ using fixed default constraints
         fss = (StateSetConstrained*) fsp_solver.GetStateSet();
         arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
         fsp_solver.Destroy();
@@ -147,7 +145,7 @@ int main(int argc, char *argv[]) {
         }
         fsp_solver.Destroy();
     }
-    ierr = cme::ParaFSP_finalize();
+    ierr = pecmeal::PecmealFinalize();
     return ierr;
 }
 

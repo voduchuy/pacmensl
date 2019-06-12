@@ -9,7 +9,7 @@ static char help[] = "Test interface to CVODE for solving the CME of the toggle 
 #include "OdeSolver/CvodeFsp.h"
 #include "models/toggle_model.h"
 
-using namespace cme::parallel;
+using namespace pecmeal;
 
 int main(int argc, char *argv[]) {
     PetscInt ierr;

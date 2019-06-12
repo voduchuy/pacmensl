@@ -9,5 +9,9 @@ foreach( LIB ${MAT_LIBS})
 endforeach()
 
 add_library(MAT_OBJ OBJECT ${mat_srcs} ${mat_headers})
+target_link_libraries(MAT_OBJ FSS_OBJ)
 
-install(FILES ${mat_headers} DESTINATION include/pfspat/Matrix)
+list(APPEND PECMEAL_OBJECTS "$<TARGET_OBJECTS:MAT_OBJ>")
+set(PECMEAL_OBJECTS ${PECMEAL_OBJECTS} PARENT_SCOPE)
+
+install(FILES ${mat_headers} DESTINATION include/pecmeal/)

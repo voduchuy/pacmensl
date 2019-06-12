@@ -1,10 +1,12 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
-PROJECT(PFSPAT LANGUAGES CXX)
+PROJECT(PECMEAL LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+
 INCLUDE(GNUInstallDirs)
 
+# Default build type is debug
 set(default_build_type "Debug")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -16,7 +18,27 @@ if (NOT CMAKE_BUILD_TYPE)
             "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif ()
 
+if (NOT CMAKE_INSTALL_PREFIX)
+    set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install CACHE PATH "Where to install the library." FORCE)
+endif (NOT CMAKE_INSTALL_PREFIX)
+
 set(CMAKE_CXX_FLAGS "-std=c++11")
+
+# Decide whether to build shared or static library
+OPTION(BUILD_SHARED_LIBS "Build shared library" ON)
+
+# Decide whether to build tests and where to install them
+OPTION(BUILD_TESTS "Build tests" ON)
+if (BUILD_TESTS)
+    set(TESTS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/tests CACHE STRING "Installation directory for tests.")
+endif()
+
+# Decide whether to build examples
+OPTION(BUILD_EXAMPLES "Build examples" ON)
+if (BUILD_EXAMPLES)
+    set(EXAMPLES_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/examples CACHE STRING "Installation directory for examples.")
+endif()
+
 FIND_PACKAGE(PETSc REQUIRED)
 FIND_PACKAGE(MPI REQUIRED)
 
@@ -30,12 +52,14 @@ INCLUDE_DIRECTORIES(${PETSC_INCLUDES} ${MPI_C_INCLUDE_DIRS} ${MPI_CXX_INCLUDE_DI
 ADD_DEFINITIONS(${PETSC_DEFINITIONS})
 
 include_directories(./src)
-include_directories(src/FSS)
+include_directories(src/Partitioner)
+include_directories(src/StateSet)
 include_directories(src/Matrix)
 include_directories(src/FSP)
 include_directories(src/OdeSolver)
-include_directories(src/util)
+include_directories(src/Util)
 include_directories(src/Models)
+include_directories(src/SmFish)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -45,5 +69,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory(src)
 
 # Add tests and examples
-add_subdirectory(test)
-add_subdirectory(examples)
+if (BUILD_TESTS)
+    add_subdirectory(test)
+endif (BUILD_TESTS)
+
+if (BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif (BUILD_EXAMPLES)

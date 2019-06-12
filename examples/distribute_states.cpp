@@ -9,14 +9,13 @@ static char help[] = "Generate Finite State Subset and output to files.\n\n";
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>
-#include <util/cme_util.h>
 #include <armadillo>
 #include <cmath>
-#include "FSP/FspSolverBase.h"
-#include "models/toggle_model.h"
-#include "models/hog1p_5d_model.h"
-#include "models/transcription_regulation_6d_model.h"
-#include "models/hog1p_3d_model.h"
+#include "toggle_model.h"
+#include "hog1p_5d_model.h"
+#include "transcription_regulation_6d_model.h"
+#include "hog1p_3d_model.h"
+#include "pecmeal_all.h"
 
 using arma::dvec;
 using arma::Col;
@@ -26,7 +25,7 @@ using std::cout;
 using std::endl;
 
 using namespace hog1p_cme;
-using namespace cme::parallel;
+using namespace pecmeal;
 
 int main(int argc, char *argv[]) {
 

@@ -6,15 +6,13 @@
 #include "CvodeFsp.h"
 
 
-namespace cme {
-    namespace parallel {
+    namespace pecmeal {
 
         CvodeFsp::CvodeFsp( MPI_Comm _comm, int lmm ) : OdeSolverBase( _comm ) {
             cvode_mem = CVodeCreate( lmm);
             if ( cvode_mem == nullptr ) {
                 throw std::runtime_error( "CVODE failed to initialize memory.\n" );
             }
-            solver_type = CVODE_BDF;
         }
 
         PetscInt CvodeFsp::solve( ) {
@@ -100,7 +98,7 @@ namespace cme {
             Vec udotdata = N_VGetVector_Petsc( udot );
             PetscReal usum;
             VecNorm( udata, NORM_1, &usum );
-            (( cme::parallel::OdeSolverBase * ) solver )->evaluate_rhs( t, udata, udotdata );
+            (( pecmeal::OdeSolverBase * ) solver )->evaluate_rhs( t, udata, udotdata );
             VecNorm( udotdata, NORM_1, &usum );
             return 0;
         }
@@ -110,7 +108,7 @@ namespace cme {
                              N_Vector tmp ) {
             Vec vdata = N_VGetVector_Petsc( v );
             Vec Jvdata = N_VGetVector_Petsc( Jv );
-            (( cme::parallel::OdeSolverBase * ) FPS_ptr )->evaluate_rhs( t, vdata, Jvdata );
+            (( pecmeal::OdeSolverBase * ) FPS_ptr )->evaluate_rhs( t, vdata, Jvdata );
             return 0;
         }
 
@@ -130,4 +128,3 @@ namespace cme {
             free( );
         }
     }
-}

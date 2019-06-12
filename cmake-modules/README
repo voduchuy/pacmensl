@@ -1,4 +1,4 @@
-A collection of CMake modules, these can mostly be used independently.
+A_ collection of CMake modules, these can mostly be used independently.
 
 The utilities for writing robust Find* modules might be useful until
 CMake takes static libraries and multiple active configurations
