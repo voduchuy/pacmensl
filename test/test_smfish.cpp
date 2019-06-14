@@ -9,16 +9,16 @@ using namespace pecmeal;
 int main(int argc, char *argv[]) {
   pecmeal::PecmealInit(&argc, &argv, nullptr);
 
-  MPI_Comm comm;
   bool pass = true;
   {
+    MPI_Comm comm;
     int num_proc, rank;
     MPI_Comm_dup(MPI_COMM_WORLD, &comm);
     MPI_Comm_size(comm, &num_proc);
     MPI_Comm_rank(comm, &rank);
 
     DiscreteDistribution distribution;
-    distribution.comm = comm;
+    distribution.comm_ = comm;
     distribution.states.set_size(1, 10);
     for (int i = 0; i < 10; ++i) {
       distribution.states(0, i) = i;
@@ -39,7 +39,6 @@ int main(int argc, char *argv[]) {
     double ll_true = 5.0*log(0.1);
     if (abs(ll - ll_true) > 1.0e-15) pass = false;
   }
-  MPI_Comm_free(&comm);
   pecmeal::PecmealFinalize();
   if (!pass) return -1;
   return 0;

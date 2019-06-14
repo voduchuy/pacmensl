@@ -14,8 +14,8 @@ using namespace pecmeal;
 int main(int argc, char *argv[]) {
     PetscInt ierr;
 
-    ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
-    CHKERRQ(ierr);
+    ierr = pecmeal::PecmealInit(&argc, &argv, help);
+    CHKERRQ( ierr );
     PetscMPIInt rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
     // Begin PETSC context
@@ -51,17 +51,19 @@ int main(int argc, char *argv[]) {
 
         PetscReal fsp_tol = 1.0e-2, t_final = 1000.0;
         CvodeFsp cvode_solver( PETSC_COMM_WORLD, CV_BDF );
-        cvode_solver.set_final_time(t_final);
+        cvode_solver.SetFinalTime(t_final);
         cvode_solver.set_initial_solution(&P);
         cvode_solver.set_rhs(AV);
         cvode_solver.set_print_intermediate(1);
         PetscPrintf(PETSC_COMM_WORLD, "Solver parameters set.\n");
-        PetscInt solver_stat = cvode_solver.solve();
+        PetscInt solver_stat = cvode_solver.Solve();
         PetscPrintf(PETSC_COMM_WORLD, "\n Solver returns with status %d and time %.2e \n", solver_stat,
-                    cvode_solver.get_current_time());
+                    cvode_solver.GetCurrentTime());
+
+        VecDestroy(&P);
     }
     //End PETSC context
-    ierr = PetscFinalize();
+    ierr = PecmealFinalize();
     CHKERRQ(ierr);
     return 0;
 }

@@ -44,7 +44,7 @@
          public:
             explicit OdeSolverBase(MPI_Comm new_comm);
 
-            void set_final_time( PetscReal _t_final );
+            void SetFinalTime(PetscReal _t_final);
             void set_initial_solution( Vec *sol0 );
             void set_rhs( std::function< void( PetscReal, Vec, Vec ) > _rhs );
             void set_current_time( PetscReal t );
@@ -52,14 +52,14 @@
             void enable_logging( );
             void set_stop_condition( const std::function< int( PetscReal, Vec, void * ) > &stop_check_, void* stop_data_);
 
-            void evaluate_rhs( PetscReal t, Vec x, Vec y );
+            void EvaluateRHS(PetscReal t, Vec x, Vec y);
 
-            virtual PetscInt solve( ); // Advance the solution_ toward final time. Return 0 if reaching final time, 1 if the FSP criteria fails before reaching final time.
+            virtual PetscInt Solve(); // Advance the solution_ toward final time. Return 0 if reaching final time, 1 if the FSP criteria fails before reaching final time.
 
-            PetscReal get_current_time( ) const;
-            FiniteProblemSolverPerfInfo get_avg_perf_info( ) const;
+            PetscReal GetCurrentTime() const;
+            FiniteProblemSolverPerfInfo GetAvgPerfInfo() const;
 
-            virtual void free( ){};
+            virtual void FreeWorkspace(){solution_ = nullptr;};
 
             ~OdeSolverBase();
         };

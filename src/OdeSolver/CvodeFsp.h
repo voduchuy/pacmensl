@@ -31,13 +31,14 @@
 namespace pecmeal {
 class CvodeFsp : public OdeSolverBase {
  protected:
+  int lmm_;
   void *cvode_mem = nullptr;
   SUNLinearSolver linear_solver = nullptr;
   N_Vector solution_wrapper = nullptr;
   PetscReal t_now_tmp = 0.0;
   PetscReal rel_tol = 1.0e-4;
   PetscReal abs_tol = 1.0e-8;
-  int cvode_stat;
+  int cvode_stat = 0;
   static int cvode_rhs(double t, N_Vector u, N_Vector udot, void *solver);
   static int cvode_jac(N_Vector v, N_Vector Jv, realtype t,
                        N_Vector u, N_Vector fu,
@@ -47,9 +48,10 @@ class CvodeFsp : public OdeSolverBase {
   explicit CvodeFsp(MPI_Comm _comm, int lmm = CV_BDF);
   void SetCVodeTolerances(PetscReal _r_tol, PetscReal _abs_tol);
 
-  PetscInt solve() override;
+  PetscInt Solve() override;
 
-  void free() override;
+  void FreeWorkspace() override;
+
   ~CvodeFsp();
 };
 }

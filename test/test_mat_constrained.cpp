@@ -37,8 +37,9 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
-    CHKERRQ(ierr);
+    ierr = PecmealInit(&argc, &argv, help);
+//    ierr = PetscInitialize(&argc, &argv, (char *) 0, help);
+//    CHKERRQ(ierr);
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
     int comm_size;
@@ -85,9 +86,12 @@ int main(int argc, char *argv[]) {
         VecSum(Q, &Q_sum);
         PetscPrintf(PETSC_COMM_WORLD, "Q_sum = %.2f \n", Q_sum);
 
+        VecDestroy(&P);
+        VecDestroy(&Q);
         A.destroy( );
     }
-    ierr = PetscFinalize();
+//    ierr = PetscFinalize();
+    ierr = PecmealFinalize();
     CHKERRQ(ierr);
     if (Q_sum != 0.0) return -1;
     return 0;

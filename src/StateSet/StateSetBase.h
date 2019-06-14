@@ -38,7 +38,72 @@ struct FiniteStateSubsetLogger {
  * Zoltan's dynamic load-balancing tools for the parallel distribution of these states into the processors.
  * */
 class StateSetBase {
+ public:
+  NOT_COPYABLE_NOT_MOVABLE(StateSetBase);
+
+  explicit StateSetBase(MPI_Comm new_comm, int num_species, PartitioningType lb_type = Graph,
+                        PartitioningApproach lb_approach = Repartition);
+
+  /// Set the stoichiometry matrix.
+  /**
+   * Call level: collective.
+   * The user must ensure that all processors must enter the same stoichiometry matrix.
+   */
+  void SetStoichiometryMatrix(arma::Mat<int> SM);
+
+  /// Set the initial states.
+  /**
+   * Call level: collective.
+   * Each processor enters its own set of initial states. Initial state could be empty, but at least one processor
+   * must insert at least one state. Initial states from different processors must not overlap.
+   */
+  void SetInitialStates(arma::Mat<PetscInt> X0);
+
+  /// Add a set of states to the global and local state set
+  /**
+   * Call level: collective.
+   * @param X : armadillo matrix of states to be added. X.n_rows = number of species. Each processor input its own
+   * local X. Different input sets from different processors may overlap.
+   */
+  void AddStates(const arma::Mat<int> &X);
+
+  arma::Row<PetscInt> State2Index(arma::Mat<PetscInt> &state) const;
+
+  void State2Index(arma::Mat<PetscInt> &state, PetscInt *indx) const;
+
+  virtual void Expand() = 0;
+
+  MPI_Comm GetComm() const;
+
+  int GetNumLocalStates() const;
+
+  int GetNumGlobalStates() const;
+
+  int GetNumSpecies() const;
+
+  int GetNumReactions() const;
+
+  /// Get access to the list of states stored in the calling processor.
+  /**
+   * Call level: not collective.
+   * Note: The reference is for read-only purpose.
+   * @return const reference to the armadillo matrix that stores the states on the calling processor. Each column represents a state.
+   */
+  const arma::Mat<int> &GetStatesRef() const;
+
+  /// Copy the list of states stored in the calling processor.
+  /**
+   * Call level: not collective.
+   * @return armadillo matrix that stores the states on the calling processor. Each column represents a state.
+   */
+  arma::Mat<int> CopyStatesOnProc() const;
+
+  std::tuple<int, int> GetOrderingStartEnd() const;
+
+  ~StateSetBase();
+
  protected:
+
   static const int hash_table_length_ = 1000000;
 
   MPI_Comm comm_;
@@ -130,43 +195,6 @@ class StateSetBase {
                                      int *import_to_part, int num_export, ZOLTAN_ID_PTR export_global_ids,
                                      ZOLTAN_ID_PTR export_local_ids, int *export_procs, int *export_to_part,
                                      int *ierr);
-
- public:
-  NOT_COPYABLE_NOT_MOVABLE(StateSetBase);
-
-  // Generic Interface
-  explicit StateSetBase(MPI_Comm new_comm, int num_species, PartitioningType lb_type = Graph,
-                        PartitioningApproach lb_approach = Repartition);
-
-  void SetStoichiometryMatrix(arma::Mat<int> SM);
-
-  void SetInitialStates(arma::Mat<PetscInt> X0);
-
-  void AddStates(const arma::Mat<int> &X);
-
-  arma::Row<PetscInt> State2Index(arma::Mat<PetscInt> &state) const;
-
-  void State2Index(arma::Mat<PetscInt> &state, PetscInt *indx) const;
-
-  virtual void Expand() = 0;
-
-  MPI_Comm GetComm() const;
-
-  int GetNumLocalStates() const;
-
-  int GetNumGlobalStates() const;
-
-  int GetNumSpecies() const;
-
-  int GetNumReactions() const;
-
-  const arma::Mat<int> &GetStatesRef() const;
-
-  arma::Mat<int> CopyStatesOnProc() const;
-
-  std::tuple<int, int> GetOrderingStartEnd() const;
-
-  ~StateSetBase();
 };
 }
 

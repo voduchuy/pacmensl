@@ -10,7 +10,7 @@ FspSolverBase::FspSolverBase(MPI_Comm _comm, PartitioningType _part_type, ODESol
   MPI_Comm_rank(comm_, &my_rank_);
   MPI_Comm_size(comm_, &comm_size_);
   partitioning_type_ = _part_type;
-  odes_type = _solve_type;
+  odes_type_ = _solve_type;
 }
 
 void FspSolverBase::SetInitialBounds(arma::Row<int> &_fsp_size) {
@@ -27,28 +27,26 @@ void FspSolverBase::SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors
 }
 
 DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_tol) {
-  Int ierr;
-  if (log_fsp_events) {
-    CHKERRABORT(comm_, PetscLogEventBegin(Solving, 0, 0, 0, 0));
-  }
+  PetscErrorCode ierr;
+  PetscInt solver_stat;
+  Vec Pnew;
 
-  if (verbosity_ > 1) {
-    ode_solver_->set_print_intermediate(1);
-  }
+  if (log_fsp_events) CHKERRABORT(comm_, PetscLogEventBegin(Solving, 0, 0, 0, 0));
+
+
+  if (verbosity_ > 1) ode_solver_->set_print_intermediate(1);
+
 
   fsp_tol_ = fsp_tol;
   t_final_ = t_final;
-  ode_solver_->set_final_time(t_final);
-  PetscInt solver_stat = 1;
+  ode_solver_->SetFinalTime(t_final);
 
+  solver_stat = 1;
   while (solver_stat) {
-    if (log_fsp_events) {
-      CHKERRABORT(comm_, PetscLogEventBegin(ODESolve, 0, 0, 0, 0));
-    }
-    solver_stat = ode_solver_->solve();
-    if (log_fsp_events) {
-      CHKERRABORT(comm_, PetscLogEventEnd(ODESolve, 0, 0, 0, 0));
-    }
+    if (log_fsp_events) CHKERRABORT(comm_, PetscLogEventBegin(ODESolve, 0, 0, 0, 0));
+    ode_solver_->set_initial_solution(p_);
+    solver_stat = ode_solver_->Solve();
+    if (log_fsp_events) CHKERRABORT(comm_, PetscLogEventEnd(ODESolve, 0, 0, 0, 0));
 
     // Expand the FspSolverBase if the solver halted prematurely
     if (solver_stat) {
@@ -62,7 +60,7 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
       if (verbosity_) {
         PetscPrintf(comm_, "\n ------------- \n");
         PetscPrintf(comm_, "At time t = %.2f expansion to new state_set_ size: \n",
-                    ode_solver_->get_current_time());
+                    ode_solver_->GetCurrentTime());
         for (auto i{0}; i < fsp_bounds_.n_elem; ++i) {
           PetscPrintf(comm_, "%d ", fsp_bounds_[i]);
         }
@@ -86,7 +84,6 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
 
       // free data of the ODE solver (they will be rebuilt at the beginning of the loop)
       A_->destroy();
-      ode_solver_->free();
       if (log_fsp_events) {
         CHKERRABORT(comm_, PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
       }
@@ -101,16 +98,15 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
       if (log_fsp_events) {
         CHKERRABORT(comm_, PetscLogEventBegin(SolutionScatter, 0, 0, 0, 0));
       }
-      Vec Pnew;
       VecCreate(comm_, &Pnew);
       VecSetSizes(Pnew, A_->get_num_rows_local(), PETSC_DECIDE);
       VecSetUp(Pnew);
       VecSet(Pnew, 0.0);
 
+      // Scatter from old vector to the expanded vector
       IS new_locations;
       arma::Row<Int> new_states_locations = state_set_->State2Index(states_old);
       arma::Row<Int> new_sinks_locations;
-
       if (my_rank_ == comm_size_ - 1) {
         new_sinks_locations.set_size(sinks_.n_elem);
         Int i_end_new;
@@ -127,8 +123,6 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
       ierr = ISCreateGeneral(comm_, (PetscInt) new_locations_vals.n_elem, &new_locations_vals[0],
                              PETSC_COPY_VALUES, &new_locations);
       CHKERRABORT(comm_, ierr);
-
-      // Scatter from old vector to the expanded vector
       VecScatter scatter;
       ierr = VecScatterCreate(*p_, NULL, Pnew, new_locations, &scatter);
       CHKERRABORT(comm_, ierr);
@@ -136,18 +130,16 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
       CHKERRABORT(comm_, ierr);
       ierr = VecScatterEnd(scatter, *p_, Pnew, INSERT_VALUES, SCATTER_FORWARD);
       CHKERRABORT(comm_, ierr);
+      ierr = ISDestroy(&new_locations);
+      CHKERRABORT(comm_, ierr);
+      ierr = VecScatterDestroy(&scatter);
+      CHKERRABORT(comm_, ierr);
 
       // Swap p_ to the expanded vector
       ierr = VecDestroy(p_);
       CHKERRABORT(comm_, ierr);
-      ierr = VecDuplicate(Pnew, p_);
-      CHKERRABORT(comm_, ierr);
-      ierr = VecSwap(*p_, Pnew);
-      CHKERRABORT(comm_, ierr);
-      ierr = VecScatterDestroy(&scatter);
-      CHKERRABORT(comm_, ierr);
-      ierr = VecDestroy(&Pnew);
-      CHKERRABORT(comm_, ierr);
+      *p_ = Pnew;
+
       if (log_fsp_events) {
         CHKERRABORT(comm_, PetscLogEventEnd(SolutionScatter, 0, 0, 0, 0));
       }
@@ -158,7 +150,7 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
     CHKERRABORT(comm_, PetscLogEventEnd(Solving, 0, 0, 0, 0));
   }
 
-  return MakeOutputDistribution(0, *state_set_, *p_);
+  return DiscreteDistribution(comm_, t_final, state_set_, *p_);
 }
 
 FspSolverBase::~FspSolverBase() {
@@ -167,13 +159,22 @@ FspSolverBase::~FspSolverBase() {
 }
 
 void FspSolverBase::Destroy() {
+  int ierr;
   have_custom_constraints_ = false;
-  VecDestroy(p_);
-  delete A_;
-  A_ = nullptr;
+  if (p_ != nullptr) {
+    ierr = VecDestroy(p_);
+    CHKERRABORT(comm_, ierr);
+    p_ = nullptr;
+  }
   delete (StateSetConstrained *) state_set_;
   state_set_ = nullptr;
-  delete ode_solver_;
+  delete (FspMatrixConstrained *) A_;
+  A_ = nullptr;
+  switch (odes_type_) {
+    case KRYLOV:delete (KrylovFsp *) ode_solver_;
+      break;
+    default:delete (CvodeFsp *) ode_solver_;
+  }
   ode_solver_ = nullptr;
 }
 
@@ -199,7 +200,7 @@ void FspSolverBase::SetUp() {
     CHKERRABORT(comm_, ierr);
     ierr = PetscLogEventRegister("Generate FSP matrices", 0, &MatrixGeneration);
     CHKERRABORT(comm_, ierr);
-    ierr = PetscLogEventRegister("Advance_ reduced problem", 0, &ODESolve);
+    ierr = PetscLogEventRegister("Advance reduced problem", 0, &ODESolve);
     CHKERRABORT(comm_, ierr);
     ierr = PetscLogEventRegister("FSP RHS evaluation", 0, &RHSEvaluation);
     CHKERRABORT(comm_, ierr);
@@ -252,7 +253,14 @@ void FspSolverBase::SetUp() {
     };
   }
 
-  ode_solver_ = new CvodeFsp(PETSC_COMM_WORLD, CV_BDF);
+  switch (odes_type_) {
+    case CVODE_BDF:ode_solver_ = new CvodeFsp(comm_, CV_BDF);
+      break;
+    case KRYLOV:ode_solver_ = new KrylovFsp(comm_);
+      break;
+    default:ode_solver_ = new CvodeFsp(comm_, CV_BDF);
+  }
+
   ode_solver_->set_rhs(this->tmatvec_);
   auto error_checking_fp = [&](PetscReal t, Vec p, void *data) {
     return CheckFspTolerance_(t, p);
@@ -266,7 +274,6 @@ void FspSolverBase::SetUp() {
 
   sinks_.set_size(((StateSetConstrained *) state_set_)->GetNumConstraints());
   to_expand_.set_size(sinks_.n_elem);
-  PetscPrintf(comm_, "Num constraints %d \n", sinks_.n_elem);
 }
 
 void FspSolverBase::SetVerbosity(int verbosity_level) {
@@ -315,7 +322,7 @@ FspSolverComponentTiming FspSolverBase::GetAvgComponentTiming() {
 }
 
 FiniteProblemSolverPerfInfo FspSolverBase::GetSolverPerfInfo() {
-  return ode_solver_->get_avg_perf_info();
+  return ode_solver_->GetAvgPerfInfo();
 }
 
 void FspSolverBase::SetFromOptions() {
@@ -377,7 +384,12 @@ int FspSolverBase::CheckFspTolerance_(PetscReal t, Vec p) {
   } else {
     sinks_of_p.fill(0.0);
   }
-  int ierr = MPI_Allreduce(&sinks_of_p[0], &sinks_[0], sinks_of_p.n_elem, MPI_DOUBLE, MPI_SUM, comm_);
+
+  MPI_Datatype scalar_type;
+  int ierr;
+  ierr = PetscDataTypeToMPIDataType(PETSC_DOUBLE, &scalar_type);
+  CHKERRABORT(comm_, ierr);
+  ierr = MPI_Allreduce(&sinks_of_p[0], &sinks_[0], sinks_of_p.n_elem, scalar_type, MPI_SUM, comm_);
   MPICHKERRABORT(comm_, ierr);
   for (int i{0}; i < (int) sinks_.n_elem; ++i) {
     if (double(sinks_.n_elem) * sinks_(i) > (t / t_final_) * fsp_tol_) to_expand_(i) = 1;
@@ -389,34 +401,22 @@ void FspSolverBase::SetModel(Model &model) {
   FspSolverBase::model_ = model;
 }
 
-DiscreteDistribution
-FspSolverBase::MakeOutputDistribution(PetscReal t, const StateSetBase &state_set, Vec const &p) {
-  int ierr;
-  DiscreteDistribution solution;
-  MPI_Comm_dup(comm_, &solution.comm);
-  solution.t = t;
-  solution.states = state_set.CopyStatesOnProc();
-  ierr = VecDuplicate(p, &solution.p);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetUp(solution.p);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecCopy(p, solution.p);
-  CHKERRABORT(comm_, ierr);
-  return solution;
-}
-
 DiscreteDistribution FspSolverBase::Solve(PetscReal t_final, PetscReal fsp_tol) {
   PetscErrorCode ierr;
-  p_ = new Vec;
+  if (p_ == nullptr) {
+    p_ = new Vec;
+    ierr = VecCreate(comm_, p_);
+    CHKERRABORT(comm_, ierr);
+    ierr = VecSetSizes(*p_, A_->get_num_rows_local(), PETSC_DECIDE);
+    CHKERRABORT(comm_, ierr);
+    ierr = VecSetType(*p_, VECMPI);
+    CHKERRABORT(comm_, ierr);
+    ierr = VecSetUp(*p_);
+    CHKERRABORT(comm_, ierr);
+  }
+  ierr = VecSet(*p_, 0.0);
+  CHKERRABORT(comm_, ierr);
   arma::Row<Int> indices = state_set_->State2Index(init_states_);
-  ierr = VecCreate(comm_, p_);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetSizes(*p_, A_->get_num_rows_local(), PETSC_DECIDE);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetFromOptions(*p_);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetUp(*p_);
-  CHKERRABORT(comm_, ierr);
   ierr = VecSetValues(*p_, PetscInt(init_probs_.n_elem), &indices[0], &init_probs_[0], INSERT_VALUES);
   CHKERRABORT(comm_, ierr);
   ierr = VecAssemblyBegin(*p_);
@@ -424,29 +424,30 @@ DiscreteDistribution FspSolverBase::Solve(PetscReal t_final, PetscReal fsp_tol) 
   ierr = VecAssemblyEnd(*p_);
   CHKERRABORT(comm_, ierr);
 
-  ode_solver_->set_initial_solution(p_);
   ode_solver_->set_current_time(0.0);
 
   DiscreteDistribution solution = FspSolverBase::Advance_(t_final, fsp_tol);
 
-  VecDestroy(p_);
-
   return solution;
 }
 
-std::vector<DiscreteDistribution> FspSolverBase::Solve(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol) {
+std::vector<DiscreteDistribution> FspSolverBase::SolveTspan(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol) {
   std::vector<DiscreteDistribution> outputs;
   PetscErrorCode ierr;
-  p_ = new Vec;
+  if (p_ == nullptr) {
+    p_ = new Vec;
+    ierr = VecCreate(comm_, p_);
+    CHKERRABORT(comm_, ierr);
+    ierr = VecSetSizes(*p_, A_->get_num_rows_local(), PETSC_DECIDE);
+    CHKERRABORT(comm_, ierr);
+    ierr = VecSetType(*p_, VECMPI);
+    CHKERRABORT(comm_, ierr);
+    ierr = VecSetUp(*p_);
+    CHKERRABORT(comm_, ierr);
+  }
+  ierr = VecSet(*p_, 0.0);
+  CHKERRABORT(comm_, ierr);
   arma::Row<Int> indices = state_set_->State2Index(init_states_);
-  ierr = VecCreate(comm_, p_);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetSizes(*p_, A_->get_num_rows_local(), PETSC_DECIDE);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetFromOptions(*p_);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetUp(*p_);
-  CHKERRABORT(comm_, ierr);
   ierr = VecSetValues(*p_, PetscInt(init_probs_.n_elem), &indices[0], &init_probs_[0], INSERT_VALUES);
   CHKERRABORT(comm_, ierr);
   ierr = VecAssemblyBegin(*p_);
@@ -454,21 +455,20 @@ std::vector<DiscreteDistribution> FspSolverBase::Solve(const arma::Row<PetscReal
   ierr = VecAssemblyEnd(*p_);
   CHKERRABORT(comm_, ierr);
 
-  ode_solver_->set_initial_solution(p_);
-  ode_solver_->set_current_time(0.0);
-
   int num_time_points = tspan.n_elem;
-  outputs.reserve(num_time_points);
+  outputs.resize(num_time_points);
+
+  DiscreteDistribution sol;
+  ode_solver_->set_current_time(0.0);
   for (int i = 0; i < num_time_points; ++i) {
-    outputs.emplace_back(FspSolverBase::Advance_(tspan(i), tspan(i) * fsp_tol / tspan.max()));
+    sol = FspSolverBase::Advance_(tspan(i), tspan(i) * fsp_tol / tspan.max());
+    outputs.at(i) = sol;
   }
 
-  VecDestroy(p_);
   return outputs;
 }
 
 void FspSolverBase::SetOdesType(ODESolverType odes_type) {
-  FspSolverBase::odes_type = odes_type;
+  FspSolverBase::odes_type_ = odes_type;
 }
-
 }

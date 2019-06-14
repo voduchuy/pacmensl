@@ -84,6 +84,8 @@ int main(int argc, char *argv[]) {
         VecSum(Q, &Q_sum);
         PetscPrintf(PETSC_COMM_WORLD, "Q_sum = %.2f \n", Q_sum);
 
+        VecDestroy(&P);
+        VecDestroy(&Q);
         A.destroy( );
     }
     ierr = PetscFinalize();

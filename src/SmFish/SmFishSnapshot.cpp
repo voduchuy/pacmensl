@@ -76,7 +76,7 @@ double pecmeal::SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
     measured_species = arma::regspace<arma::Col<int>>(0, distribution.states.n_rows - 1);
   }
 
-  MPI_Comm comm = distribution.comm;
+  MPI_Comm comm = distribution.comm_;
   int num_observations = data.GetNumObservations();
 
   const PetscReal *p_dat;
@@ -107,9 +107,9 @@ double pecmeal::SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
   double ll = 0.0;
   for (int i{0}; i < num_observations; ++i) {
     if (!use_base_2) {
-      ll += freq(i) * log(predicted_probabilities(i));
+      ll += freq(i) * log(std::max(1.0e-16, predicted_probabilities(i)));
     } else {
-      ll += freq(i) * log2(predicted_probabilities(i));
+      ll += freq(i) * log2(std::max(1.0e-16, predicted_probabilities(i)));
     }
   }
 

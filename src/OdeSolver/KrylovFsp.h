@@ -7,40 +7,50 @@
 
 #include "OdeSolverBase.h"
 
-namespace pecmeal{
+namespace pecmeal {
 class KrylovFsp : public OdeSolverBase {
  protected:
 
+  const int max_reject_ = 10000;
   PetscReal delta_ = 1.2, gamma_ = 0.9; ///< Safety factors
 
-  int m;
+  int m_ = 30;
   int q_iop = 2;
-  struct KrylovBasisData{
-    std::vector<Vec> Vm;
-    arma::Mat<PetscReal> Hm;
-  } basis_data_;
 
-  Vec solution_tmp_;
+  int k1 = 2;
+  int mb, mx;
+  PetscReal beta, avnorm;
+  std::vector<Vec> Vm;
+  arma::Mat<PetscReal> Hm;
+  arma::Mat<PetscReal> F;
+  Vec av = nullptr;
 
-  PetscReal t_now_tmp_;
-  PetscReal t_step_;
+  Vec solution_tmp_ = nullptr;
+
+  PetscReal t_now_tmp_ = 0.0;
+  PetscReal t_step_ = 0.0;
+  PetscReal t_step_next_ = 0.0;
+  bool t_step_set_ = false;
 
   PetscReal tol_ = 1.0e-8;
+  PetscReal btol_ = 1.0e-7;
 
   int krylov_stat_;
 
-  int GenerateBasis(const Vec& v, int m);
+  int SetUpWorkSpace();
 
-  int AdvanceOneStep(const Vec& v);
+  int GenerateBasis(const Vec &v, int m);
+
+  int AdvanceOneStep(const Vec &v);
 
   int GetDky(PetscReal t, int deg, Vec p_vec);
  public:
 
   explicit KrylovFsp(MPI_Comm comm);
 
-  PetscInt solve( ) override;
+  PetscInt Solve() override;
 
-  void free() override;
+  void FreeWorkspace() override;
   ~KrylovFsp();
 };
 }

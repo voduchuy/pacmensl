@@ -8,15 +8,18 @@
 #include<armadillo>
 #include<petsc.h>
 #include "cme_util.h"
+#include "StateSetBase.h"
 
 namespace pecmeal {
     struct DiscreteDistribution {
-        MPI_Comm comm;
-        double t;
+        MPI_Comm comm_ = nullptr;
+        double t_ = 0.0;
         arma::Mat<int> states;
-        Vec p;
+        Vec p = nullptr;
 
         DiscreteDistribution();
+
+        DiscreteDistribution(MPI_Comm comm, double t, const StateSetBase *state_set, const Vec& p);
 
         DiscreteDistribution(const DiscreteDistribution &dist);
 

@@ -23,6 +23,7 @@ if (NOT CMAKE_INSTALL_PREFIX)
 endif (NOT CMAKE_INSTALL_PREFIX)
 
 set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 
 # Decide whether to build shared or static library
 OPTION(BUILD_SHARED_LIBS "Build shared library" ON)

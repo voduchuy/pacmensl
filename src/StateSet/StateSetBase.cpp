@@ -39,25 +39,13 @@ namespace pecmeal {
         stoich_set_ = 1;
     }
 
-
-    /// Set the initial states.
-    /**
-     * Call level: collective.
-     * Each processor enters its own set of initial states. Initial state could be empty, but at least one processor
-     * must insert at least one state. Initial states from different processors must not overlap.
-     */
     void StateSetBase::SetInitialStates(arma::Mat<int> X0) {
-        int my_rank;
-        MPI_Comm_rank(comm_, &my_rank);
-
         if (X0.n_rows != num_species_) {
             throw std::runtime_error(
                     "SetInitialStates: number of rows in input array is not the same as the number of species.\n");
         }
 
-        PetscPrintf(comm_, "Adding initial states...\n");
         AddStates(X0);
-        PetscPrintf(comm_, "Initial states set...\n");
     }
 
     const arma::Mat<int> &StateSetBase::GetStatesRef() const {
@@ -83,7 +71,6 @@ namespace pecmeal {
     }
 
     /// Distribute the frontier states to all processors for state space exploration
-
     /**
      * Call level: collective.
      */
@@ -125,13 +112,7 @@ namespace pecmeal {
         update_layout();
         update_state_indices();
     }
-    /// Add a set of states to the global and local state set
 
-    /**
-     * Call level: collective.
-     * @param X : armadillo matrix of states to be added. X.n_rows = number of species. Each processor input its own
-     * local X. Different input sets from different processors may overlap.
-     */
     void StateSetBase::AddStates(const arma::Mat<int> &X) {
         PetscLogEventBegin(logger_.add_states_event, 0, 0, 0, 0);
         int zoltan_err;

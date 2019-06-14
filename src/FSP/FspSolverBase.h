@@ -15,6 +15,7 @@
 #include"OdeSolverBase.h"
 #include"StateSetBase.h"
 #include"StateSetConstrained.h"
+#include"KrylovFsp.h"
 #include"CvodeFsp.h"
 #include"cme_util.h"
 
@@ -33,18 +34,18 @@ class FspSolverBase {
   using Int = PetscInt;
  private:
 
-  MPI_Comm comm_ = MPI_COMM_NULL;
+  MPI_Comm comm_ = nullptr;
   int my_rank_;
   int comm_size_;
 
   PartitioningType partitioning_type_ = Graph;
   PartitioningApproach repart_approach_ = Repartition;
-  ODESolverType odes_type = CVODE_BDF;
+  ODESolverType odes_type_ = CVODE_BDF;
 
-  StateSetBase *state_set_;
-  Vec *p_;
-  FspMatrixBase *A_;
-  OdeSolverBase *ode_solver_;
+  StateSetBase *state_set_ = nullptr;
+  Vec *p_ = nullptr;
+  FspMatrixBase *A_ = nullptr;
+  OdeSolverBase *ode_solver_ = nullptr;
 
   Model model_;
 
@@ -70,7 +71,6 @@ class FspSolverBase {
   arma::Row<PetscReal> sinks_;
   arma::Row<int> to_expand_;
 
-  DiscreteDistribution MakeOutputDistribution(PetscReal t, const StateSetBase &state_set, Vec const &p);
   DiscreteDistribution Advance_(PetscReal t_final, PetscReal fsp_tol);
 
   // For logging events using PETSc LogEvent
@@ -116,9 +116,9 @@ class FspSolverBase {
 
   FiniteProblemSolverPerfInfo GetSolverPerfInfo();
 
-
   DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol);
-  std::vector<DiscreteDistribution> Solve(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol);
+
+  std::vector<DiscreteDistribution> SolveTspan(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol);
 
   void Destroy();
 
