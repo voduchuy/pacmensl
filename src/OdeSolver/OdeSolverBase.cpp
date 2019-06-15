@@ -51,8 +51,8 @@ OdeSolverBase::~OdeSolverBase() {
 //  FreeWorkspace();
 }
 
-void OdeSolverBase::enable_logging() {
-  logging = PETSC_TRUE;
+void OdeSolverBase::EnableLogging() {
+  logging_enabled = PETSC_TRUE;
   perf_info.n_step = 0;
   perf_info.model_time.resize(100000);
   perf_info.cpu_time.resize(100000);
@@ -60,7 +60,7 @@ void OdeSolverBase::enable_logging() {
 }
 
 FiniteProblemSolverPerfInfo OdeSolverBase::GetAvgPerfInfo() const {
-  assert(logging);
+  assert(logging_enabled);
 
   FiniteProblemSolverPerfInfo perf_out = perf_info;
 
@@ -80,7 +80,7 @@ FiniteProblemSolverPerfInfo OdeSolverBase::GetAvgPerfInfo() const {
 }
 
 void
-OdeSolverBase::set_stop_condition(const std::function<int(PetscReal, Vec, void *)> &stop_check_, void *stop_data_) {
+OdeSolverBase::SetStopCondition(const std::function<int(PetscReal, Vec, void *)> &stop_check_, void *stop_data_) {
   OdeSolverBase::stop_check_ = stop_check_;
   OdeSolverBase::stop_data_ = stop_data_;
 }

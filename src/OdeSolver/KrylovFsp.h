@@ -9,6 +9,18 @@
 
 namespace pecmeal {
 class KrylovFsp : public OdeSolverBase {
+ public:
+
+  explicit KrylovFsp(MPI_Comm comm);
+
+  virtual void SetUp() override;
+
+  PetscInt Solve() override;
+
+  void FreeWorkspace() override;
+
+  ~KrylovFsp();
+
  protected:
 
   const int max_reject_ = 10000;
@@ -44,14 +56,13 @@ class KrylovFsp : public OdeSolverBase {
   int AdvanceOneStep(const Vec &v);
 
   int GetDky(PetscReal t, int deg, Vec p_vec);
- public:
 
-  explicit KrylovFsp(MPI_Comm comm);
-
-  PetscInt Solve() override;
-
-  void FreeWorkspace() override;
-  ~KrylovFsp();
+  // For logging events using PETSc LogEvent
+  PetscLogEvent event_advance_one_step_;
+  PetscLogEvent event_set_up_workspace_;
+  PetscLogEvent event_generate_basis_;
+  PetscLogEvent event_getdky_;
+  PetscLogEvent event_free_workspace_;
 };
 }
 

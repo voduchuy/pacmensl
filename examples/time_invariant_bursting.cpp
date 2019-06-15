@@ -58,15 +58,15 @@ int main(int argc, char *argv[]) {
 
   // Default problem
   std::string model_name = "time_invariant_bursting";
-  PetscReal t_final = 1.0;
+  PetscReal t_final = 10.0;
   PetscReal fsp_tol = 1.0e-04;
 
   arma::Mat<PetscInt> X0(3, 1, arma::fill::zeros);
   X0(0, 0) = 1;
   arma::Col<PetscReal> p0 = {1.0};
 
-  arma::Row<int> bounds{2, 2, 1000};
-  arma::Row<double> expansion_factors{0.0, 0.25};
+  arma::Row<int> bounds{2, 2, 10};
+  arma::Row<double> expansion_factors{0.0, 0.0, 0.25};
 
   arma::Mat<PetscInt> stoich_mat{
       {-1, 1, 0, 0},
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
   double k_on{0.5}, k_off{0.8}, k_rna{1000.0}, gamma{1.0};
 
-//  double k_on{0.1}, k_off{0.1}, k_rna{100.0}, gamma{1.0};
+//  double k_on{0.1}, k_off{0.1}, k_rna{10.0}, gamma{1.0};
 
   auto t_fun = [&](double t) {
     return arma::Row<double>{k_on, k_off, k_rna, gamma};
@@ -91,7 +91,6 @@ int main(int argc, char *argv[]) {
       default:return 0.0;
     }
   };
-
 
   Model il1b_model;
   il1b_model.stoichiometry_matrix_ = stoich_mat;

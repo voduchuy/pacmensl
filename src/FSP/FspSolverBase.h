@@ -116,7 +116,7 @@ class FspSolverBase {
   DiscreteDistribution Advance_(PetscReal t_final, PetscReal fsp_tol);
 
   // For logging events using PETSc LogEvent
-  PetscBool log_fsp_events = PETSC_FALSE;
+  PetscBool logging_enabled = PETSC_FALSE;
   PetscLogEvent StateSetPartitioning;
   PetscLogEvent MatrixGeneration;
   PetscLogEvent ODESolve;

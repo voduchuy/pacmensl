@@ -39,7 +39,7 @@ PetscInt pecmeal::KrylovFsp::Solve() {
       if (print_intermediate) {
         PetscPrintf(comm_, "t_now_ = %.2e \n", t_now_);
       }
-      if (logging) {
+      if (logging_enabled) {
         perf_info.model_time[perf_info.n_step] = t_now_;
         petsc_err = VecGetSize(*solution_, &perf_info.n_eqs[size_t(perf_info.n_step)]);
         CHKERRABORT(comm_, petsc_err);
@@ -57,6 +57,8 @@ PetscInt pecmeal::KrylovFsp::Solve() {
 }
 
 int pecmeal::KrylovFsp::AdvanceOneStep(const Vec &v) {
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_advance_one_step_, 0, 0, 0,0));
+
   PetscErrorCode petsc_err;
 
   PetscReal s, xm, err_loc;
@@ -117,7 +119,7 @@ int pecmeal::KrylovFsp::AdvanceOneStep(const Vec &v) {
     if (err_loc <= delta_ * t_step_ * tol_ / t_final_) {
       break;
     } else {
-      t_step_ = gamma_ * t_step_ * pow(t_step_ * tol_ / err_loc, xm);
+      t_step_ = gamma_ * t_step_ * pow(t_step_ * tol_ / (t_final_*err_loc), xm);
       s = pow(10.0, floor(log10(t_step_)) - 1);
       t_step_ = ceil(t_step_ / s) * s;
       if (ireject == max_reject_) {
@@ -149,10 +151,13 @@ int pecmeal::KrylovFsp::AdvanceOneStep(const Vec &v) {
     PetscPrintf(comm_, "t_step = %.2e t_step_next = %.2e \n", t_step_, t_step_next_);
   }
 
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventEnd(event_advance_one_step_, 0, 0, 0,0));
   return 0;
 }
 
 int pecmeal::KrylovFsp::GenerateBasis(const Vec &v, int m) {
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_generate_basis_, 0, 0, 0,0));
+
   int petsc_error;
   PetscReal s;
 
@@ -169,7 +174,7 @@ int pecmeal::KrylovFsp::GenerateBasis(const Vec &v, int m) {
     /* Orthogonalization */
     istart = (j - q_iop + 1 >= 0) ? j - q_iop + 1 : 0;
 
-    for (int iorth = 0; iorth < 3; ++iorth) {
+    for (int iorth = 0; iorth < 1; ++iorth) {
       petsc_error = VecMTDot(Vm[j + 1], j - istart + 1, Vm.data() + istart, &htmp[istart]);
       CHKERRABORT(comm_, petsc_error);
       for (int i{istart}; i <= j; ++i) {
@@ -195,10 +200,14 @@ int pecmeal::KrylovFsp::GenerateBasis(const Vec &v, int m) {
       break;
     }
   }
+
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventEnd(event_generate_basis_, 0, 0, 0,0));
   return 0;
 }
 
 int pecmeal::KrylovFsp::SetUpWorkSpace() {
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_set_up_workspace_, 0, 0, 0,0));
+
   if (!solution_) {
     PetscPrintf(comm_, "KrylovFsp error: starting solution vector is null.\n");
     return -1;
@@ -220,11 +229,15 @@ int pecmeal::KrylovFsp::SetUpWorkSpace() {
   CHKERRABORT(comm_, ierr);
   ierr = VecSetUp(solution_tmp_);
   CHKERRABORT(comm_, ierr);
+
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventEnd(event_set_up_workspace_, 0, 0, 0,0));
   return 0;
 }
 
 
 int pecmeal::KrylovFsp::GetDky(PetscReal t, int deg, Vec p_vec) {
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_getdky_, 0, 0, 0,0));
+
   if (t < t_now_ || t > t_now_tmp_) {
     PetscPrintf(comm_,
                 "KrylovFsp::GetDky error: requested timepoint does not belong to the current time subinterval.\n");
@@ -257,6 +270,7 @@ int pecmeal::KrylovFsp::GetDky(PetscReal t, int deg, Vec p_vec) {
     CHKERRABORT(comm_, petsc_err);
   }
 
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventEnd(event_getdky_, 0, 0, 0,0));
   return 0;
 }
 
@@ -265,10 +279,31 @@ pecmeal::KrylovFsp::~KrylovFsp() {
 }
 
 void pecmeal::KrylovFsp::FreeWorkspace() {
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_free_workspace_, 0, 0, 0,0));
   for (int i{0}; i < Vm.size(); ++i) {
     VecDestroy(&Vm[i]);
   }
   Vm.clear();
   if (av != nullptr) VecDestroy(&av);
   if (solution_tmp_ != nullptr) VecDestroy(&solution_tmp_);
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventEnd(event_free_workspace_, 0, 0, 0,0));
+}
+
+void pecmeal::KrylovFsp::SetUp() {
+  OdeSolverBase::SetUp();
+  PetscErrorCode ierr;
+  if (logging_enabled) {
+    ierr = PetscLogDefaultBegin();
+    CHKERRABORT(comm_, ierr);
+    ierr = PetscLogEventRegister("KrylovFsp SetUpWorkspace", 0, &event_set_up_workspace_);
+    CHKERRABORT(comm_, ierr);
+    ierr = PetscLogEventRegister("KrylovFsp FreeWorkspace", 0, &event_free_workspace_);
+    CHKERRABORT(comm_, ierr);
+    ierr = PetscLogEventRegister("KrylovFsp AdvanceOneStep", 0, &event_advance_one_step_);
+    CHKERRABORT(comm_, ierr);
+    ierr = PetscLogEventRegister("KrylovFsp GenerateBasis", 0, &event_generate_basis_);
+    CHKERRABORT(comm_, ierr);
+    ierr = PetscLogEventRegister("KrylovFsp GetDky", 0, &event_getdky_);
+    CHKERRABORT(comm_, ierr);
+  }
 }

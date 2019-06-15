@@ -76,7 +76,7 @@ PetscInt CvodeFsp::Solve() {
       if (print_intermediate) {
         PetscPrintf(comm_, "t_now_ = %.2e \n", t_now_);
       }
-      if (logging) {
+      if (logging_enabled) {
         perf_info.model_time[perf_info.n_step] = t_now_;
         petsc_err = VecGetSize(*solution_, &perf_info.n_eqs[size_t(perf_info.n_step)]);
         CHKERRABORT(comm_, petsc_err);

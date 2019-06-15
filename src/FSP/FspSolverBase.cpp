@@ -31,7 +31,7 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
   PetscInt solver_stat;
   Vec Pnew;
 
-  if (log_fsp_events) CHKERRABORT(comm_, PetscLogEventBegin(Solving, 0, 0, 0, 0));
+  if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(Solving, 0, 0, 0, 0));
 
 
   if (verbosity_ > 1) ode_solver_->set_print_intermediate(1);
@@ -43,10 +43,10 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
 
   solver_stat = 1;
   while (solver_stat) {
-    if (log_fsp_events) CHKERRABORT(comm_, PetscLogEventBegin(ODESolve, 0, 0, 0, 0));
+    if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(ODESolve, 0, 0, 0, 0));
     ode_solver_->set_initial_solution(p_);
     solver_stat = ode_solver_->Solve();
-    if (log_fsp_events) CHKERRABORT(comm_, PetscLogEventEnd(ODESolve, 0, 0, 0, 0));
+    if (logging_enabled) CHKERRABORT(comm_, PetscLogEventEnd(ODESolve, 0, 0, 0, 0));
 
     // Expand the FspSolverBase if the solver halted prematurely
     if (solver_stat) {
@@ -68,12 +68,12 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
       }
       // Get local states corresponding to the current solution_
       arma::Mat<PetscInt> states_old = state_set_->CopyStatesOnProc();
-      if (log_fsp_events) {
+      if (logging_enabled) {
         CHKERRABORT(comm_, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
       }
       ((StateSetConstrained *) state_set_)->SetShapeBounds(fsp_bounds_);
       state_set_->Expand();
-      if (log_fsp_events) {
+      if (logging_enabled) {
         CHKERRABORT(comm_, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
       }
       if (verbosity_) {
@@ -84,18 +84,18 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
 
       // free data of the ODE solver (they will be rebuilt at the beginning of the loop)
       A_->destroy();
-      if (log_fsp_events) {
+      if (logging_enabled) {
         CHKERRABORT(comm_, PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
       }
       ((FspMatrixConstrained *) A_)
           ->generate_matrices(*((StateSetConstrained *) state_set_), model_.stoichiometry_matrix_,
                               model_.prop_, model_.t_fun_);
-      if (log_fsp_events) {
+      if (logging_enabled) {
         CHKERRABORT(comm_, PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
       }
 
       // Generate the expanded vector and scatter forward the current solution_
-      if (log_fsp_events) {
+      if (logging_enabled) {
         CHKERRABORT(comm_, PetscLogEventBegin(SolutionScatter, 0, 0, 0, 0));
       }
       VecCreate(comm_, &Pnew);
@@ -140,13 +140,13 @@ DiscreteDistribution FspSolverBase::Advance_(PetscReal t_final, PetscReal fsp_to
       CHKERRABORT(comm_, ierr);
       *p_ = Pnew;
 
-      if (log_fsp_events) {
+      if (logging_enabled) {
         CHKERRABORT(comm_, PetscLogEventEnd(SolutionScatter, 0, 0, 0, 0));
       }
     }
   }
 
-  if (log_fsp_events) {
+  if (logging_enabled) {
     CHKERRABORT(comm_, PetscLogEventEnd(Solving, 0, 0, 0, 0));
   }
 
@@ -193,7 +193,7 @@ void FspSolverBase::SetUp() {
 
   PetscErrorCode ierr;
   // Register events if logging is needed
-  if (log_fsp_events) {
+  if (logging_enabled) {
     ierr = PetscLogDefaultBegin();
     CHKERRABORT(comm_, ierr);
     ierr = PetscLogEventRegister("Finite state subset partitioning", 0, &StateSetPartitioning);
@@ -223,25 +223,25 @@ void FspSolverBase::SetUp() {
     ((StateSetConstrained *) state_set_)->SetShapeBounds(fsp_bounds_);
   }
   state_set_->SetInitialStates(init_states_);
-  if (log_fsp_events) {
+  if (logging_enabled) {
     CHKERRABORT(comm_, PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
   }
   state_set_->Expand();
-  if (log_fsp_events) {
+  if (logging_enabled) {
     CHKERRABORT(comm_, PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
   }
 
   A_ = new FspMatrixConstrained(comm_);
-  if (log_fsp_events) {
+  if (logging_enabled) {
     CHKERRABORT(comm_, PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
   }
   ((FspMatrixConstrained *) A_)
       ->generate_matrices(*((StateSetConstrained *) state_set_), model_.stoichiometry_matrix_, model_.prop_,
                           model_.t_fun_);
-  if (log_fsp_events) {
+  if (logging_enabled) {
     CHKERRABORT(comm_, PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
   }
-  if (log_fsp_events) {
+  if (logging_enabled) {
     tmatvec_ = [&](Real t, Vec x, Vec y) {
       CHKERRABORT(comm_, PetscLogEventBegin(RHSEvaluation, 0, 0, 0, 0));
       ((FspMatrixConstrained *) A_)->action(t, x, y);
@@ -265,12 +265,13 @@ void FspSolverBase::SetUp() {
   auto error_checking_fp = [&](PetscReal t, Vec p, void *data) {
     return CheckFspTolerance_(t, p);
   };
-  ode_solver_->set_stop_condition(error_checking_fp, nullptr);
-  if (log_fsp_events) {
-    ode_solver_->enable_logging();
+  ode_solver_->SetStopCondition(error_checking_fp, nullptr);
+  if (logging_enabled) {
+    ode_solver_->EnableLogging();
     ierr = PetscLogEventEnd(SettingUp, 0, 0, 0, 0);
     CHKERRABORT(comm_, ierr);
   }
+  ode_solver_->SetUp();
 
   sinks_.set_size(((StateSetConstrained *) state_set_)->GetNumConstraints());
   to_expand_.set_size(sinks_.n_elem);
@@ -292,7 +293,7 @@ const StateSetBase *FspSolverBase::GetStateSet() {
 }
 
 void FspSolverBase::SetLogging(PetscBool logging) {
-  log_fsp_events = logging;
+  logging_enabled = logging;
 }
 
 FspSolverComponentTiming FspSolverBase::GetAvgComponentTiming() {
@@ -363,7 +364,7 @@ void FspSolverBase::SetFromOptions() {
   CHKERRABORT(comm_, ierr);
   if (opt_set) {
     if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
-      log_fsp_events = PETSC_TRUE;
+      logging_enabled = PETSC_TRUE;
     }
   }
 
