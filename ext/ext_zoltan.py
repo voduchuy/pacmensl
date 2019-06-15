@@ -32,7 +32,8 @@ def install(src_path, build_path, install_path):
                      '-DParMETIS_LIBRARY_DIRS='+str(install_dir.resolve()/Path('lib')),
                      '-DTrilinos_GENERATE_REPO_VERSION_FILE=OFF',
                      src_dir], cwd=build_dir)
-    subprocess.call(['make', '-j4', 'install'], cwd=build_dir)
+    subprocess.call(['make'], cwd=build_dir)
+    subprocess.call(['make', 'install'], cwd=build_dir)
 
 
 if __name__ == "__main__":

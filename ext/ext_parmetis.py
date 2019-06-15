@@ -39,7 +39,7 @@ def install(src_path, build_path, install_path):
     ],
                     cwd=build_dir)
     print('build parmetis...')
-    subprocess.call(['make', '-j8'], cwd=build_dir.resolve())
+    subprocess.call(['make'], cwd=build_dir.resolve())
     print('install parmetis...')
     subprocess.call(['make', 'install'], cwd=build_dir.resolve())
 
