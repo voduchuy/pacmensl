@@ -32,6 +32,48 @@ struct FspSolverComponentTiming {
 class FspSolverBase {
   using Real = PetscReal;
   using Int = PetscInt;
+ public:
+  NOT_COPYABLE_NOT_MOVABLE(FspSolverBase);
+
+  explicit FspSolverBase(MPI_Comm _comm, PartitioningType _part_type = Graph, ODESolverType _solve_type = CVODE_BDF);
+
+  void SetConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
+
+  void SetInitialBounds(arma::Row<int> &_fsp_size);
+
+  void SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors);
+
+  void SetModel(Model &model);
+
+  void SetVerbosity(int verbosity_level);
+
+  void SetInitialDistribution(const arma::Mat<Int> &_init_states, const arma::Col<PetscReal> &_init_probs);
+
+  void SetLogging(PetscBool logging);
+
+  void SetFromOptions();
+
+  void SetPartitioningMethod(PartitioningType part_type);
+
+  void SetOdesType(ODESolverType odes_type);
+
+  void SetUp();
+
+  Vec &GetP();
+
+  const StateSetBase *GetStateSet();
+
+  FspSolverComponentTiming GetAvgComponentTiming();
+
+  FiniteProblemSolverPerfInfo GetSolverPerfInfo();
+
+  DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol);
+
+  std::vector<DiscreteDistribution> SolveTspan(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol);
+
+  void Destroy();
+
+  ~FspSolverBase();
  private:
 
   MPI_Comm comm_ = nullptr;
@@ -82,52 +124,6 @@ class FspSolverBase {
   PetscLogEvent RHSEvaluation;
   PetscLogEvent SettingUp;
   PetscLogEvent Solving;
-
- public:
-  NOT_COPYABLE_NOT_MOVABLE(FspSolverBase);
-
-  explicit FspSolverBase(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type);
-
-  void SetConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
-
-  void SetInitialBounds(arma::Row<int> &_fsp_size);
-
-  void SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors);
-
-  void SetModel(Model &model);
-
-  void SetVerbosity(int verbosity_level);
-
-  void SetInitialDistribution(const arma::Mat<Int> &_init_states, const arma::Col<PetscReal> &_init_probs);
-
-  void SetLogging(PetscBool logging);
-
-  void SetFromOptions();
-
-  void SetOdesType(ODESolverType odes_type);
-
-  void SetUp();
-
-  Vec &GetP();
-
-  const StateSetBase *GetStateSet();
-
-  FspSolverComponentTiming GetAvgComponentTiming();
-
-  FiniteProblemSolverPerfInfo GetSolverPerfInfo();
-
-  DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol);
-
-  std::vector<DiscreteDistribution> SolveTspan(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol);
-
-  void Destroy();
-
-  ~FspSolverBase();
-
-  friend StateSetBase;
-  friend FspMatrixBase;
-
-  friend OdeSolverBase;
 };
 }
 

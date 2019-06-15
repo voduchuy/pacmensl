@@ -56,6 +56,174 @@ PetscInt pecmeal::KrylovFsp::Solve() {
   return stop;
 }
 
+int pecmeal::KrylovFsp::AdvanceOneStep(const Vec &v) {
+  PetscErrorCode petsc_err;
+
+  PetscReal s, xm, err_loc;
+
+  k1 = 2;
+  mb = m_;
+
+  petsc_err = VecNorm(v, NORM_2, &beta);
+  CHKERRABORT(comm_, petsc_err);
+
+  if (!t_step_set_) {
+    PetscReal anorm;
+    xm = 1.0 / double(m_);
+    rhs_(0.0, v, av);
+    petsc_err = VecNorm(av, NORM_2, &avnorm);
+    CHKERRABORT(comm_, petsc_err);
+    anorm = avnorm / beta;
+    double fact = pow((m_ + 1) / exp(1.0), m_ + 1) * sqrt(2 * (3.1416) * (m_ + 1));
+    t_step_next_ = (1.0 / anorm) * pow((fact * tol_) / (4.0 * beta * anorm), xm);
+    t_step_set_ = true;
+  }
+
+  t_step_ = std::min(t_final_ - t_now_tmp_, t_step_next_);
+  Hm = arma::zeros(m_ + 2, m_ + 2);
+
+  GenerateBasis(v, m_);
+
+  if (k1 != 0) {
+    Hm(m_ + 1, m_) = 1.0;
+    rhs_(0.0, Vm[m_], av);
+    petsc_err = VecNorm(av, NORM_2, &avnorm);
+    CHKERRABORT(comm_, petsc_err);
+  }
+
+  int ireject{0};
+  while (ireject < max_reject_) {
+    mx = mb + k1;
+    F = expmat(t_step_ * Hm);
+    if (k1 == 0) {
+      err_loc = btol_;
+      break;
+    } else {
+      double phi1 = std::abs(beta * F(m_, 0));
+      double phi2 = std::abs(beta * F(m_ + 1, 0) * avnorm);
+
+      if (phi1 > phi2 * 10.0) {
+        err_loc = phi2;
+        xm = 1.0 / double(m_);
+      } else if (phi1 > phi2) {
+        err_loc = (phi1 * phi2) / (phi1 - phi2);
+        xm = 1.0 / double(m_);
+      } else {
+        err_loc = phi1;
+        xm = 1.0 / double(m_ - 1);
+      }
+    }
+
+    if (err_loc <= delta_ * t_step_ * tol_ / t_final_) {
+      break;
+    } else {
+      t_step_ = gamma_ * t_step_ * pow(t_step_ * tol_ / err_loc, xm);
+      s = pow(10.0, floor(log10(t_step_)) - 1);
+      t_step_ = ceil(t_step_ / s) * s;
+      if (ireject == max_reject_) {
+        // This part could be dangerous, what if one processor exits but the others continue
+        PetscPrintf(comm_, "KrylovFsp: maximum number of failed steps reached\n");
+        return -1;
+      }
+      ireject++;
+    }
+  }
+
+  mx = mb + (size_t) std::max(0, (int) k1 - 1);
+  arma::Col<double> F0(mx);
+  for (size_t ii{0}; ii < mx; ++ii) {
+    F0(ii) = beta * F(ii, 0);
+  }
+
+  petsc_err = VecScale(v, 0.0);
+  CHKERRABORT(comm_, petsc_err);
+  petsc_err = VecMAXPY(v, mx, &F0[0], Vm.data());
+  CHKERRABORT(comm_, petsc_err);
+
+  t_now_tmp_ = t_now_tmp_ + t_step_;
+  t_step_next_ = gamma_ * t_step_ * pow(t_step_ * tol_ / (t_final_*err_loc), xm);
+  s = pow(10.0, floor(log10(t_step_next_)) - 1.0);
+  t_step_next_ = ceil(t_step_next_ / s) * s;
+
+  if (print_intermediate){
+    PetscPrintf(comm_, "t_step = %.2e t_step_next = %.2e \n", t_step_, t_step_next_);
+  }
+
+  return 0;
+}
+
+int pecmeal::KrylovFsp::GenerateBasis(const Vec &v, int m) {
+  int petsc_error;
+  PetscReal s;
+
+  petsc_error = VecCopy(v, Vm[0]);
+  CHKERRABORT(comm_, petsc_error);
+  petsc_error = VecScale(Vm[0], 1.0 / beta);
+  CHKERRABORT(comm_, petsc_error);
+
+  int istart = 0;
+  arma::Col<PetscReal> htmp(m + 2);
+  /* Arnoldi loop */
+  for (int j{0}; j < m; j++) {
+    rhs_(0.0, Vm[j], Vm[j + 1]);
+    /* Orthogonalization */
+    istart = (j - q_iop + 1 >= 0) ? j - q_iop + 1 : 0;
+
+    for (int iorth = 0; iorth < 3; ++iorth) {
+      petsc_error = VecMTDot(Vm[j + 1], j - istart + 1, Vm.data() + istart, &htmp[istart]);
+      CHKERRABORT(comm_, petsc_error);
+      for (int i{istart}; i <= j; ++i) {
+        htmp(i) = -1.0 * htmp(i);
+      }
+      petsc_error = VecMAXPY(Vm[j + 1], j - istart + 1, &htmp[istart], Vm.data() + istart);
+      CHKERRABORT(comm_, petsc_error);
+      for (int i{istart}; i <= j; ++i) {
+        Hm(i, j) -= htmp(i);
+      }
+    }
+    petsc_error = VecNorm(Vm[j + 1], NORM_2, &s);
+    CHKERRABORT(comm_, petsc_error);
+    petsc_error = VecScale(Vm[j + 1], 1.0 / s);
+    CHKERRABORT(comm_, petsc_error);
+    Hm(j + 1, j) = s;
+
+    if (s < btol_) {
+      k1 = 0;
+      mb = j;
+      if (print_intermediate) PetscPrintf(comm_, "Happy breakdown!\n");
+      t_step_ = t_final_ - t_now_tmp_;
+      break;
+    }
+  }
+  return 0;
+}
+
+int pecmeal::KrylovFsp::SetUpWorkSpace() {
+  if (!solution_) {
+    PetscPrintf(comm_, "KrylovFsp error: starting solution vector is null.\n");
+    return -1;
+  }
+  int ierr;
+  Vm.resize(m_ + 1);
+  for (int i{0}; i < m_ + 1; ++i) {
+    ierr = VecDuplicate(*solution_, &Vm[i]);
+    CHKERRABORT(comm_, ierr);
+    ierr = VecSetUp(Vm[i]);
+    CHKERRABORT(comm_, ierr);
+  }
+  ierr = VecDuplicate(*solution_, &av);
+  CHKERRABORT(comm_, ierr);
+  ierr = VecSetUp(av);
+  CHKERRABORT(comm_, ierr);
+
+  ierr = VecDuplicate(*solution_, &solution_tmp_);
+  CHKERRABORT(comm_, ierr);
+  ierr = VecSetUp(solution_tmp_);
+  CHKERRABORT(comm_, ierr);
+  return 0;
+}
+
+
 int pecmeal::KrylovFsp::GetDky(PetscReal t, int deg, Vec p_vec) {
   if (t < t_now_ || t > t_now_tmp_) {
     PetscPrintf(comm_,
@@ -89,174 +257,6 @@ int pecmeal::KrylovFsp::GetDky(PetscReal t, int deg, Vec p_vec) {
     CHKERRABORT(comm_, petsc_err);
   }
 
-  return 0;
-}
-
-int pecmeal::KrylovFsp::AdvanceOneStep(const Vec &v) {
-  PetscErrorCode petsc_err;
-
-  PetscReal s, xm, err_loc;
-
-  mb = m_;
-
-  petsc_err = VecNorm(v, NORM_2, &beta);
-  CHKERRABORT(comm_, petsc_err);
-
-  if (!t_step_set_) {
-    PetscReal anorm;
-    xm = 1.0 / double(m_);
-    rhs_(0.0, v, av);
-    petsc_err = VecNorm(av, NORM_2, &avnorm);
-    CHKERRABORT(comm_, petsc_err);
-    anorm = avnorm/beta;
-    double fact = pow((m_ + 1) / exp(1.0), m_ + 1) * sqrt(2 * (3.1416) * (m_ + 1));
-    t_step_next_ = (1.0 / anorm) * pow((fact * tol_) / (4.0 * beta * anorm), xm);
-    t_step_set_ = true;
-  }
-
-  double t_step = std::min(t_final_ - t_now_tmp_, t_step_next_);
-  Hm = arma::zeros(m_ + 2, m_ + 2);
-
-  GenerateBasis(v, m_);
-
-  if (k1 != 0) {
-    Hm(m_ + 1, m_) = 1.0;
-    rhs_(0.0, Vm[m_], av);
-    petsc_err = VecNorm(av, NORM_2, &avnorm);
-    CHKERRABORT(comm_, petsc_err);
-  } else {
-    t_step = t_final_ - t_now_;
-  }
-
-  int ireject{0};
-  while (ireject < max_reject_ && k1 != 0) {
-    mx = mb + k1;
-    F = expmat(t_step * Hm);
-    if (k1 == 0) {
-      err_loc = btol_;
-      break;
-    } else {
-      double phi1 = std::abs(beta * F(m_, 0));
-      double phi2 = std::abs(beta * F(m_ + 1, 0)*avnorm);
-
-      if (phi1 > phi2 * 10.0) {
-        err_loc = phi2;
-        xm = 1.0 / double(m_);
-      } else if (phi1 > phi2) {
-        err_loc = (phi1 * phi2) / (phi1 - phi2);
-        xm = 1.0 / double(m_);
-      } else {
-        err_loc = phi1;
-        xm = 1.0 / double(m_ - 1);
-      }
-    }
-
-    if (err_loc <= delta_ * t_step * tol_) {
-      break;
-    } else {
-      t_step = gamma_ * t_step * pow(t_step * tol_ / err_loc, xm);
-      s = pow(10.0, floor(log10(t_step)) - 1);
-      t_step = ceil(t_step / s) * s;
-      if (ireject == max_reject_) {
-        // This part could be dangerous, what if one processor exits but the others continue
-        PetscPrintf(comm_, "KrylovFsp: maximum number of failed steps reached\n");
-        return -1;
-      }
-      ireject++;
-    }
-  }
-
-  mx = mb + (size_t) std::max(0, (int) k1 - 1);
-  arma::Col<double> F0(mx);
-  for (size_t ii{0}; ii < mx; ++ii) {
-    F0(ii) = beta * F(ii, 0);
-  }
-
-  petsc_err = VecScale(v, 0.0);
-  CHKERRABORT(comm_, petsc_err);
-
-
-  petsc_err = VecMAXPY(v, mx, &F0[0], Vm.data());
-  CHKERRABORT(comm_, petsc_err);
-
-
-  t_now_tmp_ = t_now_tmp_ + t_step;
-  t_step_next_ = gamma_ * t_step * pow(t_step * tol_ / err_loc, xm);
-  s = pow(10.0, floor(log10(t_step_next_)) - 1.0);
-  t_step_next_ = ceil(t_step_next_ / s) * s;
-
-  return 0;
-}
-
-int pecmeal::KrylovFsp::GenerateBasis(const Vec &v, int m) {
-  int petsc_error;
-  PetscReal s;
-
-  petsc_error = VecCopy(v, Vm[0]);
-  CHKERRABORT(comm_, petsc_error);
-  petsc_error = VecScale(Vm[0], 1.0 / beta);
-  CHKERRABORT(comm_, petsc_error);
-
-  int istart = 0;
-  arma::Col<PetscReal> htmp(m+2);
-  /* Arnoldi loop */
-  for (int j{0}; j < m; j++) {
-    rhs_(0.0, Vm[j], Vm[j + 1]);
-
-    /* Orthogonalization */
-    istart = (j - q_iop + 1 >= 0) ? j - q_iop + 1 : 0;
-
-    for (int iorth = 0; iorth < 2; ++iorth) {
-      petsc_error = VecMTDot(Vm[j + 1], j - istart + 1, Vm.data() + istart, &htmp[istart]);
-      CHKERRABORT(comm_, petsc_error);
-      for (int i{istart}; i <= j; ++i) {
-        htmp(i) = -1.0 * htmp(i);
-      }
-      petsc_error = VecMAXPY(Vm[j + 1], j - istart + 1, &htmp[istart], Vm.data() + istart);
-      CHKERRABORT(comm_, petsc_error);
-      for (int i{istart}; i <= j; ++i) {
-        Hm(i,j) -= htmp(i);
-      }
-    }
-    petsc_error = VecNorm(Vm[j + 1], NORM_2, &s);
-    CHKERRABORT(comm_, petsc_error);
-
-    if (s < btol_) {
-      k1 = 0;
-      mb = j + 1;
-      PetscPrintf(comm_, "Happy breakdown!\n");
-      break;
-    }
-
-    Hm(j + 1, j) = s;
-    petsc_error = VecScale(Vm[j + 1], 1.0 / s);
-    CHKERRABORT(comm_, petsc_error);
-  }
-  return 0;
-}
-
-int pecmeal::KrylovFsp::SetUpWorkSpace() {
-  if (!solution_) {
-    PetscPrintf(comm_, "KrylovFsp error: starting solution vector is null.\n");
-    return -1;
-  }
-  int ierr;
-  Vm.resize(m_ + 1);
-  for (int i{0}; i < m_ + 1; ++i) {
-    ierr = VecDuplicate(*solution_, &Vm[i]);
-    CHKERRABORT(comm_, ierr);
-    ierr = VecSetUp(Vm[i]);
-    CHKERRABORT(comm_, ierr);
-  }
-  ierr = VecDuplicate(*solution_, &av);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetUp(av);
-  CHKERRABORT(comm_, ierr);
-
-  ierr = VecDuplicate(*solution_, &solution_tmp_);
-  CHKERRABORT(comm_, ierr);
-  ierr = VecSetUp(solution_tmp_);
-  CHKERRABORT(comm_, ierr);
   return 0;
 }
 

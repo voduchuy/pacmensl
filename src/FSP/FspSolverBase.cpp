@@ -471,4 +471,9 @@ std::vector<DiscreteDistribution> FspSolverBase::SolveTspan(const arma::Row<Pets
 void FspSolverBase::SetOdesType(ODESolverType odes_type) {
   FspSolverBase::odes_type_ = odes_type;
 }
+
+void FspSolverBase::SetPartitioningMethod(PartitioningType part_type) {
+  partitioning_type_ = part_type;
+}
+
 }

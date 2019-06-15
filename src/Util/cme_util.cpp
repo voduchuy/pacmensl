@@ -60,4 +60,46 @@ double round2digit(double x) {
   double p1 = std::pow(10.0e0, round(log10(x) - SQR1) - 1.0e0);
   return trunc(x / p1 + 0.55e0) * p1;
 }
+
+Environment::Environment() {
+  if (~initialized) {
+    PetscErrorCode ierr;
+    int mpi_initialized;
+    MPI_Initialized(&mpi_initialized);
+    if (mpi_initialized == 0) MPI_Init(0, 0);
+    ierr = PetscInitialize(0, 0, (char *) 0, 0);
+    CHKERRABORT(MPI_COMM_WORLD, ierr);
+    float ver;
+    ierr = Zoltan_Initialize(0, 0, &ver);
+    CHKERRABORT(MPI_COMM_WORLD, ierr);
+    initialized = true;
+  }
+}
+
+Environment::Environment(int *argc, char ***argv, const char *help) {
+  if (~initialized) {
+    PetscErrorCode ierr;
+    int mpi_initialized;
+    MPI_Initialized(&mpi_initialized);
+    if (mpi_initialized == 0) MPI_Init(argc, argv);
+    ierr = PetscInitialize(argc, argv, (char *) 0, help);
+    CHKERRABORT(MPI_COMM_WORLD, ierr);
+    float ver;
+    ierr = Zoltan_Initialize(*argc, *argv, &ver);
+    CHKERRABORT(MPI_COMM_WORLD, ierr);
+    initialized = true;
+  }
+}
+
+Environment::~Environment() {
+  if (initialized){
+    PetscErrorCode ierr;
+    ierr = PetscFinalize();
+    CHKERRABORT(MPI_COMM_WORLD, ierr);
+
+    int mpi_finalized;
+    MPI_Finalized(&mpi_finalized);
+    if (!mpi_finalized) MPI_Finalize();
+  }
+}
 }

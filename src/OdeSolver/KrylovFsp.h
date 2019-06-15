@@ -15,7 +15,7 @@ class KrylovFsp : public OdeSolverBase {
   PetscReal delta_ = 1.2, gamma_ = 0.9; ///< Safety factors
 
   int m_ = 30;
-  int q_iop = 2;
+  int q_iop = 32;
 
   int k1 = 2;
   int mb, mx;

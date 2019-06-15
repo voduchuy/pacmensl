@@ -11,65 +11,58 @@ static char help[] = "Test interface to Krylov integrator for solving the CME of
 using namespace pecmeal;
 
 int main(int argc, char *argv[]) {
+  //PECMEAL parallel environment object, must be created before using other PECMEAL's functionalities
+  pecmeal::Environment my_env(&argc, &argv, help);
+
   PetscInt ierr;
 
-  ierr = pecmeal::PecmealInit(&argc, &argv, help);
-  CHKERRQ(ierr);
   PetscMPIInt rank;
   MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-  // Begin PETSC context
-  {
-    arma::Row<PetscInt> fsp_size = {30, 30};
-    arma::Mat<PetscInt> X0(2, 1);
-    X0.col(0).fill(0);
-    StateSetConstrained fsp(PETSC_COMM_WORLD, 2);
-    fsp.SetShapeBounds(fsp_size);
-    fsp.SetStoichiometryMatrix(toggle_cme::SM);
-    fsp.SetInitialStates(X0);
-    fsp.Expand();
-    PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 
-    FspMatrixBase A(PETSC_COMM_WORLD);
-    A.generate_values(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
+  arma::Row<PetscInt> fsp_size = {30, 30};
+  arma::Mat<PetscInt> X0(2, 1);
+  X0.col(0).fill(0);
+  StateSetConstrained fsp(PETSC_COMM_WORLD, 2);
+  fsp.SetShapeBounds(fsp_size);
+  fsp.SetStoichiometryMatrix(toggle_cme::SM);
+  fsp.SetInitialStates(X0);
+  fsp.Expand();
+  PetscPrintf(PETSC_COMM_WORLD, "State Subset generated with Graph-partitioned layout.\n");
 
-    auto AV = [&A](PetscReal t, Vec x, Vec y) {
-      A.action(t, x, y);
-    };
+  FspMatrixBase A(PETSC_COMM_WORLD);
+  A.generate_values(fsp, toggle_cme::SM, toggle_cme::propensity, toggle_cme::t_fun);
 
-    Vec P;
-    VecCreate(PETSC_COMM_WORLD, &P);
-    VecSetSizes(P, A.get_num_rows_local(), PETSC_DECIDE);
-    VecSetFromOptions(P);
-    VecSetValue(P, 0, 1.0, INSERT_VALUES);
-    VecSetUp(P);
-    VecAssemblyBegin(P);
-    VecAssemblyEnd(P);
+  auto AV = [&A](PetscReal t, Vec x, Vec y) {
+    A.action(t, x, y);
+  };
 
-    PetscPrintf(PETSC_COMM_WORLD, "Initial vector set.\n");
+  Vec P;
+  VecCreate(PETSC_COMM_WORLD, &P);
+  VecSetSizes(P, A.get_num_rows_local(), PETSC_DECIDE);
+  VecSetFromOptions(P);
+  VecSetValue(P, 0, 1.0, INSERT_VALUES);
+  VecSetUp(P);
+  VecAssemblyBegin(P);
+  VecAssemblyEnd(P);
 
-    PetscReal fsp_tol = 1.0e-2, t_final = 1000.0;
-    KrylovFsp krylov_solver(PETSC_COMM_WORLD);
+  PetscPrintf(PETSC_COMM_WORLD, "Initial vector set.\n");
 
-    for (int i{0}; i < 2; ++i)
-    {
-      krylov_solver.SetFinalTime(t_final);
-      krylov_solver.set_initial_solution(&P);
-      krylov_solver.set_rhs(AV);
-      krylov_solver.set_print_intermediate(1);
-      PetscPrintf(PETSC_COMM_WORLD, "Solver parameters set.\n");
-      PetscInt solver_stat = krylov_solver.Solve();
-      PetscPrintf(PETSC_COMM_WORLD, "\n Solver returns with status %d and time %.2e \n", solver_stat,
-                  krylov_solver.GetCurrentTime());
-      krylov_solver.FreeWorkspace();
-    }
+  PetscReal fsp_tol = 1.0e-2, t_final = 1000.0;
+  KrylovFsp krylov_solver(PETSC_COMM_WORLD);
 
-    PetscReal Psum;
-    VecSum(P, &Psum);
-    PetscPrintf(PETSC_COMM_WORLD, "Psum = %.2e \n", Psum);
-    VecDestroy(&P);
-  }
-  //End PETSC context
-  ierr = PecmealFinalize();
-  CHKERRQ(ierr);
+  krylov_solver.SetFinalTime(t_final);
+  krylov_solver.set_initial_solution(&P);
+  krylov_solver.set_rhs(AV);
+  krylov_solver.set_print_intermediate(1);
+  PetscPrintf(PETSC_COMM_WORLD, "Solver parameters set.\n");
+  PetscInt solver_stat = krylov_solver.Solve();
+  PetscPrintf(PETSC_COMM_WORLD, "\n Solver returns with status %d and time %.2e \n", solver_stat,
+              krylov_solver.GetCurrentTime());
+  krylov_solver.FreeWorkspace();
+
+  PetscReal Psum;
+  VecSum(P, &Psum);
+  PetscPrintf(PETSC_COMM_WORLD, "Psum = %.2e \n", Psum);
+  VecDestroy(&P);
   return 0;
 }

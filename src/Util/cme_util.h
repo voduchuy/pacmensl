@@ -1,6 +1,7 @@
 #ifndef PECMEAL_UTIL_H
 #define PECMEAL_UTIL_H
 
+#define ARMA_DONT_PRINT_ERRORS
 #include <armadillo>
 #include <petscmat.h>
 #include <petscvec.h>
@@ -234,6 +235,15 @@ namespace pecmeal {
     int PecmealFinalize();
 
     void sequential_action(MPI_Comm comm, std::function<void(void *)> action, void *data);
+
+    class Environment{
+     public:
+      Environment();
+      Environment(int *argc, char ***argv, const char *help);
+      ~Environment();
+     private:
+      bool initialized = false;
+    };
 }
 
 #endif
