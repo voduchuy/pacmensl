@@ -31,9 +31,9 @@ def install(src_path, build_path, install_path):
     print('build metis...')
     subprocess.call(['make', 'install'], cwd=src_dir/Path('metis-5.1.0'))
     print('configure parmetis...')
-    subprocess.call(['make', 'config', 'shared=1', 'prefix='+str(install_dir)], cwd=src_path/Path('parmetis-4.0.3'))
+    subprocess.call(['make', 'config', 'shared=1', 'prefix='+str(install_dir)], cwd=src_dir/Path('parmetis-4.0.3'))
     print('build parmetis...')
-    subprocess.call(['make', 'install'], cwd=src_path/Path('parmetis-4.0.3'))
+    subprocess.call(['make', 'install'], cwd=src_dir/Path('parmetis-4.0.3'))
 
 
 if __name__ == "__main__":
