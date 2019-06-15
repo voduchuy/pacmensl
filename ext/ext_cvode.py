@@ -25,17 +25,36 @@ def install(src_path, build_path, install_path):
     if not build_dir.exists():
         build_dir.mkdir()
 
-    subprocess.call(['cmake', '-DCMAKE_INSTALL_PREFIX=' + str(install_dir), str(src_dir),
+    subprocess.call(['cmake', '-DCMAKE_INSTALL_PREFIX=' + str(install_dir.resolve()), str(src_dir.resolve()),
                      '-DPETSC_ENABLE=ON',
                      '-DMPI_ENABLE=ON',
-                     str(src_dir)], cwd=build_dir)
+                     str(src_dir.resolve())], cwd=build_dir)
     subprocess.call(['make'], cwd=build_dir)
     subprocess.call(['make', 'install'], cwd=build_dir)
 
 
 if __name__ == "__main__":
-    download_dir = '/Users/huyvo/Codes/software/src/'
-    build_dir = '~/Codes/software/build/'
-    install_dir = '/Users/huyvo/Codes/software/install/'
-    download(download_dir)
-    install(download_dir, build_dir, install_dir)
+    download_path = Path('something that does not exist')
+    build_path = Path('something that does not exist')
+    install_path = Path('something that does not exist')
+
+    while not download_path.exists():
+        download_path = input('Enter directory path to extract all downloaded source codes:')
+        download_path = Path(download_path).expanduser()
+        if not download_path.exists():
+            print('Not a valid path, enter again.')
+
+    while not build_path.exists():
+        build_path = input('Enter directory path to do compilation (must be different from source code directory):')
+        build_path = Path(build_path).expanduser()
+        if not build_path.exists():
+            print('Not a valid build path, enter again.')
+
+    while not install_path.exists():
+        install_path = input('Enter directory path to install libraries:')
+        install_path = Path(install_path).expanduser()
+        if not install_path.exists():
+            print('Not a vaild install path, enter again.')
+
+    download(download_path)
+    install(download_path, build_path, install_path)

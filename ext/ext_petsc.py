@@ -17,9 +17,9 @@ def install(src_path, build_path, install_path):
     src_dir = Path(src_path) / Path('petsc')
     build_dir = Path(build_path) / Path('petsc')
     install_dir = Path(install_path)
-    src_dir = src_dir.expanduser()
-    build_dir = build_dir.expanduser()
-    install_dir = install_dir.expanduser()
+    src_dir = src_dir.expanduser().resolve()
+    build_dir = build_dir.expanduser().resolve()
+    install_dir = install_dir.expanduser().resolve()
     if not build_dir.exists():
         build_dir.mkdir()
     subprocess.call(
@@ -51,8 +51,27 @@ def install(src_path, build_path, install_path):
 
 
 if __name__ == "__main__":
-    download_dir = '/Users/huyvo/Codes/software/src/'
-    build_dir = '~/Codes/software/build/'
-    install_dir = '/Users/huyvo/Codes/software/install/'
-    # download(download_dir)
-    install(download_dir, build_dir, install_dir)
+    download_path = Path('something that does not exist')
+    build_path = Path('something that does not exist')
+    install_path = Path('something that does not exist')
+
+    while not download_path.exists():
+        download_path = input('Enter directory path to extract all downloaded source codes:')
+        download_path = Path(download_path).expanduser()
+        if not download_path.exists():
+            print('Not a valid path, enter again.')
+
+    while not build_path.exists():
+        build_path = input('Enter directory path to do compilation (must be different from source code directory):')
+        build_path = Path(build_path).expanduser()
+        if not build_path.exists():
+            print('Not a valid build path, enter again.')
+
+    while not install_path.exists():
+        install_path = input('Enter directory path to install libraries:')
+        install_path = Path(install_path).expanduser()
+        if not install_path.exists():
+            print('Not a vaild install path, enter again.')
+
+    download(download_path)
+    install(download_path, build_path, install_path)

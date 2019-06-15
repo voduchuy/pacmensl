@@ -8,11 +8,6 @@ import tarfile as tar
 
 def download(path_to):
     dest_dir = Path(path_to)
-    print('downloading metis... ')
-    url = 'http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz'
-    wget.download(url, str(dest_dir))
-    f = tar.open(str(dest_dir/Path('metis-5.1.0.tar.gz')))
-    f.extractall(dest_dir)
     print('\n downloading parmetis... ')
     url = 'http://glaros.dtc.umn.edu/gkhome/fetch/sw/parmetis/parmetis-4.0.3.tar.gz'
     wget.download(url, str(dest_dir))
@@ -20,24 +15,57 @@ def download(path_to):
     f.extractall(dest_dir)
 
 
-
 def install(src_path, build_path, install_path):
-    src_dir = Path(src_path)
+    src_dir = Path(src_path)/Path('parmetis-4.0.3')
+    build_dir = Path(build_path)/Path('parmetis')
     install_dir = Path(install_path)
     src_dir = src_dir.expanduser()
+    build_dir = build_dir.expanduser()
     install_dir = install_dir.expanduser()
-    print('configure metis...')
-    subprocess.call(["make", "config", "prefix= "+str(install_dir)], cwd=src_dir/Path('metis-5.1.0'))
-    print('build metis...')
-    subprocess.call(['make', 'install'], cwd=src_dir/Path('metis-5.1.0'))
+
+    if not build_dir.exists():
+        build_dir.mkdir()
+
     print('configure parmetis...')
-    subprocess.call(['make', 'config', 'shared=1', 'prefix='+str(install_dir)], cwd=src_dir/Path('parmetis-4.0.3'))
+    subprocess.call([
+        'cmake', '-DCMAKE_C_COMPILER=mpicc',
+        '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+        '-DSHARED=1',
+        "-DMETIS_PATH="+str(src_dir.resolve()/Path('metis')),
+        "-DGKLIB_PATH="+str(src_dir.resolve()/Path('metis/GKlib')),
+        '-DCMAKE_INSTALL_PREFIX='+str(install_dir),
+        '-DCMAKE_C_FLAGS=-O3',
+        str(src_dir.resolve())
+    ],
+                    cwd=build_dir)
     print('build parmetis...')
-    subprocess.call(['make', 'install'], cwd=src_dir/Path('parmetis-4.0.3'))
+    subprocess.call(['make', '-j8'], cwd=build_dir.resolve())
+    print('install parmetis...')
+    subprocess.call(['make', 'install'], cwd=build_dir.resolve())
 
 
 if __name__ == "__main__":
-    download_dir = '/Users/huyvo/Codes/software/src/'
-    install_dir = '/Users/huyvo/Codes/software/install/'
-    download(download_dir)
-    install(download_dir, '', install_dir)
+    download_path = Path('something that does not exist')
+    build_path = Path('something that does not exist')
+    install_path = Path('something that does not exist')
+
+    while not download_path.exists():
+        download_path = input('Enter directory path to extract all downloaded source codes:')
+        download_path = Path(download_path).expanduser()
+        if not download_path.exists():
+            print('Not a valid path, enter again.')
+
+    while not build_path.exists():
+        build_path = input('Enter directory path to do compilation (must be different from source code directory):')
+        build_path = Path(build_path).expanduser()
+        if not build_path.exists():
+            print('Not a valid build path, enter again.')
+
+    while not install_path.exists():
+        install_path = input('Enter directory path to install libraries:')
+        install_path = Path(install_path).expanduser()
+        if not install_path.exists():
+            print('Not a vaild install path, enter again.')
+
+    download(download_path)
+    install(download_path, build_path, install_path)
