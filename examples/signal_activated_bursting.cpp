@@ -8,7 +8,7 @@ static char help[] = "Advance_ CME of signal-activated bursting gene expression 
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>
-#include <util/cme_util.h>
+#include <cme_util.h>
 #include <armadillo>
 #include <cmath>
 #include "FSP/FspSolverBase.h"

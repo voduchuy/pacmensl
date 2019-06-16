@@ -4,7 +4,7 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>
-#include <util/cme_util.h>
+#include <cme_util.h>
 #include <armadillo>
 #include <cmath>
 #include "FSP/FspSolverBase.h"

@@ -2,7 +2,7 @@
 #include <petscblaslapack_stdcall.h>
 
 #include "Matrix/FspMatrixBase.h"
-#include "util/cme_util.h"
+#include "cme_util.h"
 #include "FspMatrixBase.h"
 
 namespace pecmeal {
