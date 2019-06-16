@@ -18,20 +18,21 @@ def download(path_to):
 def install(src_path, build_path, install_path):
     src_dir = Path(src_path)/Path('metis-5.1.0')
     build_dir = Path(build_path)/Path('metis')
-    install_dir = Path(install_path)
-    src_dir = src_dir.expanduser()
-    build_dir = build_dir.expanduser()
-    install_dir = install_dir.expanduser()
+    install_dir = Path(install_path).resolve()
+    src_dir = src_dir.expanduser().resolve()
+    build_dir = build_dir.expanduser().resolve()
+    install_dir = install_dir.expanduser().resolve()
 
     if not build_dir.exists():
         build_dir.mkdir()
 
-    print('configure parmetis...')
+    print('\n configure metis...')
     subprocess.call([
         'cmake',
         '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
         '-DSHARED=1',
         '-DCMAKE_INSTALL_PREFIX='+str(install_dir),
+        '-DGKLIB_PATH='+str(src_dir/Path('GKlib')),
         '-DCMAKE_C_FLAGS=-O3',
         str(src_dir.resolve())
     ],
