@@ -9,7 +9,7 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <cmath>
 #include "FSP/FspSolverBase.h"
 
-#include "models/repressilator_model.h"
+#include "repressilator_model.h"
 
 using arma::dvec;
 using arma::Col;

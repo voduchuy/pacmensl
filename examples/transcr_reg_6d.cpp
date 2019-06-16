@@ -9,7 +9,7 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <cmath>
 #include "FSP/FspSolverBase.h"
 
-#include "models/transcription_regulation_6d_model.h"
+#include "transcription_regulation_6d_model.h"
 
 using arma::dvec;
 using arma::Col;

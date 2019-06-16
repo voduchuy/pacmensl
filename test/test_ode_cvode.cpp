@@ -7,7 +7,7 @@ static char help[] = "Test interface to CVODE for solving the CME of the toggle 
 #include "FspMatrixBase.h"
 #include "OdeSolverBase.h"
 #include "OdeSolver/CvodeFsp.h"
-#include "models/toggle_model.h"
+#include "toggle_model.h"
 
 using namespace pecmeal;
 
