@@ -32,6 +32,7 @@ def install(src_path, build_path, install_path):
             '--with-scalar-type=real',
             '--with-debugging=0',
             'COPTFLAGS=-O2',
+            '--download-fblaslapack',
             '--with-avx512-kernels=1',
             '--with-shared-libraries=1'
         ],
