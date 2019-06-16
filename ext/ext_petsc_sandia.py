@@ -8,32 +8,52 @@ import tarfile as tar
 
 def download(path_to):
     dest_dir = Path(path_to)
-    dest_dir = dest_dir.expanduser()
-    print('cloning trilinos... ')
-    url = 'https://github.com/trilinos/Trilinos.git'
-    subprocess.call(['git', 'clone', url], cwd=dest_dir)
+    dest_dir = dest_dir.expanduser().resolve()
+    url='http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.8.4.tar.gz'
+    wget.download(url, str(dest_dir))
+    f = tar.open(dest_dir/Path('petsc-3.8.4.tar.gz'))
+    f.extractall(dest_dir)
+    new_dir=dest_dir/Path('petsc')
+    (dest_dir/Path('petsc-3.8.4')).rename(new_dir)
 
 
 def install(src_path, build_path, install_path):
-    src_dir = Path(src_path) / Path('Trilinos')
-    build_dir = Path(build_path) / Path('zoltan')
+    src_dir = Path(src_path) / Path('petsc')
+    build_dir = Path(build_path) / Path('petsc')
     install_dir = Path(install_path)
     src_dir = src_dir.expanduser().resolve()
     build_dir = build_dir.expanduser().resolve()
     install_dir = install_dir.expanduser().resolve()
     if not build_dir.exists():
         build_dir.mkdir()
-
-    subprocess.call(['cmake', '-DTPL_ENABLE_MPI=ON', '-DTrilinos_ENABLE_Zoltan=ON',
-                     '-DCMAKE_INSTALL_PREFIX='+str(install_dir.resolve()),
-                     '-DBUILD_SHARED_LIBS=ON',
-                     '-DTPL_ENABLE_ParMETIS=ON',
-                     '-DParMETIS_INCLUDE_DIRS='+str(install_dir.resolve()/Path('include')),
-                     '-DParMETIS_LIBRARY_DIRS='+str(install_dir.resolve()/Path('lib')),
-                     '-DTrilinos_GENERATE_REPO_VERSION_FILE=OFF',
-                     src_dir], cwd=build_dir)
-    subprocess.call(['make'], cwd=build_dir)
-    subprocess.call(['make', 'install'], cwd=build_dir)
+    subprocess.call(
+        [   'python2',
+            './configure',
+            'PETSC_DIR='+str(src_dir),
+            '--prefix=' + str(install_dir),
+            '--with-precision=double',
+            '—-with-threadsafety=1',
+            '--with-scalar-type=real',
+            '--with-debugging=0',
+            'COPTFLAGS=-O2',
+            '--download-openblas=1',
+            '--with-avx512-kernels=1',
+            '--with-shared-libraries=1'
+        ],
+        cwd=src_dir
+    )
+    subprocess.call(
+        [
+            'make', 'PETSC_DIR=' + str(src_dir)
+        ],
+        cwd=src_dir
+    )
+    subprocess.call(
+        [
+            'make', 'PETSC_DIR=' + str(src_dir), 'install'
+        ],
+        cwd=src_dir
+    )
 
 
 if __name__ == "__main__":

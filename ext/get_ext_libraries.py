@@ -1,5 +1,6 @@
 from pathlib import Path
 import ext_armadillo
+import ext_metis
 import ext_parmetis
 import ext_zoltan
 import ext_petsc
@@ -9,12 +10,14 @@ import ext_cvode
 def get_lib(download_path, build_path, install_path):
     print('DOWNLOADING THIRD-PARTY LIBRARIES')
     ext_armadillo.download(download_path)
+    ext_metis.download(download_path)
     ext_parmetis.download(download_path)
     ext_zoltan.download(download_path)
     ext_petsc.download(download_path)
     ext_cvode.download(download_path)
     print('COMPILING AND INSTALLING THIRD-PARTY LIBRARIES')
     ext_armadillo.install(download_path, build_path, install_path)
+    ext_metis.install(download_path, build_path, install_path)
     ext_parmetis.install(download_path, build_path, install_path)
     ext_zoltan.install(download_path, build_path, install_path)
     ext_petsc.install(download_path, build_path, install_path)
