@@ -18,7 +18,7 @@ In addition, PETSc and Sundials must be built with double-precision scalar types
 
 We have interactive Python scripts to download, configure, build and install the required libraries above. In order to download and install third-party libraries with our scripts, follow these steps:
 
-l. Create three separate directories for storing downloaded source files (e.g. 'src'), for writing configuration and build files (e.g. 'build'), and for installation (e.g. 'install').
-l. cd to the 'ext' directory within Pecmeal's folder.
-l. Type 'python get_ext_libraries.py' if you want to download and install all of the libraries. Otherwise, type 'python ext_<library>.py' to install the individual libraries. Replace 'python' with your preferred python binary.
-l. After installation, make sure to add the paths to the installed headers and library files to your environment variables.
+1. Create three separate directories for storing downloaded source files (e.g. 'src'), for writing configuration and build files (e.g. 'build'), and for installation (e.g. 'install').
+1. cd to the 'ext' directory within Pecmeal's folder.
+1. Type 'python get_ext_libraries.py' if you want to download and install all of the libraries. Otherwise, type 'python ext_<library>.py' to install the individual libraries. Replace 'python' with your preferred python binary.
+1. After installation, make sure to add the paths to the installed headers and library files to your environment variables.
