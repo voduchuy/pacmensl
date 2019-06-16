@@ -3,6 +3,11 @@
 PeCmeAL (pek-meal) : Parallel extensible Chemical master equation Analysis Library.
 
 ## Prerequisites
+Compilation and build tools:
+* CMake (3.10 or higher)
+* C, CXX compilers.
+
+An MPI implementation (e.g., OpenMPI, MPICH) on your system.
 
 Pecmeal requires the following libraries to be installed on your system:
 
@@ -22,3 +27,5 @@ We have interactive Python scripts to download, configure, build and install the
 1. cd to the 'ext' directory within Pecmeal's folder.
 1. Type 'python get_ext_libraries.py' if you want to download and install all of the libraries. Otherwise, type 'python ext_<library>.py' to install the individual libraries. Replace 'python' with your preferred python binary.
 1. After installation, make sure to add the paths to the installed headers and library files to your environment variables.
+
+## Installing PeCmeAl
