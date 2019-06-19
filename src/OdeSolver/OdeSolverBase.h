@@ -2,13 +2,13 @@
 // Created by Huy Vo on 12/6/18.
 //
 
-#ifndef PECMEAL_ODESOLVERBASE_H
-#define PECMEAL_ODESOLVERBASE_H
+#ifndef PACMENSL_ODESOLVERBASE_H
+#define PACMENSL_ODESOLVERBASE_H
 
 #include <sundials/sundials_nvector.h>
 #include "cme_util.h"
 
-namespace pecmeal {
+namespace pacmensl {
 enum ODESolverType { KRYLOV, CVODE_BDF };
 
 struct FiniteProblemSolverPerfInfo {
@@ -76,4 +76,4 @@ class OdeSolverBase {
 };
 }
 
-#endif //PECMEAL_ODESOLVERBASE_H
+#endif //PACMENSL_ODESOLVERBASE_H

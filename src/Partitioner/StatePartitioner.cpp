@@ -4,14 +4,15 @@
 
 #include "StatePartitioner.h"
 
-namespace pecmeal {
+namespace pacmensl {
     void StatePartitioner::set_up(PartitioningType part_type, PartitioningApproach part_approach) {
         switch (part_type) {
-            case Graph:
+            case GRAPH:
                 base = new StatePartitionerGraph(comm);
                 break;
-            case HyperGraph:
+            case HYPERGRAPH:
                 base = new StatePartitionerHyperGraph(comm);
+                break;
             default:
                 base = new StatePartitionerBase(comm);
         }

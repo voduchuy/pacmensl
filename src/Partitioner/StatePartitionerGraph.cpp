@@ -4,7 +4,7 @@
 
 #include "StatePartitionerGraph.h"
 
-    namespace pecmeal {
+    namespace pacmensl {
 
         StatePartitionerGraph::StatePartitionerGraph( MPI_Comm _comm ) : StatePartitionerBase( _comm ) {}
 

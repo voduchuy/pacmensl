@@ -2,19 +2,18 @@
 // Created by Huy Vo on 5/7/19.
 //
 
-#ifndef PECMEAL_STATEPARTITIONERHYPERGRAPH_H
-#define PECMEAL_STATEPARTITIONERHYPERGRAPH_H
+#ifndef PACMENSL_STATEPARTITIONERHYPERGRAPH_H
+#define PACMENSL_STATEPARTITIONERHYPERGRAPH_H
 
 #include "StatePartitionerBase.h"
 
 
-namespace pecmeal {
+namespace pacmensl {
     class StatePartitionerHyperGraph : public StatePartitionerBase {
     protected:
         int *num_edges; ///< Number of states that share information with each local states
         int num_reachable_states; ///< Number of nz entries on the rows of the FSP matrix corresponding to local states
         int *reachable_states; ///< Global indices of nz entries on the rows corresponding to local states
-        int *reachable_states_proc; ///< Processors that own the reachable states
         float *edge_weights; ///< For storing the edge weights in graph model
         int *edge_ptr; ///< reachable_states[edge_ptr[i] to ege_ptr[i+1]-1] contains the ids of states connected to local state i
 
@@ -42,4 +41,4 @@ namespace pecmeal {
         ~StatePartitionerHyperGraph();
     };
 }
-#endif //PECMEAL_FINITESTATESUBSETHYPERGRAPH_H
+#endif //PACMENSL_FINITESTATESUBSETHYPERGRAPH_H

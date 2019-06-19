@@ -1,9 +1,9 @@
 
 #include "cme_util.h"
 
-namespace pecmeal {
+namespace pacmensl {
 
-int PecmealInit(int *argc, char ***argv, const char *help) {
+int PACMENSLInit(int *argc, char ***argv, const char *help) {
   PetscErrorCode ierr;
   int mpi_initialized;
   MPI_Initialized(&mpi_initialized);
@@ -16,7 +16,7 @@ int PecmealInit(int *argc, char ***argv, const char *help) {
   return 0;
 }
 
-int PecmealFinalize() {
+int PACMENSLFinalize() {
   PetscErrorCode ierr;
   ierr = PetscFinalize();
   CHKERRQ(ierr);

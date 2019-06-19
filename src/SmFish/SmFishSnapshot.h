@@ -2,13 +2,13 @@
 // Created by Huy Vo on 6/9/19.
 //
 
-#ifndef PECMEAL_SMFISHSNAPSHOT_H
-#define PECMEAL_SMFISHSNAPSHOT_H
+#ifndef PACMENSL_SMFISHSNAPSHOT_H
+#define PACMENSL_SMFISHSNAPSHOT_H
 
 #include<armadillo>
 #include"DiscreteDistribution.h"
 
-namespace pecmeal {
+namespace pacmensl {
 class SmFishSnapshot {
  protected:
   arma::Mat<int> observations_;
@@ -37,4 +37,4 @@ double SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
                                    bool use_base_2 = false);
 }
 
-#endif //PECMEAL_SMFISHSNAPSHOT_H
+#endif //PACMENSL_SMFISHSNAPSHOT_H

@@ -2,12 +2,12 @@
 // Created by Huy Vo on 6/3/19.
 //
 
-#ifndef PECMEAL_MODELS_H
-#define PECMEAL_MODELS_H
+#ifndef PACMENSL_MODELS_H
+#define PACMENSL_MODELS_H
 
 #include <armadillo>
 
-namespace pecmeal {
+namespace pacmensl {
     using PropFun = std::function<double(const int *, const int)>;
     using TcoefFun = std::function<arma::Row<double>(double t)>;
 
@@ -26,4 +26,4 @@ namespace pecmeal {
 };
 
 
-#endif //PECMEAL_MODELS_H
+#endif //PACMENSL_MODELS_H

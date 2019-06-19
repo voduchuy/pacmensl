@@ -11,7 +11,7 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include"cme_util.h"
 #include"StateSetConstrained.h"
 
-using namespace pecmeal;
+using namespace pacmensl;
 
 arma::Mat<PetscInt> SM{
     {1, -1, 0, 0},
@@ -19,8 +19,8 @@ arma::Mat<PetscInt> SM{
 };
 
 int main(int argc, char *argv[]) {
-  //PECMEAL parallel environment object, must be created before using other PECMEAL's functionalities
-  pecmeal::Environment my_env(&argc, &argv, help);
+  //PACMENSL parallel environment object, must be created before using other PACMENSL's functionalities
+  pacmensl::Environment my_env(&argc, &argv, help);
 
   int ierr;
 
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
   X0.col(0).fill(0);
   X0.col(1).fill(my_rank + 1);
 
-  StateSetConstrained fsp(comm, 2, Graph, Repartition);
+  StateSetConstrained fsp(comm, 2, GRAPH, REPARTITION);
   fsp.SetStoichiometryMatrix(SM);
   fsp.SetInitialStates(X0);
 
@@ -50,12 +50,12 @@ int main(int argc, char *argv[]) {
   arma::Mat<PetscInt> local_states = fsp.CopyStatesOnProc();
   arma::Row<PetscInt> petsc_indices = fsp.State2Index(local_states);
   arma::Mat<PetscInt> local_table = arma::join_horiz(local_states.t(), petsc_indices.t());
-  pecmeal::sequential_action(comm, print_states, (void *) &local_table);
+  pacmensl::sequential_action(comm, print_states, (void *) &local_table);
   fsp.Expand();
   local_states = fsp.CopyStatesOnProc();
   petsc_indices = fsp.State2Index(local_states);
   local_table = arma::join_horiz(local_states.t(), petsc_indices.t());
-  pecmeal::sequential_action(comm, print_states, (void *) &local_table);
+  pacmensl::sequential_action(comm, print_states, (void *) &local_table);
   CHKERRQ(ierr);
   MPI_Comm_free(&comm);
 }

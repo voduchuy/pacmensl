@@ -4,14 +4,14 @@
 
 #include "DiscreteDistribution.h"
 
-pecmeal::DiscreteDistribution::~DiscreteDistribution() {
+pacmensl::DiscreteDistribution::~DiscreteDistribution() {
   if (p != PETSC_NULL) VecDestroy(&p);
   if (comm_ != nullptr) MPI_Comm_free(&comm_);
   p = nullptr;
   comm_ = nullptr;
 }
 
-pecmeal::DiscreteDistribution::DiscreteDistribution(const pecmeal::DiscreteDistribution &dist) {
+pacmensl::DiscreteDistribution::DiscreteDistribution(const pacmensl::DiscreteDistribution &dist) {
   PetscErrorCode ierr;
   MPI_Comm_dup(dist.comm_, &comm_);
   t_ = dist.t_;
@@ -26,10 +26,10 @@ pecmeal::DiscreteDistribution::DiscreteDistribution(const pecmeal::DiscreteDistr
   states = dist.states;
 }
 
-pecmeal::DiscreteDistribution::DiscreteDistribution() {
+pacmensl::DiscreteDistribution::DiscreteDistribution() {
 }
 
-pecmeal::DiscreteDistribution::DiscreteDistribution(pecmeal::DiscreteDistribution &&dist) noexcept {
+pacmensl::DiscreteDistribution::DiscreteDistribution(pacmensl::DiscreteDistribution &&dist) noexcept {
   comm_ = dist.comm_;
   t_ = dist.t_;
   states = std::move(dist.states);
@@ -39,8 +39,8 @@ pecmeal::DiscreteDistribution::DiscreteDistribution(pecmeal::DiscreteDistributio
   dist.comm_ = nullptr;
 }
 
-pecmeal::DiscreteDistribution &
-pecmeal::DiscreteDistribution::operator=(const pecmeal::DiscreteDistribution &dist) {
+pacmensl::DiscreteDistribution &
+pacmensl::DiscreteDistribution::operator=(const pacmensl::DiscreteDistribution &dist) {
   PetscErrorCode ierr;
 
   if (comm_ != nullptr) {
@@ -61,8 +61,8 @@ pecmeal::DiscreteDistribution::operator=(const pecmeal::DiscreteDistribution &di
   return *this;
 }
 
-pecmeal::DiscreteDistribution &
-pecmeal::DiscreteDistribution::operator=(pecmeal::DiscreteDistribution &&dist) noexcept {
+pacmensl::DiscreteDistribution &
+pacmensl::DiscreteDistribution::operator=(pacmensl::DiscreteDistribution &&dist) noexcept {
   PetscErrorCode ierr;
 
   if (comm_ != nullptr) {
@@ -86,9 +86,9 @@ pecmeal::DiscreteDistribution::operator=(pecmeal::DiscreteDistribution &&dist) n
 
   return *this;
 }
-pecmeal::DiscreteDistribution::DiscreteDistribution(MPI_Comm comm,
+pacmensl::DiscreteDistribution::DiscreteDistribution(MPI_Comm comm,
                                                     double t,
-                                                    const pecmeal::StateSetBase *state_set,
+                                                    const pacmensl::StateSetBase *state_set,
                                                     const Vec &p) {
   PetscErrorCode ierr;
   MPI_Comm_dup(comm, &this->comm_);
@@ -100,7 +100,7 @@ pecmeal::DiscreteDistribution::DiscreteDistribution(MPI_Comm comm,
   CHKERRABORT(comm, ierr);
 }
 
-arma::Col<PetscReal> pecmeal::Compute1DMarginal(const pecmeal::DiscreteDistribution dist, int species) {
+arma::Col<PetscReal> pacmensl::Compute1DMarginal(const pacmensl::DiscreteDistribution dist, int species) {
   arma::Col<PetscReal> md_on_proc;
   // Find the max molecular count
   int num_species = dist.states.n_rows;

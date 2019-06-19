@@ -5,7 +5,7 @@
 #include "cme_util.h"
 #include "FspMatrixBase.h"
 
-namespace pecmeal {
+namespace pacmensl {
 
 FspMatrixBase::FspMatrixBase(MPI_Comm comm) {
   MPI_Comm_dup(comm, &comm_);

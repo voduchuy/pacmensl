@@ -75,5 +75,5 @@ if __name__ == "__main__":
         if not install_path.exists():
             print('Not a vaild install path, enter again.')
 
-    download(download_path)
+    # download(download_path)
     install(download_path, build_path, install_path)

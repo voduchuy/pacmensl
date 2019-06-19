@@ -4,7 +4,7 @@
 
 #include "FspMatrixConstrained.h"
 
-namespace pecmeal {
+namespace pacmensl {
 FspMatrixConstrained::FspMatrixConstrained(MPI_Comm comm) : FspMatrixBase(comm) {
 }
 

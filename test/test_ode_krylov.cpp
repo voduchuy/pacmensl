@@ -8,11 +8,11 @@ static char help[] = "Test interface to Krylov integrator for solving the CME of
 #include "KrylovFsp.h"
 #include "Models/toggle_model.h"
 
-using namespace pecmeal;
+using namespace pacmensl;
 
 int main(int argc, char *argv[]) {
-  //PECMEAL parallel environment object, must be created before using other PECMEAL's functionalities
-  pecmeal::Environment my_env(&argc, &argv, help);
+  //PACMENSL parallel environment object, must be created before using other PACMENSL's functionalities
+  pacmensl::Environment my_env(&argc, &argv, help);
 
   PetscInt ierr;
 

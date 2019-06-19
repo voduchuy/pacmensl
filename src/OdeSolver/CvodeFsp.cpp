@@ -5,7 +5,7 @@
 #include "OdeSolver/OdeSolverBase.h"
 #include "CvodeFsp.h"
 
-namespace pecmeal {
+namespace pacmensl {
 
 CvodeFsp::CvodeFsp(MPI_Comm _comm, int lmm) : OdeSolverBase(_comm) {
   lmm_ = lmm;
@@ -95,7 +95,7 @@ PetscInt CvodeFsp::Solve() {
 int CvodeFsp::cvode_rhs(double t, N_Vector u, N_Vector udot, void *solver) {
   Vec udata = N_VGetVector_Petsc(u);
   Vec udotdata = N_VGetVector_Petsc(udot);
-  ((pecmeal::OdeSolverBase *) solver)->EvaluateRHS(t, udata, udotdata);
+  ((pacmensl::OdeSolverBase *) solver)->EvaluateRHS(t, udata, udotdata);
   return 0;
 }
 
@@ -104,7 +104,7 @@ CvodeFsp::cvode_jac(N_Vector v, N_Vector Jv, realtype t, N_Vector u, N_Vector fu
                     N_Vector tmp) {
   Vec vdata = N_VGetVector_Petsc(v);
   Vec Jvdata = N_VGetVector_Petsc(Jv);
-  ((pecmeal::OdeSolverBase *) FPS_ptr)->EvaluateRHS(t, vdata, Jvdata);
+  ((pacmensl::OdeSolverBase *) FPS_ptr)->EvaluateRHS(t, vdata, Jvdata);
   return 0;
 }
 

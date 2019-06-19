@@ -10,6 +10,6 @@ set(TEST_PROGRAMS
 
 foreach ( PROG ${TEST_PROGRAMS})
     add_executable(${PROG} ${PROG}.cpp)
-    target_link_libraries(${PROG} Pecmeal)
+    target_link_libraries(${PROG} PACMENSL)
     install(TARGETS ${PROG} DESTINATION ${TESTS_INSTALL_DIR})
 endforeach()

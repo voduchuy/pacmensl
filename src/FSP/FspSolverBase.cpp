@@ -4,7 +4,7 @@
 
 #include "FspSolverBase.h"
 
-namespace pecmeal {
+namespace pacmensl {
 FspSolverBase::FspSolverBase(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type) {
   MPI_Comm_dup(_comm, &(FspSolverBase::comm_));
   MPI_Comm_rank(comm_, &my_rank_);
@@ -218,7 +218,7 @@ void FspSolverBase::SetUp() {
                                        repart_approach_);
   state_set_->SetStoichiometryMatrix(model_.stoichiometry_matrix_);
   if (have_custom_constraints_) {
-    ((StateSetConstrained *) state_set_)->SetShape(fsp_constr_funs_, fsp_bounds_);
+      (( StateSetConstrained * ) state_set_ )->SetShape( fsp_constr_funs_, fsp_bounds_, nullptr );
   } else {
     ((StateSetConstrained *) state_set_)->SetShapeBounds(fsp_bounds_);
   }
@@ -340,7 +340,7 @@ void FspSolverBase::SetFromOptions() {
     partitioning_type_ = str2part(std::string(opt));
   }
   if (num_procs == 1) {
-    partitioning_type_ = Graph;
+    partitioning_type_ = GRAPH;
   }
 
   ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
@@ -432,7 +432,7 @@ DiscreteDistribution FspSolverBase::Solve(PetscReal t_final, PetscReal fsp_tol) 
   return solution;
 }
 
-std::vector<DiscreteDistribution> FspSolverBase::SolveTspan(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol) {
+std::vector<DiscreteDistribution> FspSolverBase::SolveTspan( const std::vector<PetscReal> &tspan, PetscReal fsp_tol) {
   std::vector<DiscreteDistribution> outputs;
   PetscErrorCode ierr;
   if (p_ == nullptr) {
@@ -456,14 +456,17 @@ std::vector<DiscreteDistribution> FspSolverBase::SolveTspan(const arma::Row<Pets
   ierr = VecAssemblyEnd(*p_);
   CHKERRABORT(comm_, ierr);
 
-  int num_time_points = tspan.n_elem;
+  int num_time_points = tspan.size();
   outputs.resize(num_time_points);
 
+  PetscReal t_max = tspan[num_time_points-1];
+
   DiscreteDistribution sol;
+
   ode_solver_->set_current_time(0.0);
   for (int i = 0; i < num_time_points; ++i) {
-    sol = FspSolverBase::Advance_(tspan(i), tspan(i) * fsp_tol / tspan.max());
-    outputs.at(i) = sol;
+    sol = FspSolverBase::Advance_(tspan[i], tspan[i] * fsp_tol / t_max);
+    outputs[i] = sol;
   }
 
   return outputs;

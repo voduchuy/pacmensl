@@ -2,8 +2,8 @@
 // Created by Huy Vo on 5/27/19.
 //
 
-#ifndef PECMEAL_STATESETPARTITIONERBASE_H
-#define PECMEAL_STATESETPARTITIONERBASE_H
+#ifndef PACMENSL_STATESETPARTITIONERBASE_H
+#define PACMENSL_STATESETPARTITIONERBASE_H
 
 #include <zoltan.h>
 #include <armadillo>
@@ -11,13 +11,13 @@
 #include "cme_util.h"
 #include "string.h"
 
-namespace pecmeal {
+namespace pacmensl {
     enum PartitioningType {
-        Block, Graph, HyperGraph, Hierarchical, None
+        BLOCK, GRAPH, HYPERGRAPH, HIERARCHICAL
     };
 
     enum PartitioningApproach {
-        FromScratch, Repartition, Refine
+        FROMSCRATCH, REPARTITION, REFINE
     };
 
     class StatePartitionerBase {
@@ -32,7 +32,7 @@ namespace pecmeal {
         int *layout_ = nullptr;
         int *ind_starts = nullptr;
 
-        PartitioningType type = None;
+        PartitioningType type = BLOCK;
         PartitioningApproach approach;
 
         int num_species_ = 0;
@@ -93,4 +93,4 @@ namespace pecmeal {
     PartitioningApproach str2partapproach(std::string str);
 }
 
-#endif //PECMEAL_STATESETPARTITIONERBASE_H
+#endif //PACMENSL_STATESETPARTITIONERBASE_H

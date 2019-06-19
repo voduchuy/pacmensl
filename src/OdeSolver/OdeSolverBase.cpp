@@ -3,7 +3,7 @@
 //
 #include "OdeSolverBase.h"
 
-namespace pecmeal {
+namespace pacmensl {
 
 void OdeSolverBase::set_print_intermediate(int iprint) {
   print_intermediate = iprint;

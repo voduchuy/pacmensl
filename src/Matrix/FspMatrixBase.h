@@ -15,7 +15,7 @@
 #include "StateSetBase.h"
 #include "StateSetConstrained.h"
 
-namespace pecmeal {
+namespace pacmensl {
 using Real = PetscReal;
 using Int = PetscInt;
 

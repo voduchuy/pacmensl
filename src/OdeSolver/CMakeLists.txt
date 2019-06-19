@@ -11,7 +11,7 @@ endforeach()
 
 add_library(ODE_OBJ OBJECT ${ode_solver_srcs} ${ode_solver_headers})
 
-list(APPEND PECMEAL_OBJECTS "$<TARGET_OBJECTS:ODE_OBJ>")
-set(PECMEAL_OBJECTS ${PECMEAL_OBJECTS} PARENT_SCOPE)
+list(APPEND PACMENSL_OBJECTS "$<TARGET_OBJECTS:ODE_OBJ>")
+set(PACMENSL_OBJECTS ${PACMENSL_OBJECTS} PARENT_SCOPE)
 
-install(FILES ${ode_solver_headers} DESTINATION include/pecmeal/)
+install(FILES ${ode_solver_headers} DESTINATION include/PACMENSL/)

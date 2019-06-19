@@ -7,11 +7,11 @@
 //
 static char help[] = "Test interface to CVODE for solving the CME of the toggle model.\n\n";
 
-#include "pecmeal_all.h"
+#include "pacmensl_all.h"
 #include "FspSolverBase.h"
 #include "toggle_model.h"
 
-using namespace pecmeal;
+using namespace pacmensl;
 
 int main(int argc, char *argv[]) {
   Environment my_env(&argc, &argv, help);
@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
   PetscReal stmp;
   DiscreteDistribution p_final_bdf, p_final_krylov;
   std::vector<DiscreteDistribution> p_snapshots_bdf, p_snapshots_krylov;
-  arma::Row<PetscReal> tspan;
+  std::vector<PetscReal> tspan;
   Vec q;
 
   std::string model_name = "toggle_switch";
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
   arma::Row<int> fsp_size = {100, 100};
   arma::Row<PetscReal> expansion_factors = {0.25, 0.25};
 
-  tspan = arma::linspace<arma::Row<PetscReal>>(0.0, t_final, 10);
+  tspan = arma::conv_to<std::vector<PetscReal>>::from(arma::linspace<arma::Row<PetscReal>>(0.0, t_final, 10));
 
   FspSolverBase fsp(PETSC_COMM_WORLD);
 
@@ -66,11 +66,11 @@ int main(int argc, char *argv[]) {
   ierr = VecNorm(q, NORM_1, &stmp); CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD, "Final solution Krylov - BDF = %.2e \n", stmp);
 
-  for (int i{0}; i < tspan.n_elem; ++i){
+  for (int i{0}; i < tspan.size(); ++i){
     ierr = VecCopy(p_snapshots_bdf[i].p, q); CHKERRQ(ierr);
     ierr = VecAXPY(q, -1.0, p_snapshots_krylov[i].p); CHKERRQ(ierr);
     ierr = VecNorm(q, NORM_1, &stmp); CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD, "Final solution at t = %.2e Krylov - BDF = %.2e \n", tspan(i), stmp);
+    PetscPrintf(PETSC_COMM_WORLD, "Final solution at t = %.2e Krylov - BDF = %.2e \n", tspan.at(i), stmp);
 
     ierr = VecSum(p_final_bdf.p, &stmp); CHKERRQ(ierr);
     PetscPrintf(PETSC_COMM_WORLD, "Sum(p_final_bdf) = %.2e \n", stmp);

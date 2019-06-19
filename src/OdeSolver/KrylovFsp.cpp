@@ -4,9 +4,9 @@
 
 #include "KrylovFsp.h"
 
-pecmeal::KrylovFsp::KrylovFsp(MPI_Comm comm) : OdeSolverBase(comm) {}
+pacmensl::KrylovFsp::KrylovFsp(MPI_Comm comm) : OdeSolverBase(comm) {}
 
-PetscInt pecmeal::KrylovFsp::Solve() {
+PetscInt pacmensl::KrylovFsp::Solve() {
   // Make sure the necessary data has been set
   assert(solution_ != nullptr);
   assert(rhs_);
@@ -56,7 +56,7 @@ PetscInt pecmeal::KrylovFsp::Solve() {
   return stop;
 }
 
-int pecmeal::KrylovFsp::AdvanceOneStep(const Vec &v) {
+int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v) {
   if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_advance_one_step_, 0, 0, 0,0));
 
   PetscErrorCode petsc_err;
@@ -155,7 +155,7 @@ int pecmeal::KrylovFsp::AdvanceOneStep(const Vec &v) {
   return 0;
 }
 
-int pecmeal::KrylovFsp::GenerateBasis(const Vec &v, int m) {
+int pacmensl::KrylovFsp::GenerateBasis(const Vec &v, int m) {
   if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_generate_basis_, 0, 0, 0,0));
 
   int petsc_error;
@@ -205,7 +205,7 @@ int pecmeal::KrylovFsp::GenerateBasis(const Vec &v, int m) {
   return 0;
 }
 
-int pecmeal::KrylovFsp::SetUpWorkSpace() {
+int pacmensl::KrylovFsp::SetUpWorkSpace() {
   if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_set_up_workspace_, 0, 0, 0,0));
 
   if (!solution_) {
@@ -235,7 +235,7 @@ int pecmeal::KrylovFsp::SetUpWorkSpace() {
 }
 
 
-int pecmeal::KrylovFsp::GetDky(PetscReal t, int deg, Vec p_vec) {
+int pacmensl::KrylovFsp::GetDky(PetscReal t, int deg, Vec p_vec) {
   if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_getdky_, 0, 0, 0,0));
 
   if (t < t_now_ || t > t_now_tmp_) {
@@ -274,11 +274,11 @@ int pecmeal::KrylovFsp::GetDky(PetscReal t, int deg, Vec p_vec) {
   return 0;
 }
 
-pecmeal::KrylovFsp::~KrylovFsp() {
+pacmensl::KrylovFsp::~KrylovFsp() {
   FreeWorkspace();
 }
 
-void pecmeal::KrylovFsp::FreeWorkspace() {
+void pacmensl::KrylovFsp::FreeWorkspace() {
   if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_free_workspace_, 0, 0, 0,0));
   for (int i{0}; i < Vm.size(); ++i) {
     VecDestroy(&Vm[i]);
@@ -289,7 +289,7 @@ void pecmeal::KrylovFsp::FreeWorkspace() {
   if (logging_enabled) CHKERRABORT(comm_, PetscLogEventEnd(event_free_workspace_, 0, 0, 0,0));
 }
 
-void pecmeal::KrylovFsp::SetUp() {
+void pacmensl::KrylovFsp::SetUp() {
   OdeSolverBase::SetUp();
   PetscErrorCode ierr;
   if (logging_enabled) {

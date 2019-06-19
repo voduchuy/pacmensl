@@ -4,16 +4,16 @@
 
 #include "SmFishSnapshot.h"
 
-pecmeal::SmFishSnapshot::SmFishSnapshot(const arma::Mat<int> &observations, const arma::Row<int> &frequencies) {
+pacmensl::SmFishSnapshot::SmFishSnapshot(const arma::Mat<int> &observations, const arma::Row<int> &frequencies) {
   observations_ = observations;
   frequencies_ = frequencies;
   has_data_ = true;
   GenerateMap();
 }
 
-void pecmeal::SmFishSnapshot::GenerateMap() {
+void pacmensl::SmFishSnapshot::GenerateMap() {
   if (!has_data_) {
-    std::cout << "pecmeal::SmFishSnapshot: Cannot generate a map without data.\n";
+    std::cout << "pacmensl::SmFishSnapshot: Cannot generate a map without data.\n";
     return;
   }
 
@@ -26,7 +26,7 @@ void pecmeal::SmFishSnapshot::GenerateMap() {
   has_dictionary_ = true;
 }
 
-void pecmeal::SmFishSnapshot::Clear() {
+void pacmensl::SmFishSnapshot::Clear() {
   observations_.clear();
   frequencies_.clear();
   ob2ind.clear();
@@ -34,7 +34,7 @@ void pecmeal::SmFishSnapshot::Clear() {
   has_data_ = false;
 }
 
-int pecmeal::SmFishSnapshot::GetObservationIndex(const arma::Col<int> &x) const {
+int pacmensl::SmFishSnapshot::GetObservationIndex(const arma::Col<int> &x) const {
   if (x.n_elem != observations_.n_rows) {
     return -1;
   }
@@ -46,14 +46,14 @@ int pecmeal::SmFishSnapshot::GetObservationIndex(const arma::Col<int> &x) const 
   }
 }
 
-int pecmeal::SmFishSnapshot::GetNumObservations() const {
+int pacmensl::SmFishSnapshot::GetNumObservations() const {
   return observations_.n_cols;
 }
-const arma::Row<int> &pecmeal::SmFishSnapshot::GetFrequencies() const {
+const arma::Row<int> &pacmensl::SmFishSnapshot::GetFrequencies() const {
   return frequencies_;
 }
 
-pecmeal::SmFishSnapshot &pecmeal::SmFishSnapshot::operator=(pecmeal::SmFishSnapshot &&src) noexcept {
+pacmensl::SmFishSnapshot &pacmensl::SmFishSnapshot::operator=(pacmensl::SmFishSnapshot &&src) noexcept {
   Clear();
 
   observations_ = std::move(src.observations_);
@@ -65,7 +65,7 @@ pecmeal::SmFishSnapshot &pecmeal::SmFishSnapshot::operator=(pecmeal::SmFishSnaps
   return *this;
 }
 
-double pecmeal::SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
+double pacmensl::SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
                                             const DiscreteDistribution &distribution,
                                             arma::Col<int> measured_species,
                                             bool use_base_2) {

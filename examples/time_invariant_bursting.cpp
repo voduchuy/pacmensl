@@ -20,7 +20,7 @@ using arma::Row;
 using std::cout;
 using std::endl;
 
-using namespace pecmeal;
+using namespace pacmensl;
 using FspSolver = FspSolverBase;
 
 void output_marginals(MPI_Comm comm,
@@ -44,8 +44,8 @@ void output_time(MPI_Comm comm,
 void petscvec_to_file(MPI_Comm comm, Vec x, const char *filename);
 
 int main(int argc, char *argv[]) {
-  //PECMEAL parallel environment object, must be created before using other PECMEAL's functionalities
-  pecmeal::Environment my_env(&argc, &argv, help);
+  //PACMENSL parallel environment object, must be created before using other PACMENSL's functionalities
+  pacmensl::Environment my_env(&argc, &argv, help);
 
   PetscMPIInt ierr, num_procs;
   MPI_Comm comm;
@@ -98,8 +98,8 @@ int main(int argc, char *argv[]) {
   il1b_model.t_fun_ = t_fun;
 
   // Default options
-  PartitioningType fsp_par_type = Graph;
-  PartitioningApproach fsp_repart_approach = Repartition;
+  PartitioningType fsp_par_type = GRAPH;
+  PartitioningApproach fsp_repart_approach = REPARTITION;
   ODESolverType fsp_odes_type = KRYLOV;
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;

@@ -5,9 +5,9 @@
 #include "StateSetBase.h"
 #include "StateSetConstrained.h"
 
-pecmeal::StateSetConstrained::StateSetConstrained( MPI_Comm new_comm, int num_species,
-                                                               pecmeal::PartitioningType lb_type,
-                                                               pecmeal::PartitioningApproach lb_approach )
+pacmensl::StateSetConstrained::StateSetConstrained( MPI_Comm new_comm, int num_species,
+                                                               pacmensl::PartitioningType lb_type,
+                                                               pacmensl::PartitioningApproach lb_approach )
         : StateSetBase( new_comm, num_species,
                            lb_type, lb_approach ) {
 
@@ -20,7 +20,7 @@ pecmeal::StateSetConstrained::StateSetConstrained( MPI_Comm new_comm, int num_sp
  * @param x
  * @return 0 if x satisfies all constraints; otherwise -1.
  */
-PetscInt pecmeal::StateSetConstrained::check_state( PetscInt *x ) {
+PetscInt pacmensl::StateSetConstrained::check_state( PetscInt *x ) {
     for ( int i1{0}; i1 < num_species_; ++i1 ) {
         if ( x[ i1 ] < 0 ) {
             return -1;
@@ -28,7 +28,7 @@ PetscInt pecmeal::StateSetConstrained::check_state( PetscInt *x ) {
     }
     int *fval;
     fval = new int[rhs_constr.n_elem];
-    lhs_constr( num_species_, rhs_constr.n_elem, 1, x, &fval[ 0 ] );
+    lhs_constr( num_species_, rhs_constr.n_elem, 1, x, &fval[ 0 ], args_constr );
 
     for ( int i{0}; i < rhs_constr.n_elem; ++i ) {
         if ( fval[ i ] > rhs_constr( i )) {
@@ -45,10 +45,10 @@ PetscInt pecmeal::StateSetConstrained::check_state( PetscInt *x ) {
  * @return void.
  */
 void
-pecmeal::StateSetConstrained::CheckConstraints(PetscInt num_states, PetscInt *x,
+pacmensl::StateSetConstrained::CheckConstraints(PetscInt num_states, PetscInt *x,
                                                      PetscInt *satisfied) {
     auto *fval = new int[num_states * rhs_constr.n_elem];
-    lhs_constr( num_species_, rhs_constr.n_elem, num_states, x, fval );
+    lhs_constr( num_species_, rhs_constr.n_elem, num_states, x, fval, args_constr );
     for ( int iconstr = 0; iconstr < rhs_constr.n_elem; ++iconstr ) {
         for ( int i = 0; i < num_states; ++i ) {
             satisfied[ num_states * iconstr + i ] = ( fval[ rhs_constr.n_elem * i + iconstr ] <=
@@ -63,38 +63,48 @@ pecmeal::StateSetConstrained::CheckConstraints(PetscInt num_states, PetscInt *x,
     delete[] fval;
 }
 
-arma::Row< int > pecmeal::StateSetConstrained::GetShapeBounds() const {
+arma::Row< int > pacmensl::StateSetConstrained::GetShapeBounds() const {
     return arma::Row< int >( rhs_constr );
 }
 
-PetscInt pecmeal::StateSetConstrained::GetNumConstraints() const {
+PetscInt pacmensl::StateSetConstrained::GetNumConstraints() const {
     return rhs_constr.n_elem;
 }
 
 void
-pecmeal::StateSetConstrained::default_constr_fun( int num_species, int num_constr, int n_states, int *states,
-                                                           int *outputs ) {
+pacmensl::StateSetConstrained::default_constr_fun( int num_species, int num_constr, int n_states, int *states,
+                                                  int *outputs, void *args ) {
     for ( int i{0}; i < n_states * num_species; ++i ) {
         outputs[ i ] = states[ i ];
     }
 }
 
-void pecmeal::StateSetConstrained::SetShape(
-        fsp_constr_multi_fn *lhs_fun,
-        arma::Row<int> &rhs_bounds) {
+void pacmensl::StateSetConstrained::SetShape( fsp_constr_multi_fn *lhs_fun, arma::Row< int > &rhs_bounds, void *args ) {
     lhs_constr = lhs_fun;
+    rhs_constr = rhs_bounds;
+    args_constr = args;
+}
+
+void
+pacmensl::StateSetConstrained::SetShape( int num_constraints, fsp_constr_multi_fn *lhs_fun, int *bounds, void *args ) {
+    lhs_constr = lhs_fun;
+    rhs_constr = arma::Row<int>(bounds, num_constraints);
+    args_constr = args;
+}
+
+void pacmensl::StateSetConstrained::SetShapeBounds(arma::Row<int> &rhs_bounds) {
     rhs_constr = rhs_bounds;
 }
 
-void pecmeal::StateSetConstrained::SetShapeBounds(arma::Row<int> &rhs_bounds) {
-    rhs_constr = rhs_bounds;
+void pacmensl::StateSetConstrained::SetShapeBounds( int num_constraints, int *bounds ) {
+    rhs_constr = arma::Row<int>(bounds, num_constraints);
 }
 
 /**
  * Call level: collective.
  * This function also distribute the states into the processors to improve the load-balance of matrix-vector multplications.
  */
-void pecmeal::StateSetConstrained::Expand() {
+void pacmensl::StateSetConstrained::Expand() {
     bool frontier_empty;
 
     // Switch states with status -1 to 1, for they may Expand to new states when the shape constraints are relaxed
@@ -173,3 +183,5 @@ void pecmeal::StateSetConstrained::Expand() {
     }
     logger_.event_end( logger_.call_partitioner_event );
 }
+
+

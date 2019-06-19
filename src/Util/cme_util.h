@@ -1,5 +1,5 @@
-#ifndef PECMEAL_UTIL_H
-#define PECMEAL_UTIL_H
+#ifndef PACMENSL_UTIL_H
+#define PACMENSL_UTIL_H
 
 #define ARMA_DONT_PRINT_ERRORS
 #include <armadillo>
@@ -36,7 +36,7 @@
             object &operator=( const object & ) = delete;\
 \
 
-namespace pecmeal {
+namespace pacmensl {
 #define SQR1 sqrt(0.1e0)
 
 /*
@@ -230,9 +230,9 @@ namespace pecmeal {
 /*! Initialize and finalize Parallel context
  *
  */
-    int PecmealInit(int *argc, char ***argv, const char *help);
+    int PACMENSLInit(int *argc, char ***argv, const char *help);
 
-    int PecmealFinalize();
+    int PACMENSLFinalize();
 
     void sequential_action(MPI_Comm comm, std::function<void(void *)> action, void *data);
 

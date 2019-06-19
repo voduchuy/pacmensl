@@ -2,15 +2,15 @@
 // Created by Huy Vo on 6/4/19.
 //
 
-#ifndef PECMEAL_FSPSOLUTION_H
-#define PECMEAL_FSPSOLUTION_H
+#ifndef PACMENSL_FSPSOLUTION_H
+#define PACMENSL_FSPSOLUTION_H
 
 #include<armadillo>
 #include<petsc.h>
 #include "cme_util.h"
 #include "StateSetBase.h"
 
-namespace pecmeal {
+namespace pacmensl {
     struct DiscreteDistribution {
         MPI_Comm comm_ = nullptr;
         double t_ = 0.0;
@@ -35,4 +35,4 @@ namespace pecmeal {
     arma::Col<PetscReal> Compute1DMarginal(const DiscreteDistribution dist, int species);
 }
 
-#endif //PECMEAL_FSPSOLUTION_H
+#endif //PACMENSL_FSPSOLUTION_H

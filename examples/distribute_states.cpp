@@ -15,7 +15,7 @@ static char help[] = "Generate Finite State Subset and output to files.\n\n";
 #include "hog1p_5d_model.h"
 #include "transcription_regulation_6d_model.h"
 #include "hog1p_3d_model.h"
-#include "pecmeal_all.h"
+#include "pacmensl_all.h"
 
 using arma::dvec;
 using arma::Col;
@@ -25,11 +25,11 @@ using std::cout;
 using std::endl;
 
 using namespace hog1p_cme;
-using namespace pecmeal;
+using namespace pacmensl;
 
 int main(int argc, char *argv[]) {
-  //PECMEAL parallel environment object, must be created before using other PECMEAL's functionalities
-  pecmeal::Environment my_env(&argc, &argv, help);
+  //PACMENSL parallel environment object, must be created before using other PACMENSL's functionalities
+  pacmensl::Environment my_env(&argc, &argv, help);
 
   PetscMPIInt myRank, num_procs;
   PetscErrorCode ierr;
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
   FSPBounds = toggle_cme::rhs_constr;
   stoich_mat = toggle_cme::SM;
   part_option = "graph";
-  fsp_par_type = Graph;
+  fsp_par_type = GRAPH;
   X0.set_size(2, 1);
   X0.fill(0);
 
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
   StateSetConstrained state_set(comm, X0.n_rows, fsp_par_type, fsp_repart_approach);
   state_set.SetStoichiometryMatrix(stoich_mat);
   state_set.SetInitialStates(X0);
-  state_set.SetShape(FSPConstraintFuns, FSPBounds);
+    state_set.SetShape( FSPConstraintFuns, FSPBounds, nullptr );
 
   state_set.Expand();
 

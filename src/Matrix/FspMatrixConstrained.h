@@ -2,12 +2,12 @@
 // Created by Huy Vo on 6/2/19.
 //
 
-#ifndef PECMEAL_FSPMATRIXCONSTRAINED_H
-#define PECMEAL_FSPMATRIXCONSTRAINED_H
+#ifndef PACMENSL_FSPMATRIXCONSTRAINED_H
+#define PACMENSL_FSPMATRIXCONSTRAINED_H
 
 #include "FspMatrixBase.h"
 
-namespace pecmeal {
+namespace pacmensl {
     class FspMatrixConstrained : public FspMatrixBase {
     protected:
         int num_constraints_;
@@ -33,4 +33,4 @@ namespace pecmeal {
     };
 }
 
-#endif //PECMEAL_FSPMATRIXCONSTRAINED_H
+#endif //PACMENSL_FSPMATRIXCONSTRAINED_H

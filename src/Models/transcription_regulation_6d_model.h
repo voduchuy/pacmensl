@@ -59,7 +59,7 @@ namespace six_species_cme {
 
     // Function to constraint the shape of the FSP
     void lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
-                    int *vals) {
+                    int *vals, void *args) {
         for (int j{0}; j < num_states; ++j) {
             for (int i{0}; i < 6; ++i) {
                 vals[j * num_constrs + i] = states[num_species * j + i];

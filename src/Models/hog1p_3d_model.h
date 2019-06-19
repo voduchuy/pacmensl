@@ -21,7 +21,7 @@ namespace hog3d_cme {
 
     // Function to constraint the shape of the FSP
     void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
-                       int *vals){
+                       int *vals, void *args){
 
         for (int i{0}; i < num_states; ++i){
             vals[i*num_constrs] = states[num_species*i];

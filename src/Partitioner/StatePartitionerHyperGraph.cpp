@@ -4,7 +4,7 @@
 
 #include "StatePartitionerHyperGraph.h"
 
-    namespace pecmeal{
+    namespace pacmensl{
 
         void StatePartitionerHyperGraph::generate_data( ) {
             auto num_reactions = ( int ) stoich_mat_ptr_->n_cols;
@@ -84,8 +84,7 @@
         void StatePartitionerHyperGraph::free_data( ) {
             StatePartitionerBase::free_data();
             delete[] num_edges;
-            Zoltan_Free(( void ** ) &states_indices_, __FILE__, __LINE__ );
-            Zoltan_Free(( void ** ) &reachable_states, __FILE__, __LINE__ );
+            delete[] reachable_states;
             delete[] edge_ptr;
         }
 

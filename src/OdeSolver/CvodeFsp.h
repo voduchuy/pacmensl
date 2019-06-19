@@ -2,8 +2,8 @@
 // Created by Huy Vo on 12/6/18.
 //
 
-#ifndef PECMEAL_CVODEFSP_H
-#define PECMEAL_CVODEFSP_H
+#ifndef PACMENSL_CVODEFSP_H
+#define PACMENSL_CVODEFSP_H
 
 #include<cvode/cvode.h>
 #include<cvode/cvode_spils.h>
@@ -28,7 +28,7 @@
 #define CVODECHKERR(comm_, flag){while(false){}};
 #endif
 
-namespace pecmeal {
+namespace pacmensl {
 class CvodeFsp : public OdeSolverBase {
  protected:
   int lmm_;
@@ -56,4 +56,4 @@ class CvodeFsp : public OdeSolverBase {
 };
 }
 
-#endif //PECMEAL_CVODEFSP_H
+#endif //PACMENSL_CVODEFSP_H

@@ -2,8 +2,8 @@
 // Created by Huy Vo on 5/31/19.
 //
 
-#ifndef PECMEAL_STATESETPARTITIONER_H
-#define PECMEAL_STATESETPARTITIONER_H
+#ifndef PACMENSL_STATESETPARTITIONER_H
+#define PACMENSL_STATESETPARTITIONER_H
 
 #include "StatePartitionerBase.h"
 #include "StatePartitionerGraph.h"
@@ -12,7 +12,7 @@
 
 // Added something
 
-namespace pecmeal {
+namespace pacmensl {
     class StatePartitioner {
     private:
         MPI_Comm comm = nullptr;
@@ -20,7 +20,7 @@ namespace pecmeal {
     public:
         explicit StatePartitioner(MPI_Comm _comm) { MPI_Comm_dup(_comm, &comm); };
 
-        void set_up(PartitioningType part_type, PartitioningApproach part_approach = Repartition);
+        void set_up(PartitioningType part_type, PartitioningApproach part_approach = REPARTITION);
 
         void partition(arma::Mat<int> &states, Zoltan_DD_Struct *state_directory, arma::Mat<int> &stoich_mat,
                        int *layout);
@@ -33,4 +33,4 @@ namespace pecmeal {
 }
 
 
-#endif //PECMEAL_STATESETPARTITIONER_H
+#endif //PACMENSL_STATESETPARTITIONER_H

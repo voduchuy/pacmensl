@@ -2,12 +2,12 @@
 // Created by Huy Vo on 5/7/19.
 //
 
-#ifndef PECMEAL_STATEPARTITIONERGRAPH_H
-#define PECMEAL_STATEPARTITIONERGRAPH_H
+#ifndef PACMENSL_STATEPARTITIONERGRAPH_H
+#define PACMENSL_STATEPARTITIONERGRAPH_H
 
 #include "StatePartitionerBase.h"
 
-namespace pecmeal {
+namespace pacmensl {
     class StatePartitionerGraph : public StatePartitionerBase {
     protected:
         int *num_edges; ///< Number of states that share information with each local states
@@ -36,4 +36,4 @@ namespace pecmeal {
     };
 }
 
-#endif //PECMEAL_FINITESTATESUBSETGRAPH_H
+#endif //PACMENSL_FINITESTATESUBSETGRAPH_H

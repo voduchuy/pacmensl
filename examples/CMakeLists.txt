@@ -5,14 +5,14 @@ set(EXAMPLES
         distribute_states
         hog1p
         time_invariant_bursting
-#        repressilator
-#        transcr_reg_6d
+        repressilator
+        transcr_reg_6d
         )
 
 set(EXAMPLES ${EXAMPLES} PARENT_SCOPE)
 
 foreach ( PROG ${EXAMPLES})
     add_executable(${PROG} ${CMAKE_SOURCE_DIR}/examples/${PROG}.cpp)
-    target_link_libraries(${PROG} Pecmeal)
+    target_link_libraries(${PROG} PACMENSL)
     install(TARGETS ${PROG} DESTINATION ${EXAMPLES_INSTALL_DIR})
 endforeach()

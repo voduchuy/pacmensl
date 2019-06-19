@@ -20,7 +20,7 @@ using arma::Row;
 using std::cout;
 using std::endl;
 
-using namespace pecmeal;
+using namespace pacmensl;
 using FspSolver = FspSolverBase;
 
 void output_marginals(MPI_Comm comm, std::string model_name, std::string part_type, std::string part_approach, std::string constraint_type, DiscreteDistribution& solution);
@@ -32,7 +32,7 @@ int main( int argc, char *argv[] ) {
 
     PetscMPIInt ierr, myRank, num_procs;
 
-    ierr = pecmeal::PecmealInit(&argc, &argv, help);
+    ierr = pacmensl::PACMENSLInit(&argc, &argv, help);
     CHKERRQ( ierr );
 
     // Begin Parallel FSP context
@@ -95,8 +95,8 @@ int main( int argc, char *argv[] ) {
         il1b_model.t_fun_ = t_fun;
 
         // Default options
-        PartitioningType fsp_par_type = Graph;
-        PartitioningApproach fsp_repart_approach = Repartition;
+        PartitioningType fsp_par_type = GRAPH;
+        PartitioningApproach fsp_repart_approach = REPARTITION;
         ODESolverType fsp_odes_type = CVODE_BDF;
         PetscBool output_marginal = PETSC_FALSE;
         PetscBool fsp_log_events = PETSC_FALSE;
@@ -167,7 +167,7 @@ int main( int argc, char *argv[] ) {
         fsp_solver.Destroy();
     }
     //End Parallel FSP context
-    ierr = pecmeal::PecmealFinalize();
+    ierr = pacmensl::PACMENSLFinalize();
     return ierr;
 }
 

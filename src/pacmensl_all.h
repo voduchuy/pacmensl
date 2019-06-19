@@ -2,8 +2,8 @@
 // Created by Huy Vo on 6/8/19.
 //
 
-#ifndef PECMEAL_ALL_H
-#define PECMEAL_ALL_H
+#ifndef PACMENSL_ALL_H
+#define PACMENSL_ALL_H
 #include "StateSetBase.h"
 #include "StateSetConstrained.h"
 #include "FspMatrixBase.h"
@@ -13,4 +13,4 @@
 #include "CvodeFsp.h"
 #include "FspSolverBase.h"
 #include "SmFishSnapshot.h"
-#endif //PECMEAL_ALL_H
+#endif //PACMENSL_ALL_H

@@ -2,8 +2,8 @@
 // Created by Huy Vo on 5/29/18.
 //
 
-#ifndef PECMEAL_FSP_H
-#define PECMEAL_FSP_H
+#ifndef PACMENSL_FSP_H
+#define PACMENSL_FSP_H
 
 #include<algorithm>
 #include<cstdlib>
@@ -19,7 +19,7 @@
 #include"CvodeFsp.h"
 #include"cme_util.h"
 
-namespace pecmeal {
+namespace pacmensl {
 struct FspSolverComponentTiming {
   PetscReal StatePartitioningTime;
   PetscReal MatrixGenerationTime;
@@ -35,7 +35,7 @@ class FspSolverBase {
  public:
   NOT_COPYABLE_NOT_MOVABLE(FspSolverBase);
 
-  explicit FspSolverBase(MPI_Comm _comm, PartitioningType _part_type = Graph, ODESolverType _solve_type = CVODE_BDF);
+  explicit FspSolverBase(MPI_Comm _comm, PartitioningType _part_type = GRAPH, ODESolverType _solve_type = CVODE_BDF);
 
   void SetConstraintFunctions(fsp_constr_multi_fn *lhs_constr);
 
@@ -69,7 +69,7 @@ class FspSolverBase {
 
   DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol);
 
-  std::vector<DiscreteDistribution> SolveTspan(const arma::Row<PetscReal> &tspan, PetscReal fsp_tol);
+  std::vector<DiscreteDistribution> SolveTspan( const std::vector< PetscReal > &tspan, PetscReal fsp_tol);
 
   void Destroy();
 
@@ -80,8 +80,8 @@ class FspSolverBase {
   int my_rank_;
   int comm_size_;
 
-  PartitioningType partitioning_type_ = Graph;
-  PartitioningApproach repart_approach_ = Repartition;
+  PartitioningType partitioning_type_ = GRAPH;
+  PartitioningApproach repart_approach_ = REPARTITION;
   ODESolverType odes_type_ = CVODE_BDF;
 
   StateSetBase *state_set_ = nullptr;
@@ -127,4 +127,4 @@ class FspSolverBase {
 };
 }
 
-#endif //PECMEAL_FSP_H
+#endif //PACMENSL_FSP_H

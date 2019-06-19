@@ -4,7 +4,7 @@
 
 #include "StatePartitionerBase.h"
 
-namespace pecmeal {
+namespace pacmensl {
     StatePartitionerBase::StatePartitionerBase(MPI_Comm _comm) {
         MPI_Comm_dup(_comm, &comm_);
         zoltan_lb_ = Zoltan_Create(comm_);
@@ -215,35 +215,35 @@ namespace pecmeal {
 
     std::string part2str(PartitioningType part) {
         switch (part) {
-            case Graph:
+            case GRAPH:
                 return std::string("Graph");
-            case HyperGraph:
+            case HYPERGRAPH:
                 return std::string("Hypergraph");
-            case Hierarchical:
+            case HIERARCHICAL:
                 return std::string("Hiearchical");
             default:
-                return std::string("Block");
+                return std::string("BLOCK");
         }
     }
 
     PartitioningType str2part(std::string str) {
         std::transform(str.begin(), str.end(), str.begin(), ::tolower);
         if (str == "graph") {
-            return Graph;
+            return GRAPH;
         } else if (str == "hypergraph") {
-            return HyperGraph;
+            return HYPERGRAPH;
         } else if (str == "hier" || str == "hierarchical") {
-            return Hierarchical;
+            return HIERARCHICAL;
         } else {
-            return Block;
+            return BLOCK;
         }
     }
 
     std::string partapproach2str(PartitioningApproach part_approach) {
         switch (part_approach) {
-            case FromScratch:
-                return std::string("fromscratch");
-            case Repartition:
+            case FROMSCRATCH:
+                return std::string("partition");
+            case REPARTITION:
                 return std::string("repartition");
             default:
                 return std::string("refine");
@@ -253,11 +253,11 @@ namespace pecmeal {
     PartitioningApproach str2partapproach(std::string str) {
         std::transform(str.begin(), str.end(), str.begin(), ::tolower);
         if (str == "from_scratch" || str == "partition") {
-            return FromScratch;
+            return FROMSCRATCH;
         } else if (str == "repart" || str == "repartition") {
-            return Repartition;
+            return REPARTITION;
         } else {
-            return Refine;
+            return REFINE;
         }
     }
 }

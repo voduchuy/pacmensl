@@ -2,12 +2,12 @@
 // Created by Huy Vo on 2019-06-12.
 //
 
-#ifndef PECMEAL_SRC_ODESOLVER_KRYLOVFSP_H_
-#define PECMEAL_SRC_ODESOLVER_KRYLOVFSP_H_
+#ifndef PACMENSL_SRC_ODESOLVER_KRYLOVFSP_H_
+#define PACMENSL_SRC_ODESOLVER_KRYLOVFSP_H_
 
 #include "OdeSolverBase.h"
 
-namespace pecmeal {
+namespace pacmensl {
 class KrylovFsp : public OdeSolverBase {
  public:
 
@@ -66,4 +66,4 @@ class KrylovFsp : public OdeSolverBase {
 };
 }
 
-#endif //PECMEAL_SRC_ODESOLVER_KRYLOVFSP_H_
+#endif //PACMENSL_SRC_ODESOLVER_KRYLOVFSP_H_

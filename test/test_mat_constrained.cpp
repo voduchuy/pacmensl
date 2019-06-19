@@ -11,13 +11,13 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<petscmat.h>
 #include<petscao.h>
 #include<armadillo>
-#include"pecmeal_all.h"
+#include"pacmensl_all.h"
 
-using namespace pecmeal;
+using namespace pacmensl;
 
 int main(int argc, char *argv[]) {
-  //PECMEAL parallel environment object, must be created before using other PECMEAL's functionalities
-  pecmeal::Environment my_env(&argc, &argv, help);
+  //PACMENSL parallel environment object, must be created before using other PACMENSL's functionalities
+  pacmensl::Environment my_env(&argc, &argv, help);
 
   int ierr;
 
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
   // Read options for state_set_
   char opt[100];
   PetscBool opt_set;
-  PartitioningType fsp_par_type = Graph;
+  PartitioningType fsp_par_type = GRAPH;
   ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set) {
