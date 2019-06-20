@@ -1,6 +1,6 @@
 # PACMENSL
 
-PACMENSL (pek-meal) : Parallel extensible Chemical master equation Analysis Library.
+PACMENSL (pak-men) : Parallel extensible Chemical master equation Analysis Library.
 
 This is a part of the SSIT project at Munsky Group.
 
