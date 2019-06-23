@@ -1,0 +1,4 @@
+/Applications/CMake.app/Contents/bin/cmake -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - Unix Makefiles" /Users/huyvo/Codes/Projects/C++/PACMENSL
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /Users/huyvo/Codes/Projects/C++/PACMENSL/cmake-build-release

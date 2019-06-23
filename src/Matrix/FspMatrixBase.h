@@ -11,7 +11,7 @@
 #include <petscmat.h>
 #include <petscis.h>
 #include "Model.h"
-#include "cme_util.h"
+#include "Sys.h"
 #include "StateSetBase.h"
 #include "StateSetConstrained.h"
 
@@ -31,7 +31,7 @@ class FspMatrixBase {
   int my_rank_;
   int comm_size_;
 
-  Int n_reactions_;
+  Int num_reactions_;
   Int n_rows_global_;
   Int n_rows_local_;
 
@@ -47,8 +47,10 @@ class FspMatrixBase {
   VecScatter action_ctx_; ///< Scatter context for computing matrix action
 
   TcoefFun t_fun_ = nullptr;
+  void* t_fun_args_ = nullptr;
+  arma::Row< Real > time_coefficients_;
 
-  virtual void determine_layout(const StateSetBase &fsp);
+  virtual int DetermineLayout_( const StateSetBase &fsp);
 
  public:
   NOT_COPYABLE_NOT_MOVABLE(FspMatrixBase);
@@ -56,12 +58,13 @@ class FspMatrixBase {
   /* constructors */
   explicit FspMatrixBase(MPI_Comm comm);
 
-  virtual void
-  generate_values(const StateSetBase &fsp, const arma::Mat<Int> &SM, PropFun prop, TcoefFun new_t_fun);
+  virtual int
+  GenerateValues( const StateSetBase &fsp, const arma::Mat< Int > &SM, const PropFun &propensity, void *propensity_args,
+                  const TcoefFun &new_t_fun, void *t_fun_args );
 
-  virtual void destroy();
+  virtual int Destroy();
 
-  virtual void action(PetscReal t, Vec x, Vec y);
+  virtual int action( PetscReal t, Vec x, Vec y);
 
   PetscInt get_local_ghost_length() const;
 

@@ -8,10 +8,10 @@ static char help[] = "Advance_ CME of signal-activated bursting gene expression 
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>
-#include <cme_util.h>
+#include <Sys.h>
 #include <armadillo>
 #include <cmath>
-#include "FspSolverBase.h"
+#include "FspSolverMultiSinks.h"
 
 using arma::dvec;
 using arma::Col;
@@ -21,7 +21,7 @@ using std::cout;
 using std::endl;
 
 using namespace pacmensl;
-using FspSolver = FspSolverBase;
+using FspSolver = FspSolverMultiSinks;
 
 void output_marginals(MPI_Comm comm,
                       std::string model_name,
@@ -78,11 +78,15 @@ int main(int argc, char *argv[]) {
 
 //  double k_on{0.1}, k_off{0.1}, k_rna{10.0}, gamma{1.0};
 
-  auto t_fun = [&](double t) {
-    return arma::Row<double>{k_on, k_off, k_rna, gamma};
+  auto t_fun = [&](double t, int nc, double *vals, void *args) {
+    vals[0] = k_on;
+    vals[1] = k_off;
+    vals[2] = k_rna;
+    vals[3] = gamma;
+    return 0;
   };
 
-  auto propensity = [&](const int *state, const int k) {
+  auto burst_propensity = [&](const int *state, const int k) {
     switch (k) {
       case 0:return PetscReal(state[0]);
       case 1:return PetscReal(state[1]);
@@ -90,6 +94,19 @@ int main(int argc, char *argv[]) {
       case 3:return PetscReal(state[2]);
       default:return 0.0;
     }
+  };
+
+  auto propensity = [&](const int reaction,
+                        const int num_species,
+                        const int num_states,
+                        const int *states,
+                        double *values,
+                        void *args) {
+    int (*X)[3] = ( int (*)[3] ) states;
+    for (int i = 0; i < num_states; ++i) {
+      values[i] = burst_propensity(X[i], reaction);
+    }
+    return 0;
   };
 
   Model il1b_model;
@@ -130,7 +147,7 @@ int main(int argc, char *argv[]) {
   PetscPrintf(comm, "Partitiniong option %s \n", part2str(fsp_par_type).c_str());
   PetscPrintf(comm, "Repartitoning option %s \n", partapproach2str(fsp_repart_approach).c_str());
 
-  FspSolverBase fsp_solver(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
+  FspSolverMultiSinks fsp_solver(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
   fsp_solver.SetModel(il1b_model);
   fsp_solver.SetExpansionFactors(expansion_factors);
   fsp_solver.SetInitialDistribution(X0, p0);
@@ -148,7 +165,7 @@ int main(int argc, char *argv[]) {
     PetscPrintf(comm, "Elapsed time: %.2f \n", t2 - t1);
   }
   PetscReal Psum;
-  VecSum(solution.p, &Psum);
+  VecSum(solution.p_, &Psum);
   PetscPrintf(comm, "Psum = %.2e\n", Psum);
 
   if (fsp_log_events) {
@@ -164,7 +181,7 @@ int main(int argc, char *argv[]) {
     output_marginals(PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string("adaptive_custom"), solution);
   }
 
-  fsp_solver.Destroy();
+  fsp_solver.ClearState();
 
   return ierr;
 }
@@ -179,7 +196,7 @@ void output_marginals(MPI_Comm comm,
   MPI_Comm_rank(comm, &myRank);
   MPI_Comm_size(comm, &num_procs);
   /* Compute the marginal distributions */
-  std::vector<arma::Col<PetscReal>> marginals(solution.states.n_rows);
+  std::vector<arma::Col<PetscReal>> marginals(solution.states_.n_rows);
   for (PetscInt i{0}; i < marginals.size(); ++i) {
     marginals[i] = Compute1DMarginal(solution, i);
   }

@@ -8,81 +8,107 @@ namespace pacmensl {
 FspMatrixConstrained::FspMatrixConstrained(MPI_Comm comm) : FspMatrixBase(comm) {
 }
 
-void FspMatrixConstrained::action(PetscReal t, Vec x, Vec y) {
+int FspMatrixConstrained::action(PetscReal t, Vec x, Vec y) {
   int ierr;
   FspMatrixBase::action(t, x, y);
   ierr = VecGetLocalVector(x, xx);
-  CHKERRABORT(comm_, ierr);
-  ierr = MatMult(sinks_mat_, xx, sink_entries_);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
+  ierr = VecSet(sink_entries_, 0.0);
+  CHKERRQ(ierr);
+  for (int i = 0; i < num_reactions_; ++i) {
+    ierr = MatMult(sinks_mat_[i], xx, sink_tmp);
+    CHKERRQ(ierr);
+    ierr = VecAXPY(sink_entries_, time_coefficients_[i], sink_tmp);
+    CHKERRQ(ierr);
+  }
   ierr = VecScatterBegin(sink_scatter_ctx_, sink_entries_, y, ADD_VALUES, SCATTER_FORWARD);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   ierr = VecScatterEnd(sink_scatter_ctx_, sink_entries_, y, ADD_VALUES, SCATTER_FORWARD);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   ierr = VecRestoreLocalVector(x, xx);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
+  return 0;
 }
 
-void FspMatrixConstrained::destroy() {
+int FspMatrixConstrained::Destroy() {
   PetscErrorCode ierr;
-  FspMatrixBase::destroy();
+  FspMatrixBase::Destroy();
   if (sink_entries_ != nullptr) {
     ierr = VecDestroy(&sink_entries_);
-    CHKERRABORT(comm_, ierr);
+    CHKERRQ(ierr);
   }
-  if (sinks_mat_ != nullptr) {
-    ierr = MatDestroy(&sinks_mat_);
-    CHKERRABORT(comm_, ierr);
+  if (sink_tmp != nullptr){
+    ierr = VecDestroy(&sink_tmp);
+    CHKERRQ(ierr);
+  }
+  if (!sinks_mat_.empty()) {
+    for (int i{0}; i < sinks_mat_.size(); ++i)
+    {
+      ierr = MatDestroy(&sinks_mat_[i]);
+      CHKERRQ(ierr);
+    }
+    sinks_mat_.clear();
   }
   if (sink_scatter_ctx_ != nullptr) {
     ierr = VecScatterDestroy(&sink_scatter_ctx_);
-    CHKERRABORT(comm_, ierr);
+    CHKERRQ(ierr);
   }
+  return 0;
 }
 
 FspMatrixConstrained::~FspMatrixConstrained() {
-  destroy();
+  Destroy();
 }
 
-void
-FspMatrixConstrained::generate_matrices(StateSetConstrained &fsp, const arma::Mat<int> &SM,
-                                        PropFun prop, TcoefFun new_t_fun) {
-  PetscErrorCode ierr;
+int FspMatrixConstrained::GenerateValues(const StateSetBase &fsp, const arma::Mat<int> &SM, const PropFun &prop,
+                                         void *prop_args, const TcoefFun &new_t_fun, void *t_fun_args) {
+  PetscErrorCode ierr{0};
 
-  sinks_rank_ = comm_size_ - 1; // rank of the processor that holds sink states
-  num_constraints_ = fsp.GetNumConstraints();
+  const StateSetConstrained *constrained_fss_ptr = dynamic_cast<const StateSetConstrained *>(&fsp);
+  if (!constrained_fss_ptr) ierr = -1;
+  PACMENSLCHKERRQ(ierr);
 
-  // Generate the entries corresponding to usual states
-  FspMatrixBase::generate_values(fsp, SM, prop, new_t_fun);
+  sinks_rank_ = comm_size_ - 1; // rank of the processor that holds sink states_
+  try {
+    num_constraints_ = constrained_fss_ptr->GetNumConstraints();
+  } catch (std::runtime_error &err) {
+    ierr = -1;
+    PACMENSLCHKERRQ(ierr);
+  }
 
-  // Generate the extra blocks corresponding to sink states
-  const arma::Mat<int> &state_list = fsp.GetStatesRef();
-  int n_local_states = fsp.GetNumLocalStates();
-  int n_constraints = fsp.GetNumConstraints();
+  // Generate the entries corresponding to usual states_
+  ierr = FspMatrixBase::GenerateValues(fsp, SM, prop, prop_args, new_t_fun, t_fun_args);
+  PACMENSLCHKERRQ(ierr);
+
+  // Generate the extra blocks corresponding to sink states_
+  const arma::Mat<int> &state_list = constrained_fss_ptr->GetStatesRef();
+  int n_local_states = constrained_fss_ptr->GetNumLocalStates();
+  int n_constraints = constrained_fss_ptr->GetNumConstraints();
   arma::Mat<int> can_reach_my_state;
 
   arma::Mat<Int> reachable_from_X(state_list.n_rows, state_list.n_cols);
   // Workspace for checking constraints
   arma::Mat<PetscInt> constraints_satisfied(n_local_states, n_constraints);
   arma::Col<PetscInt> nconstraints_satisfied;
-  arma::Mat<int> d_nnz(n_constraints, n_reactions_);
-  std::vector<arma::Row<int>> sink_inz(n_constraints * n_reactions_);
-  std::vector<arma::Row<PetscReal>> sink_rows(n_constraints * n_reactions_);
+  arma::Mat<int> d_nnz(n_constraints, num_reactions_);
+  std::vector<arma::Row<int>> sink_inz(n_constraints * num_reactions_);
+  std::vector<arma::Row<PetscReal>> sink_rows(n_constraints * num_reactions_);
 
-  ierr = MatCreate(PETSC_COMM_SELF, &sinks_mat_);
-  CHKERRABORT(comm_, ierr);
-  ierr = MatSetType(sinks_mat_, MATSEQAIJ);
-  CHKERRABORT(comm_, ierr);
-  ierr = MatSetSizes(sinks_mat_, n_constraints, n_rows_local_, n_constraints, n_rows_local_);
-  CHKERRABORT(comm_, ierr);
-  ierr = MatSeqAIJSetPreallocation(sinks_mat_, n_constraints * n_local_states, NULL);
-  CHKERRABORT(comm_, ierr);
-
-  for (int i_reaction{0}; i_reaction < n_reactions_; ++i_reaction) {
-    // Count nnz for rows that represent sink states
+  sinks_mat_.resize(num_reactions_);
+  for (int i_reaction{0}; i_reaction < num_reactions_; ++i_reaction) {
+    ierr = MatCreate(PETSC_COMM_SELF, &sinks_mat_[i_reaction]);
+    CHKERRQ(ierr);
+    ierr = MatSetType(sinks_mat_[i_reaction], MATSEQAIJ);
+    CHKERRQ(ierr);
+    ierr = MatSetSizes(sinks_mat_[i_reaction], n_constraints, n_rows_local_, n_constraints, n_rows_local_);
+    CHKERRQ(ierr);
+    ierr = MatSeqAIJSetPreallocation(sinks_mat_[i_reaction], n_constraints * n_local_states, NULL);
+    CHKERRQ(ierr);
+    // Count nnz for rows that represent sink states_
     can_reach_my_state = state_list + arma::repmat(SM.col(i_reaction), 1, state_list.n_cols);
-    fsp.CheckConstraints(n_local_states, can_reach_my_state.colptr(0),
-                         constraints_satisfied.colptr(0));
+    ierr = constrained_fss_ptr->CheckConstraints(n_local_states, can_reach_my_state.colptr(0),
+                                                 constraints_satisfied.colptr(0));
+    PACMENSLCHKERRQ(ierr);
     nconstraints_satisfied = arma::sum(constraints_satisfied, 1);
 
     for (int i_constr = 0; i_constr < n_constraints; ++i_constr) {
@@ -96,49 +122,52 @@ FspMatrixConstrained::generate_matrices(StateSetConstrained &fsp, const arma::Ma
       for (int i_state = 0; i_state < n_local_states; ++i_state) {
         if (constraints_satisfied(i_state, i_constr) == 0) {
           sink_inz.at(n_constraints * i_reaction + i_constr).at(count) = i_state;
-          sink_rows.at(n_constraints * i_reaction + i_constr).at(count) =
-              prop(state_list.colptr(i_state), i_reaction) /
-                  (PetscReal(n_constraints - nconstraints_satisfied(i_state)));
+          prop(i_reaction, state_list.n_rows, 1, state_list.colptr(i_state),
+               &sink_rows.at(n_constraints * i_reaction + i_constr)[count], prop_args);
           count += 1;
         }
       }
     }
     for (auto i_constr{0}; i_constr < n_constraints; i_constr++) {
-      ierr = MatSetValues(sinks_mat_, 1, &i_constr, d_nnz(i_constr, i_reaction),
+      ierr = MatSetValues(sinks_mat_[i_reaction], 1, &i_constr, d_nnz(i_constr, i_reaction),
                           sink_inz.at(i_reaction * n_constraints + i_constr).memptr(),
                           sink_rows.at(i_reaction * n_constraints + i_constr).memptr(), ADD_VALUES);
-      CHKERRABORT(comm_, ierr);
+      CHKERRQ(ierr);
     }
+    ierr = MatAssemblyBegin(sinks_mat_[i_reaction], MAT_FINAL_ASSEMBLY);
+    CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(sinks_mat_[i_reaction], MAT_FINAL_ASSEMBLY);
+    CHKERRQ(ierr);
   }
-
-  ierr = MatAssemblyBegin(sinks_mat_, MAT_FINAL_ASSEMBLY);
-  CHKERRABORT(comm_, ierr);
-  ierr = MatAssemblyEnd(sinks_mat_, MAT_FINAL_ASSEMBLY);
-  CHKERRABORT(comm_, ierr);
 
   // Local vectors for computing sink entries
   ierr = VecCreateSeq(PETSC_COMM_SELF, n_constraints, &sink_entries_);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   ierr = VecSetUp(sink_entries_);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
+
+  ierr = VecDuplicate(sink_entries_, &sink_tmp);
+  CHKERRQ(ierr);
+  ierr = VecSetUp(sink_tmp);
+  CHKERRQ(ierr);
 
   // Scatter context for adding sink values
   int *sink_global_indices = new int[n_constraints];
   for (int i{0}; i < n_constraints; ++i) {
-    sink_global_indices[i] = fsp.GetNumGlobalStates() + i;
+    sink_global_indices[i] = constrained_fss_ptr->GetNumGlobalStates() + i;
   }
   IS sink_is;
   Vec tmp;
   ierr = ISCreateGeneral(comm_, n_constraints, sink_global_indices, PETSC_COPY_VALUES, &sink_is);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   ierr = VecScatterCreate(sink_entries_, NULL, work_, sink_is, &sink_scatter_ctx_);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   ierr = ISDestroy(&sink_is);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   delete[] sink_global_indices;
 }
 
-void FspMatrixConstrained::determine_layout(const StateSetBase &fsp) {
+int FspMatrixConstrained::DetermineLayout_(const StateSetBase &fsp) {
   PetscErrorCode ierr;
 
   n_rows_local_ = fsp.GetNumLocalStates();
@@ -146,12 +175,12 @@ void FspMatrixConstrained::determine_layout(const StateSetBase &fsp) {
 
   // Generate matrix layout from FSP's layout
   ierr = VecCreate(comm_, &work_);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   ierr = VecSetFromOptions(work_);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   ierr = VecSetSizes(work_, n_rows_local_, PETSC_DECIDE);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
   ierr = VecSetUp(work_);
-  CHKERRABORT(comm_, ierr);
+  CHKERRQ(ierr);
 }
 }

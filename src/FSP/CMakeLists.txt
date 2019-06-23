@@ -1,6 +1,6 @@
 set(FSP_LIBS
         DiscreteDistribution
-        FspSolverBase
+        FspSolverMultiSinks
         )
 
 foreach(LIB ${FSP_LIBS})

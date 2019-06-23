@@ -12,12 +12,13 @@
             StatePartitionerBase::set_zoltan_parameters( );
             Zoltan_Set_Num_Edges_Fn( zoltan_lb_, &StatePartitionerGraph::zoltan_num_edges, ( void * ) this );
             Zoltan_Set_Edge_List_Multi_Fn( zoltan_lb_, &StatePartitionerGraph::zoltan_edge_list, ( void * ) this );
-//            Zoltan_Set_Param( zoltan_lb_, "GRAPH_BUILD_TYPE", "FAST_NO_DUP" );
             Zoltan_Set_Param( zoltan_lb_, "LB_METHOD", "GRAPH" );
+            Zoltan_Set_Param( zoltan_lb_, "GRAPH_BUILD_TYPE", "FAST_NO_DUP" );
             Zoltan_Set_Param( zoltan_lb_, "GRAPH_PACKAGE", "Parmetis" );
             Zoltan_Set_Param( zoltan_lb_, "OBJ_WEIGHT_DIM", "1" );
             Zoltan_Set_Param( zoltan_lb_, "EDGE_WEIGHT_DIM", "1" );
-            Zoltan_Set_Param( zoltan_lb_, "CHECK_GRAPH", "2" );
+            Zoltan_Set_Param( zoltan_lb_, "CHECK_GRAPH", "0" );
+            Zoltan_Set_Param( zoltan_lb_, "GRAPH_SYMMETRIZE", "NONE");
             Zoltan_Set_Param( zoltan_lb_, "GRAPH_SYM_WEIGHT", "ADD" );
             Zoltan_Set_Param( zoltan_lb_, "PARMETIS_ITR", "100" );
         }
@@ -25,7 +26,7 @@
         void StatePartitionerGraph::generate_data( ) {
             auto num_reactions = ( int ) stoich_mat_ptr_->n_cols;
 
-            arma::Mat< int > RX( num_species_, num_local_states_ ); // states connected to local_states_tmp
+            arma::Mat< int > RX( num_species_, num_local_states_ ); // states_ connected to local_states_tmp
             arma::Row< int > irx( num_local_states_ );
 
             states_indices_ = new int[num_local_states_];
@@ -36,7 +37,7 @@
             edge_weights = new float[2 * num_local_states_ * ( 1 + num_reactions )];
             num_reachable_states = 0;
 
-            // find indices of the local states
+            // find indices of the local states_
             state2ordering( *state_ptr_, &states_indices_[ 0 ] );
 
             // Initialize graph data

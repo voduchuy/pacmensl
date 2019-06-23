@@ -11,6 +11,6 @@
 #include "Model.h"
 #include "OdeSolverBase.h"
 #include "CvodeFsp.h"
-#include "FspSolverBase.h"
+#include "FspSolverMultiSinks.h"
 #include "SmFishSnapshot.h"
 #endif //PACMENSL_ALL_H

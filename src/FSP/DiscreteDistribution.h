@@ -7,15 +7,15 @@
 
 #include<armadillo>
 #include<petsc.h>
-#include "cme_util.h"
+#include "Sys.h"
 #include "StateSetBase.h"
 
 namespace pacmensl {
     struct DiscreteDistribution {
         MPI_Comm comm_ = nullptr;
         double t_ = 0.0;
-        arma::Mat<int> states;
-        Vec p = nullptr;
+        arma::Mat<int> states_;
+        Vec p_ = nullptr;
 
         DiscreteDistribution();
 
@@ -28,6 +28,12 @@ namespace pacmensl {
         DiscreteDistribution &operator=(const DiscreteDistribution &);
 
         DiscreteDistribution &operator=(DiscreteDistribution &&) noexcept;
+
+        int GetStateView( int &num_states, int &num_species, int *&states);
+
+        int GetProbView( int &num_states, double *&p);
+
+        int RestoreProbView( double *&p);
 
         ~DiscreteDistribution();
     };

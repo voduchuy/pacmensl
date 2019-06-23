@@ -29,19 +29,25 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 OPTION(BUILD_SHARED_LIBS "Build shared library" ON)
 
 # Decide whether to build tests and where to install them
-OPTION(BUILD_TESTS "Build tests" ON)
+OPTION(BUILD_TESTS "Build tests" OFF)
 if (BUILD_TESTS)
-    set(TESTS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/tests CACHE STRING "Installation directory for tests.")
-endif()
-
+    find_package(GTest)
+    if (NOT GTEST_FOUND)
+        message("GoogleTest not found on your system. Tests will not be built.")
+        SET(BUILD_TESTS OFF FORCE)
+    else ()
+        set(TESTS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/tests CACHE STRING "Installation directory for tests.")
+    endif ()
+endif ()
 # Decide whether to build examples
 OPTION(BUILD_EXAMPLES "Build examples" ON)
 if (BUILD_EXAMPLES)
     set(EXAMPLES_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/examples CACHE STRING "Installation directory for examples.")
-endif()
+endif ()
 
-FIND_PACKAGE(PETSc REQUIRED)
 FIND_PACKAGE(MPI REQUIRED)
+FIND_PACKAGE(PETSc REQUIRED)
+
 
 if (MPI_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
@@ -58,7 +64,7 @@ include_directories(src/StateSet)
 include_directories(src/Matrix)
 include_directories(src/FSP)
 include_directories(src/OdeSolver)
-include_directories(src/Util)
+include_directories(src/Sys)
 include_directories(src/Models)
 include_directories(src/SmFish)
 
@@ -71,7 +77,7 @@ add_subdirectory(src)
 
 # Add tests and examples
 if (BUILD_TESTS)
-    add_subdirectory(test)
+    add_subdirectory(unitTests)
 endif (BUILD_TESTS)
 
 if (BUILD_EXAMPLES)

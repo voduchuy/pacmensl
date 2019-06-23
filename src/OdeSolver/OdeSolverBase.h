@@ -6,7 +6,7 @@
 #define PACMENSL_ODESOLVERBASE_H
 
 #include <sundials/sundials_nvector.h>
-#include "cme_util.h"
+#include "Sys.h"
 
 namespace pacmensl {
 enum ODESolverType { KRYLOV, CVODE_BDF };

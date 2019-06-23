@@ -9,8 +9,13 @@ import tarfile as tar
 def download(path_to):
     dest_dir = Path(path_to)
     dest_dir = dest_dir.expanduser()
-    print('cloning petsc... ')
-    subprocess.call(['git', 'clone', '-b', 'maint', 'https://bitbucket.org/petsc/petsc', 'petsc'], cwd=dest_dir)
+
+    print('downloading petsc... ')
+    url = 'http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.11.2.tar.gz'
+    wget.download(url, str(dest_dir))
+    f = tar.open(str(dest_dir / Path('petsc-3.11.2.tar.gz')))
+    f.extractall(dest_dir)
+    (dest_dir/Path('petsc-3.11.2')).rename(dest_dir/Path('petsc'))
 
 
 def install(src_path, build_path, install_path):
@@ -75,5 +80,5 @@ if __name__ == "__main__":
         if not install_path.exists():
             print('Not a vaild install path, enter again.')
 
-    # download(download_path)
+    download(download_path)
     install(download_path, build_path, install_path)

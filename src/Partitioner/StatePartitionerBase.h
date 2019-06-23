@@ -8,7 +8,7 @@
 #include <zoltan.h>
 #include <armadillo>
 #include <mpi.h>
-#include "cme_util.h"
+#include "Sys.h"
 #include "string.h"
 
 namespace pacmensl {

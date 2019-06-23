@@ -9,7 +9,7 @@
 #include <petscis.h>
 
 #include "StatePartitioner.h"
-#include "cme_util.h"
+#include "Sys.h"
 
 namespace pacmensl {
 
@@ -47,7 +47,7 @@ namespace pacmensl {
          * Call level: collective.
          * The user must ensure that all processors must enter the same stoichiometry matrix.
          */
-        void SetStoichiometryMatrix( arma::Mat< int > SM );
+        void SetStoichiometryMatrix( const arma::Mat< int > &SM );
 
         /// Set the stoichiometry matrix using C array.
         /**
@@ -57,7 +57,7 @@ namespace pacmensl {
          * @param values : array of stoichiometry entries, where values[num_species*i],..,values[num_species*(i+1)-1] store the entries corresponding to the i-th reaction.
          * The user must ensure that all processors must enter the same stoichiometry matrix.
          */
-        void SetStoichiometryMatrix( int num_species, int num_reactions, const int* values );
+        void SetStoichiometryMatrixC( int num_species, int num_reactions, const int *values );
 
         /// Set the initial states.
         /**

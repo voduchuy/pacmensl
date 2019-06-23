@@ -73,27 +73,27 @@ double pacmensl::SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
   int ierr;
 
   if (measured_species.empty()) {
-    measured_species = arma::regspace<arma::Col<int>>(0, distribution.states.n_rows - 1);
+    measured_species = arma::regspace<arma::Col<int>>(0, distribution.states_.n_rows - 1);
   }
 
   MPI_Comm comm = distribution.comm_;
   int num_observations = data.GetNumObservations();
 
   const PetscReal *p_dat;
-  VecGetArrayRead(distribution.p, &p_dat);
+  VecGetArrayRead(distribution.p_, &p_dat);
 
   arma::Col<double> predicted_probabilities_local(num_observations, arma::fill::zeros);
   arma::Col<double> predicted_probabilities = predicted_probabilities_local;
 
-  for (int i{0}; i < distribution.states.n_cols; ++i) {
+  for (int i{0}; i < distribution.states_.n_cols; ++i) {
     arma::Col<int> x(measured_species.n_elem);
     for (int j = 0; j < measured_species.n_elem; ++j) {
-      x(j) = distribution.states(measured_species(j), i);
+      x(j) = distribution.states_(measured_species(j), i);
     }
     int k = data.GetObservationIndex(x);
     if (k != -1) predicted_probabilities_local(k) += p_dat[i];
   }
-  VecRestoreArrayRead(distribution.p, &p_dat);
+  VecRestoreArrayRead(distribution.p_, &p_dat);
   ierr = MPI_Allreduce(&predicted_probabilities_local[0],
                        &predicted_probabilities[0],
                        num_observations,

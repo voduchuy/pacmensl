@@ -8,22 +8,33 @@
 #include <armadillo>
 
 namespace pacmensl {
-    using PropFun = std::function<double(const int *, const int)>;
-    using TcoefFun = std::function<arma::Row<double>(double t)>;
+using PropFun = std::function<int(const int reaction,
+                                  const int num_species,
+                                  const int num_states,
+                                  const int *states,
+                                  double *outputs,
+                                  void *args)>;
+using TcoefFun = std::function<int(double t, int num_coefs, double *outputs, void *args)>;
 
-    class Model {
-    public:
-        arma::Mat<int> stoichiometry_matrix_;
-        TcoefFun t_fun_;
-        PropFun prop_;
+class Model {
+ public:
+  arma::Mat<int> stoichiometry_matrix_;
+  TcoefFun t_fun_;
+  void *t_fun_args_;
+  PropFun prop_;
+  void *prop_args_;
 
-        Model();
+  Model();
 
-        explicit Model(arma::Mat<int> stoichiometry_matrix, TcoefFun t_fun, PropFun prop);
+  explicit Model(arma::Mat<int> stoichiometry_matrix, TcoefFun t_fun, void *t_fun_args_, PropFun prop,
+                 void *prop_args);
 
-        Model(const Model &model);
-    };
+  Model(const Model &model);
+
+  Model& operator=(Model&model) noexcept;
+
+  Model& operator=(Model&&model) noexcept;
 };
-
+};
 
 #endif //PACMENSL_MODELS_H

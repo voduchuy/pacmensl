@@ -10,7 +10,7 @@
             auto num_reactions = ( int ) stoich_mat_ptr_->n_cols;
 
             arma::Mat< int > RX(( size_t ) num_species_,
-                                     ( size_t ) num_local_states_ ); // states connected to local_states_tmp
+                                     ( size_t ) num_local_states_ ); // states_ connected to local_states_tmp
             arma::Row< int > irx( num_local_states_ );
             states_indices_ = new int[num_local_states_];
 
@@ -21,7 +21,7 @@
             edge_weights = new float[2 * num_local_states_ * ( 1 + stoich_mat_ptr_->n_cols )];
             num_reachable_states = 0;
 
-            // Find global indices of local states
+            // Find global indices of local states_
             state2ordering( *state_ptr_, &states_indices_[ 0 ] );
 
             // Initialize hypergraph data

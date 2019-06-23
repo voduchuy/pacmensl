@@ -21,14 +21,16 @@ pacmensl::StateSetConstrained::StateSetConstrained( MPI_Comm new_comm, int num_s
  * @return 0 if x satisfies all constraints; otherwise -1.
  */
 PetscInt pacmensl::StateSetConstrained::check_state( PetscInt *x ) {
+    int *fval;
+    int ierr;
     for ( int i1{0}; i1 < num_species_; ++i1 ) {
         if ( x[ i1 ] < 0 ) {
             return -1;
         }
     }
-    int *fval;
     fval = new int[rhs_constr.n_elem];
-    lhs_constr( num_species_, rhs_constr.n_elem, 1, x, &fval[ 0 ], args_constr );
+    ierr = lhs_constr( num_species_, rhs_constr.n_elem, 1, x, &fval[ 0 ], args_constr );
+    CHKERRABORT(comm_, ierr);
 
     for ( int i{0}; i < rhs_constr.n_elem; ++i ) {
         if ( fval[ i ] > rhs_constr( i )) {
@@ -44,11 +46,12 @@ PetscInt pacmensl::StateSetConstrained::check_state( PetscInt *x ) {
  * @param num_states : number of states. x : array of states. satisfied: output array of size num_states*num_constraints.
  * @return void.
  */
-void
-pacmensl::StateSetConstrained::CheckConstraints(PetscInt num_states, PetscInt *x,
-                                                     PetscInt *satisfied) {
+int
+pacmensl::StateSetConstrained::CheckConstraints( PetscInt num_states, PetscInt *x, PetscInt *satisfied) const {
     auto *fval = new int[num_states * rhs_constr.n_elem];
-    lhs_constr( num_species_, rhs_constr.n_elem, num_states, x, fval, args_constr );
+    int ierr = lhs_constr( num_species_, rhs_constr.n_elem, num_states, x, fval, args_constr );
+    PACMENSLCHKERRQ(ierr);
+
     for ( int iconstr = 0; iconstr < rhs_constr.n_elem; ++iconstr ) {
         for ( int i = 0; i < num_states; ++i ) {
             satisfied[ num_states * iconstr + i ] = ( fval[ rhs_constr.n_elem * i + iconstr ] <=
@@ -61,6 +64,7 @@ pacmensl::StateSetConstrained::CheckConstraints(PetscInt num_states, PetscInt *x
         }
     }
     delete[] fval;
+    return 0;
 }
 
 arma::Row< int > pacmensl::StateSetConstrained::GetShapeBounds() const {
@@ -71,22 +75,25 @@ PetscInt pacmensl::StateSetConstrained::GetNumConstraints() const {
     return rhs_constr.n_elem;
 }
 
-void
+int
 pacmensl::StateSetConstrained::default_constr_fun( int num_species, int num_constr, int n_states, int *states,
                                                   int *outputs, void *args ) {
     for ( int i{0}; i < n_states * num_species; ++i ) {
         outputs[ i ] = states[ i ];
     }
+    return 0;
 }
 
-void pacmensl::StateSetConstrained::SetShape( fsp_constr_multi_fn *lhs_fun, arma::Row< int > &rhs_bounds, void *args ) {
+void pacmensl::StateSetConstrained::SetShape( const fsp_constr_multi_fn &lhs_fun, arma::Row< int > &rhs_bounds,
+                                              void *args ) {
     lhs_constr = lhs_fun;
     rhs_constr = rhs_bounds;
     args_constr = args;
 }
 
 void
-pacmensl::StateSetConstrained::SetShape( int num_constraints, fsp_constr_multi_fn *lhs_fun, int *bounds, void *args ) {
+pacmensl::StateSetConstrained::SetShape( int num_constraints, const fsp_constr_multi_fn &lhs_fun, int *bounds,
+                                         void *args ) {
     lhs_constr = lhs_fun;
     rhs_constr = arma::Row<int>(bounds, num_constraints);
     args_constr = args;
@@ -107,7 +114,7 @@ void pacmensl::StateSetConstrained::SetShapeBounds( int num_constraints, int *bo
 void pacmensl::StateSetConstrained::Expand() {
     bool frontier_empty;
 
-    // Switch states with status -1 to 1, for they may Expand to new states when the shape constraints are relaxed
+    // Switch states_ with status -1 to 1, for they may Expand to new states_ when the shape constraints are relaxed
     retrieve_state_status( );
     arma::uvec iupdate = find( local_states_status_ == -1 );
     arma::Mat< int > states_update;
@@ -126,7 +133,7 @@ void pacmensl::StateSetConstrained::Expand() {
     frontier_lids_ = find( local_states_status_ == 1 );
 
     logger_.event_begin( logger_.state_exploration_event );
-    // Check if the set of frontier states are empty on all processors
+    // Check if the set of frontier states_ are empty on all processors
     {
         int n1, n2;
         n1 = ( int ) frontier_lids_.n_elem;
@@ -136,7 +143,7 @@ void pacmensl::StateSetConstrained::Expand() {
 
     arma::Row< char > frontier_status;
     while ( !frontier_empty ) {
-        // Distribute frontier states to all processors
+        // Distribute frontier states_ to all processors
         frontiers_ = local_states_.cols( frontier_lids_ );
         distribute_frontiers( );
         frontier_status.set_size( frontiers_.n_cols );
@@ -145,6 +152,7 @@ void pacmensl::StateSetConstrained::Expand() {
         arma::Mat< PetscInt > Y( num_species_, frontiers_.n_cols * num_reactions_ );
         arma::Row< PetscInt > ystatus( Y.n_cols );
 
+        // TODO : rewrite check_state to check the whole list of states
         for ( int i{0}; i < frontiers_.n_cols; i++ ) {
             for ( int j{0}; j < num_reactions_; ++j ) {
                 Y.col( j * frontiers_.n_cols + i ) = frontiers_.col( i ) + stoichiometry_matrix_.col( j );
@@ -159,12 +167,12 @@ void pacmensl::StateSetConstrained::Expand() {
         Y = unique_columns( Y );
         AddStates(Y);
 
-        // Deactivate states whose neighbors have all been explored and added to the state set
+        // Deactivate states_ whose neighbors have all been explored and added to the state set
         update_state_status( frontiers_, frontier_status );
         retrieve_state_status( );
         frontier_lids_ = find( local_states_status_ == 1 );
 
-        // Check if the set of frontier states are empty on all processors
+        // Check if the set of frontier states_ are empty on all processors
         {
             int n1, n2;
             n1 = ( int ) frontier_lids_.n_elem;

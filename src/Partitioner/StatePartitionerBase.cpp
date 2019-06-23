@@ -49,7 +49,7 @@ namespace pacmensl {
         states_indices_ = new int[num_local_states_];
         states_weights_ = new float[num_local_states_];
 
-        // Find global indices of local states
+        // Find global indices of local states_
         state2ordering(*state_ptr_, &states_indices_[0]);
 
         for (auto i = 0; i < num_local_states_; ++i) {
@@ -183,7 +183,7 @@ namespace pacmensl {
                                                      ZOLTAN_ID_PTR export_local_ids,
                                                      int *export_procs, int *export_to_part, int *ierr) {
         auto my_data = (StatePartitionerBase *) data;
-        // remove the packed states from local data structure
+        // remove the packed states_ from local data structure
         arma::uvec i_keep(my_data->num_local_states_);
         i_keep.zeros();
         for (int i{0}; i < num_export; ++i) {
@@ -194,7 +194,7 @@ namespace pacmensl {
         *my_data->state_ptr_ = my_data->state_ptr_->cols(i_keep);
         my_data->num_local_states_ = (int) my_data->state_ptr_->n_cols;
 
-        // allocate more space for states to be imported
+        // allocate more space for states_ to be imported
         my_data->state_ptr_->resize(my_data->num_species_, my_data->num_local_states_ + num_import);
     }
 
@@ -203,7 +203,7 @@ namespace pacmensl {
                                                ZOLTAN_ID_PTR global_ids,
                                                int *sizes, int *idx, char *buf, int *ierr) {
         auto my_data = (StatePartitionerBase *) data;
-        // Unpack new local states
+        // Unpack new local states_
         for (int i{0}; i < num_ids; ++i) {
             auto ptr = (int *) &buf[idx[i]];
             for (int j{0}; j < my_data->num_species_; ++j) {
@@ -222,7 +222,7 @@ namespace pacmensl {
             case HIERARCHICAL:
                 return std::string("Hiearchical");
             default:
-                return std::string("BLOCK");
+                return std::string("Block");
         }
     }
 

@@ -2,7 +2,6 @@
 
 set(EXAMPLES
         signal_activated_bursting
-        distribute_states
         hog1p
         time_invariant_bursting
         repressilator

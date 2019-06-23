@@ -8,9 +8,12 @@ namespace pacmensl {
     StateSetBase::StateSetBase( MPI_Comm new_comm, int _num_species, PartitioningType lb_type,
                                 PartitioningApproach lb_approach ) : partitioner_( new_comm ) {
         int ierr;
-        MPI_Comm_dup( new_comm, &comm_ );
-        MPI_Comm_size( comm_, &comm_size_ );
-        MPI_Comm_rank( comm_, &my_rank_ );
+        ierr = MPI_Comm_dup( new_comm, &comm_ );
+        PACMENSLCHKERREXCEPT(ierr);
+        ierr = MPI_Comm_size( comm_, &comm_size_ );
+        PACMENSLCHKERREXCEPT(ierr);
+        ierr = MPI_Comm_rank( comm_, &my_rank_ );
+        PACMENSLCHKERREXCEPT(ierr);
 
         state_layout_.set_size( comm_size_ );
         ind_starts_.set_size( comm_size_ );
@@ -23,7 +26,7 @@ namespace pacmensl {
 
         zoltan_explore_ = Zoltan_Create( comm_ );
         ierr = Zoltan_DD_Create( &state_directory_, comm_, num_species_, 1, 1, hash_table_length_, 0 );
-        ZOLTANCHKERRABORT( comm_, ierr );
+        PACMENSLCHKERREXCEPT(ierr);
 
         partitioner_.set_up( lb_type, lb_approach );
 
@@ -32,15 +35,15 @@ namespace pacmensl {
         logger_.register_all( comm_ );
     };
 
-    void StateSetBase::SetStoichiometryMatrix( arma::Mat< int > SM ) {
-        assert( num_species_ == ( int ) SM.n_rows );
+    void StateSetBase::SetStoichiometryMatrix( const arma::Mat< int > &SM ) {
+        if( num_species_ != ( int ) SM.n_rows ) throw std::logic_error("Input stoichiometry has incompatible dimensions with the StateSet object.");
         num_reactions_ = ( int ) SM.n_cols;
         stoichiometry_matrix_ = SM;
         stoich_set_ = 1;
     }
 
-    void StateSetBase::SetStoichiometryMatrix( int num_species, int num_reactions, const int *values ) {
-        assert( num_species_ == num_species );
+    void StateSetBase::SetStoichiometryMatrixC( int num_species, int num_reactions, const int *values ) {
+        if( num_species_ != ( int ) num_species ) throw std::logic_error("Input stoichiometry has incompatible dimensions with the StateSet object.");
         num_reactions_ = num_reactions;
         stoichiometry_matrix_ = arma::Mat< int >( values, num_species_, num_reactions_ );
         stoich_set_ = 1;
@@ -137,6 +140,11 @@ namespace pacmensl {
     }
 
     void StateSetBase::AddStates( const arma::Mat< int > &X ) {
+        if ( X.n_rows != num_species_ ) {
+            throw std::runtime_error(
+                    "SetInitialStates: number of rows in input array is not the same as the number of species.\n" );
+        }
+
         PetscLogEventBegin( logger_.add_states_event, 0, 0, 0, 0 );
         int zoltan_err;
 
@@ -146,18 +154,18 @@ namespace pacmensl {
         arma::uvec iselect;
 
 
-        // Probe if states in X are already owned by some processor
+        // Probe if states_ in X are already owned by some processor
         local_dd_gids = arma::conv_to< arma::Mat< ZOLTAN_ID_TYPE>>::from( X );
         zoltan_err = Zoltan_DD_Find( state_directory_, &local_dd_gids[ 0 ], nullptr, nullptr, nullptr, X.n_cols,
                                      &owner[ 0 ] );
         iselect = arma::find( owner == -1 );
         ZOLTANCHKERRABORT( comm_, zoltan_err );
 
-        // Shed any states that are already included
+        // Shed any states_ that are already included
         arma::Mat< int > Xadd = X.cols( iselect );
         local_dd_gids = local_dd_gids.cols( iselect );
 
-        // Add local states to Zoltan directory (only 1 state from 1 processor will be added in case of overlapping)
+        // Add local states_ to Zoltan directory (only 1 state from 1 processor will be added in case of overlapping)
         parts.resize( Xadd.n_cols );
         parts.fill( my_rank_ );
         PetscLogEventBegin( logger_.zoltan_dd_stuff_event, 0, 0, 0, 0 );
@@ -177,7 +185,7 @@ namespace pacmensl {
 
         arma::Row< char > X_status( Xadd.n_cols );
         if ( Xadd.n_cols > 0 ) {
-            // Append X to local states
+            // Append X to local states_
             X_status.fill( 1 );
             local_states_ = arma::join_horiz( local_states_, Xadd );
         }
@@ -422,7 +430,7 @@ namespace pacmensl {
         int n_update = status.n_elem;
         if ( n_update != states.n_cols ) {
             PetscPrintf( comm_,
-                         "StateSet: update_state_status: states and status arrays have incompatible dimensions.\n" );
+                         "StateSet: update_state_status: states_ and status arrays have incompatible dimensions.\n" );
         }
         arma::Mat< ZOLTAN_ID_TYPE > local_dd_gids( num_species_, n_update );
 
@@ -450,7 +458,7 @@ namespace pacmensl {
         arma::Row< ZOLTAN_ID_TYPE > lids( n_update );
         if ( n_update != states.n_cols ) {
             PetscPrintf( comm_,
-                         "StateSet: update_state_indices_status: states and status arrays have incompatible dimensions.\n" );
+                         "StateSet: update_state_indices_status: states_ and status arrays have incompatible dimensions.\n" );
         }
 
         if ( n_update > 0 ) {
@@ -528,7 +536,7 @@ namespace pacmensl {
                                                ZOLTAN_ID_PTR export_global_ids, ZOLTAN_ID_PTR export_local_ids,
                                                int *export_procs, int *export_to_part, int *ierr ) {
         auto my_data = ( StateSetBase * ) data;
-        // remove the packed states from local data structure
+        // remove the packed states_ from local data structure
         arma::uvec i_keep( my_data->frontier_lids_.n_elem );
         i_keep.zeros( );
         for ( int i{0}; i < num_export; ++i ) {
@@ -548,7 +556,7 @@ namespace pacmensl {
         // Expand the data arrays
         my_data->frontiers_.resize( my_data->num_species_, nfrontier_old + num_ids );
 
-        // Unpack new local states
+        // Unpack new local states_
         for ( int i{0}; i < num_ids; ++i ) {
             auto ptr = ( int * ) &buf[ idx[ i ]];
             for ( int j{0}; j < my_data->num_species_; ++j ) {
@@ -566,7 +574,7 @@ namespace pacmensl {
         CHKERRABORT( comm, ierr );
         ierr = PetscLogEventRegister( "Zoltan partitioning", 0, &call_partitioner_event );
         CHKERRABORT( comm, ierr );
-        ierr = PetscLogEventRegister( "Add states", 0, &add_states_event );
+        ierr = PetscLogEventRegister( "Add states_", 0, &add_states_event );
         CHKERRABORT( comm, ierr );
         ierr = PetscLogEventRegister( "Zoltan DD stuff", 0, &zoltan_dd_stuff_event );
         CHKERRABORT( comm, ierr );
