@@ -1,7 +1,8 @@
 # PACMENSL
 
-PACMENSL (pak-men) : Parallel Adaptive Chemical Master Equation Numerical Solver Library
+PACMENSL (pak-men) : Parallel extensible Chemical master equation Analysis Library.
 
+This is a part of the SSIT project at Munsky Group.
 
 ## Prerequisites
 Compilation and build tools:
