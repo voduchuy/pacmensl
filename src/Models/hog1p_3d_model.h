@@ -19,7 +19,7 @@ namespace hog3d_cme {
 // parameters for the time-dependent factors
             r1{6.9e-5}, r2{7.1e-3}, eta{3.1}, Ahog{9.3e09}, Mhog{6.4e-4};
 
-    // Function to constraint the shape of the FSP
+    // Function to constraint the shape of the Fsp
     void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
                        int *vals, void *args){
 

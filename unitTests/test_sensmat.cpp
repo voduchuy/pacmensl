@@ -13,15 +13,14 @@ static char help[] = "Test the generation of the distributed Finite State Subset
 #include<petscao.h>
 #include<armadillo>
 #include"Sys.h"
-#include"StateSetConstrained.h"
-#include"FspMatrixBase.h"
 #include"FspMatrixConstrained.h"
+#include"SensFspMatrix.h"
 #include"pacmensl_test_env.h"
 
 using namespace pacmensl;
 
 // Test Fixture: 1-d discrete random walk model
-class MatrixTest : public ::testing::Test {
+class SensMatrixTest : public ::testing::Test {
  protected:
 
   void SetUp() override {
@@ -32,8 +31,20 @@ class MatrixTest : public ::testing::Test {
       return 0;
     };
 
-    propensity                    = [&](const int reaction, const int num_species, const int num_states, const int *X,
-                                        double *outputs, void *args) {
+    d_t_fun1 = [&](double t, int num_coefs, double *outputs, void *args) {
+      outputs[0] = 1.0;
+      outputs[1] = 0.0;
+      return 0;
+    };
+
+    d_t_fun2 = [&](double t, int num_coefs, double *outputs, void *args) {
+      outputs[0] = 0.0;
+      outputs[1] = 1.0;
+      return 0;
+    };
+
+    propensity = [&](const int reaction, const int num_species, const int num_states, const int *X,
+                     double *outputs, void *args) {
       switch (reaction) {
         case 0:
           for (int i{0}; i < num_states; ++i) {
@@ -50,6 +61,13 @@ class MatrixTest : public ::testing::Test {
       return 0;
     };
 
+    smodel                        = pacmensl::SensModel(stoichiometry, t_fun, nullptr, propensity, nullptr,
+                                                        std::vector<pacmensl::PropFun>({propensity, propensity}),
+                                                        std::vector<void *>({nullptr, nullptr}),
+                                                        std::vector<pacmensl::TcoefFun>({d_t_fun1, d_t_fun2}),
+                                                        std::vector<void *>({nullptr, nullptr}),
+                                                        arma::Mat<char>{0});
+
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
@@ -64,8 +82,8 @@ class MatrixTest : public ::testing::Test {
     arma::Mat<PetscInt> X0(1, 1);
     X0.fill(0);
     X0(0) = 0;
-    state_set = new StateSetConstrained(PETSC_COMM_WORLD);
-    ierr = state_set->SetStoichiometryMatrix(stoichiometry);
+    state_set = std::make_shared<StateSetConstrained>(PETSC_COMM_WORLD);
+    ierr      = state_set->SetStoichiometryMatrix(stoichiometry);
     ASSERT_FALSE(ierr);
     ierr = state_set->SetShapeBounds(fsp_size);
     ASSERT_FALSE(ierr);
@@ -78,24 +96,26 @@ class MatrixTest : public ::testing::Test {
   };
 
   void TearDown() override {
-    delete state_set;
   };
 
-  StateSetConstrained  *state_set = nullptr;
-  arma::Row<int>       fsp_size;
-  const double         rate_right = 2.0, rate_left = 3.0;
-  const arma::Mat<int> stoichiometry{1, -1};
-  pacmensl::TcoefFun   t_fun;
-  pacmensl::PropFun    propensity;
+  std::shared_ptr<StateSetConstrained> state_set;
+  arma::Row<int>                       fsp_size;
+  const double                         rate_right = 2.0, rate_left = 3.0;
+  const arma::Mat<int>                 stoichiometry{1, -1};
+  pacmensl::TcoefFun                   t_fun;
+  pacmensl::TcoefFun                   d_t_fun1, d_t_fun2;
+  pacmensl::PropFun                    propensity;
+
+  pacmensl::SensModel smodel;
 };
 
-TEST_F(MatrixTest, mat_base_generation) {
+TEST_F(SensMatrixTest, mat_base_generation) {
   int ierr;
 
   double Q_sum;
 
-  FspMatrixBase A(PETSC_COMM_WORLD);
-  ierr = A.GenerateValues(*state_set, stoichiometry, propensity, nullptr, t_fun, nullptr);
+  pacmensl::SensFspMatrix<FspMatrixBase> A(PETSC_COMM_WORLD);
+  ierr = A.GenerateValues(*state_set, smodel);
   ASSERT_FALSE(ierr);
 
   Vec P, Q;
@@ -114,25 +134,39 @@ TEST_F(MatrixTest, mat_base_generation) {
   ierr = VecSetUp(Q);
   ASSERT_FALSE(ierr);
 
-  A.Action(0.0, P, Q);
+  ierr = A.Action(0.0, P, Q);
+  ASSERT_FALSE(ierr);
 
   ierr = VecSum(Q, &Q_sum);
   ASSERT_FALSE(ierr);
   ASSERT_DOUBLE_EQ(Q_sum, -1.0 * rate_right);
+
+  for (int i_par{0}; i_par < 2; ++i_par) {
+    PetscReal dqsum = (i_par == 0) ? -1.0 : 0.0;
+    ierr = A.SensAction(i_par, 0.0, P, Q);
+    ASSERT_FALSE(ierr);
+    ierr = VecSum(Q, &Q_sum);
+    ASSERT_FALSE(ierr);
+    ASSERT_DOUBLE_EQ(Q_sum, dqsum);
+  }
+
   ierr = VecDestroy(&P);
   ASSERT_FALSE(ierr);
   ierr = VecDestroy(&Q);
   ASSERT_FALSE(ierr);
 }
 
-TEST_F(MatrixTest, mat_constrained_generate_values) {
+TEST_F(SensMatrixTest, mat_constr_generation) {
   int ierr;
 
-  FspMatrixConstrained A(PETSC_COMM_WORLD);
-  A.GenerateValues(*state_set, stoichiometry, propensity, nullptr, t_fun, nullptr);
-
   double Q_sum;
-  Vec    P, Q;
+
+  pacmensl::SensFspMatrix<FspMatrixConstrained> A(PETSC_COMM_WORLD);
+
+  ierr = A.GenerateValues(*state_set, smodel);
+  ASSERT_FALSE(ierr);
+
+  Vec P, Q;
   ierr = VecCreate(PETSC_COMM_WORLD, &P);
   ASSERT_FALSE(ierr);
   ierr = VecSetSizes(P, A.GetNumLocalRows(), PETSC_DECIDE);
@@ -148,11 +182,21 @@ TEST_F(MatrixTest, mat_constrained_generate_values) {
   ierr = VecSetUp(Q);
   ASSERT_FALSE(ierr);
 
-  A.Action(0.0, P, Q);
+  ierr = A.Action(0.0, P, Q);
+  ASSERT_FALSE(ierr);
 
   ierr = VecSum(Q, &Q_sum);
   ASSERT_FALSE(ierr);
-  ASSERT_DOUBLE_EQ(Q_sum, 0.0);
+  ASSERT_DOUBLE_EQ(Q_sum,0.0);
+
+  for (int i_par{0}; i_par < 2; ++i_par) {
+    ierr = A.SensAction(i_par, 0.0, P, Q);
+    ASSERT_FALSE(ierr);
+    ierr = VecSum(Q, &Q_sum);
+    ASSERT_FALSE(ierr);
+    ASSERT_DOUBLE_EQ(Q_sum, 0.0);
+  }
+
   ierr = VecDestroy(&P);
   ASSERT_FALSE(ierr);
   ierr = VecDestroy(&Q);

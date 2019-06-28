@@ -22,7 +22,11 @@ pacmensl::Model::Model( arma::Mat< int > stoichiometry_matrix, TcoefFun t_fun, v
 }
 
 pacmensl::Model::Model(const pacmensl::Model &model) {
-    Model model1( model.stoichiometry_matrix_, TcoefFun( model.t_fun_ ), model.t_fun_args_, PropFun( model.prop_ ), model.prop_args_ );
+  stoichiometry_matrix_ = (model.stoichiometry_matrix_);
+  t_fun_ = (model.t_fun_);
+  t_fun_args_ = (model.t_fun_args_);
+  prop_ = model.prop_;
+  prop_args_ = model.prop_args_;
 }
 pacmensl::Model &pacmensl::Model::operator=(pacmensl::Model &&model) noexcept {
   Model::stoichiometry_matrix_ = std::move(model.stoichiometry_matrix_);
@@ -32,11 +36,11 @@ pacmensl::Model &pacmensl::Model::operator=(pacmensl::Model &&model) noexcept {
   Model::prop_args_ = std::move(model.prop_args_);
   return *this;
 }
-pacmensl::Model &pacmensl::Model::operator=(pacmensl::Model &model) noexcept {
-  Model::stoichiometry_matrix_ = (model.stoichiometry_matrix_);
-  Model::t_fun_ = (model.t_fun_);
-  Model::t_fun_args_ = (model.t_fun_args_);
-  Model::prop_ = (model.prop_);
-  Model::prop_args_ = (model.prop_args_);
+pacmensl::Model &pacmensl::Model::operator=(const Model &model) noexcept {
+  stoichiometry_matrix_ = (model.stoichiometry_matrix_);
+  t_fun_ = (model.t_fun_);
+  t_fun_args_ = (model.t_fun_args_);
+  prop_ = model.prop_;
+  prop_args_ = model.prop_args_;
   return *this;
 }

@@ -57,7 +57,7 @@ namespace six_species_cme {
         }
     }
 
-    // Function to constraint the shape of the FSP
+    // Function to constraint the shape of the Fsp
     void lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
                     int *vals, void *args) {
         for (int j{0}; j < num_states; ++j) {

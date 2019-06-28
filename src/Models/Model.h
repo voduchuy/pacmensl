@@ -19,10 +19,10 @@ using TcoefFun = std::function<int(double t, int num_coefs, double *outputs, voi
 class Model {
  public:
   arma::Mat<int> stoichiometry_matrix_;
-  TcoefFun t_fun_;
-  void *t_fun_args_;
-  PropFun prop_;
-  void *prop_args_;
+  TcoefFun       t_fun_;
+  void           *t_fun_args_;
+  PropFun        prop_;
+  void           *prop_args_;
 
   Model();
 
@@ -31,9 +31,9 @@ class Model {
 
   Model(const Model &model);
 
-  Model& operator=(Model&model) noexcept;
+  Model &operator=(const Model &model) noexcept;
 
-  Model& operator=(Model&&model) noexcept;
+  Model &operator=(Model &&model) noexcept;
 };
 };
 

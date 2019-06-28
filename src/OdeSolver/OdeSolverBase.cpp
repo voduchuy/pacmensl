@@ -5,34 +5,55 @@
 
 namespace pacmensl {
 
-void OdeSolverBase::set_print_intermediate(int iprint) {
+int OdeSolverBase::SetStatusOutput(int iprint) {
   print_intermediate = iprint;
+  return 0;
 }
 
 OdeSolverBase::OdeSolverBase(MPI_Comm new_comm) {
-  MPI_Comm_dup(new_comm, &comm_);
-  MPI_Comm_rank(comm_, &my_rank_);
-  MPI_Comm_size(comm_, &comm_size_);
+  int ierr;
+  ierr = MPI_Comm_dup(new_comm, &comm_); PACMENSLCHKERRTHROW(ierr);
+  ierr = MPI_Comm_rank(comm_, &my_rank_); PACMENSLCHKERRTHROW(ierr);
+  ierr = MPI_Comm_size(comm_, &comm_size_); PACMENSLCHKERRTHROW(ierr);
 }
 
-void OdeSolverBase::SetFinalTime(PetscReal _t_final) {
+int OdeSolverBase::SetFinalTime(PetscReal _t_final) {
   t_final_ = _t_final;
+  return 0;
 }
 
-void OdeSolverBase::set_initial_solution(Vec *_sol) {
+int OdeSolverBase::SetInitialSolution(Vec *_sol) {
+  if (!_sol){
+    PACMENSLCHKERRQ(-1);
+  }
   solution_ = _sol;
+  return 0;
 }
 
-void OdeSolverBase::set_rhs(std::function<void(PetscReal, Vec, Vec)> _rhs) {
-  rhs_ = std::move(_rhs);
+int OdeSolverBase::SetRhs(std::function<int(PetscReal, Vec, Vec)> _rhs) {
+  int ierr{0};
+  try{
+    rhs_ = std::move(_rhs);
+  }
+  catch(...){
+    ierr = -1;
+  }
+  PACMENSLCHKERRQ(ierr);
+  return 0;
 }
 
-void OdeSolverBase::EvaluateRHS(PetscReal t, Vec x, Vec y) {
-  rhs_(t, x, y);
+int OdeSolverBase::EvaluateRHS(PetscReal t, Vec x, Vec y) {
+  PACMENSLCHKERRQ(rhs_(t, x, y));
+  return 0;
 }
 
-void OdeSolverBase::set_current_time(PetscReal t) {
+int OdeSolverBase::SetCurrentTime(PetscReal t) {
+  if (isnan(t)){
+    printf("\n Time variable cannot have NaN value!\n");
+    PACMENSLCHKERRQ(-1);
+  }
   t_now_ = t;
+  return 0;
 }
 
 PetscReal OdeSolverBase::GetCurrentTime() const {
@@ -41,22 +62,22 @@ PetscReal OdeSolverBase::GetCurrentTime() const {
 
 PetscInt OdeSolverBase::Solve() {
   // Make sure the necessary data has been set
-  assert(solution_ != nullptr);
-  assert(rhs_);
+  if (solution_ == nullptr) return -1;
+  if (rhs_ == nullptr) return -1;
   return 0;
 }
 
 OdeSolverBase::~OdeSolverBase() {
   MPI_Comm_free(&comm_);
-//  FreeWorkspace();
 }
 
-void OdeSolverBase::EnableLogging() {
+int OdeSolverBase::EnableLogging() {
   logging_enabled = PETSC_TRUE;
   perf_info.n_step = 0;
   perf_info.model_time.resize(100000);
   perf_info.cpu_time.resize(100000);
   perf_info.n_eqs.resize(100000);
+  return 0;
 }
 
 FiniteProblemSolverPerfInfo OdeSolverBase::GetAvgPerfInfo() const {
@@ -69,7 +90,7 @@ FiniteProblemSolverPerfInfo OdeSolverBase::GetAvgPerfInfo() const {
 
   for (auto i{perf_out.n_step - 1}; i >= 0; --i) {
     perf_out.cpu_time[i] = perf_out.cpu_time[i] - perf_out.cpu_time[0];
-    MPI_Allreduce(MPI_IN_PLACE, (void *) &perf_out.cpu_time[i], 1, MPIU_REAL, MPI_SUM, comm_);
+    MPI_Allreduce(MPI_IN_PLACE, (void *) &perf_out.cpu_time[i], 1, MPIU_REAL, MPIU_SUM, comm_);
   }
 
   for (auto i{0}; i < perf_out.n_step; ++i) {
@@ -79,9 +100,10 @@ FiniteProblemSolverPerfInfo OdeSolverBase::GetAvgPerfInfo() const {
   return perf_out;
 }
 
-void
+int
 OdeSolverBase::SetStopCondition(const std::function<int(PetscReal, Vec, void *)> &stop_check_, void *stop_data_) {
   OdeSolverBase::stop_check_ = stop_check_;
   OdeSolverBase::stop_data_ = stop_data_;
+  return 0;
 }
 }

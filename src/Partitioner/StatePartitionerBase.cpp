@@ -13,8 +13,8 @@ namespace pacmensl {
         ind_starts = new int[comm_size_];
     }
 
-    void StatePartitionerBase::partition(arma::Mat<int> &states, Zoltan_DD_Struct *state_directory,
-                                         arma::Mat<int> &stoich_mat, int *layout) {
+    int StatePartitionerBase::partition(arma::Mat<int> &states, Zoltan_DD_Struct *state_directory,
+                                        arma::Mat<int> &stoich_mat, int *layout) {
         state_ptr_ = &states;
         state_dir_ptr_ = state_directory;
         stoich_mat_ptr_ = &stoich_mat;
@@ -39,10 +39,11 @@ namespace pacmensl {
                                          &import_global_ids, &import_local_ids,
                                          &import_procs, &import_to_part, &num_export, &export_global_ids,
                                          &export_local_ids, &export_procs, &export_to_part);
-        ZOLTANCHKERRABORT(comm_, zoltan_err);
+        ZOLTANCHKERRQ(zoltan_err);
         Zoltan_LB_Free_Part(&import_global_ids, &import_local_ids, &import_procs, &import_to_part);
         Zoltan_LB_Free_Part(&export_global_ids, &export_local_ids, &export_procs, &export_to_part);
         free_data();
+        return 0;
     }
 
     void StatePartitionerBase::generate_data() {
@@ -215,11 +216,11 @@ namespace pacmensl {
 
     std::string part2str(PartitioningType part) {
         switch (part) {
-            case GRAPH:
+            case PartitioningType::GRAPH:
                 return std::string("Graph");
-            case HYPERGRAPH:
+            case PartitioningType::HYPERGRAPH:
                 return std::string("Hypergraph");
-            case HIERARCHICAL:
+          case PartitioningType::HIERARCHICAL:
                 return std::string("Hiearchical");
             default:
                 return std::string("Block");
@@ -229,21 +230,21 @@ namespace pacmensl {
     PartitioningType str2part(std::string str) {
         std::transform(str.begin(), str.end(), str.begin(), ::tolower);
         if (str == "graph") {
-            return GRAPH;
+            return PartitioningType::GRAPH;
         } else if (str == "hypergraph") {
-            return HYPERGRAPH;
+            return PartitioningType::HYPERGRAPH;
         } else if (str == "hier" || str == "hierarchical") {
-            return HIERARCHICAL;
+            return PartitioningType::HIERARCHICAL;
         } else {
-            return BLOCK;
+            return PartitioningType::BLOCK;
         }
     }
 
     std::string partapproach2str(PartitioningApproach part_approach) {
         switch (part_approach) {
-            case FROMSCRATCH:
+            case PartitioningApproach::FROMSCRATCH:
                 return std::string("partition");
-            case REPARTITION:
+            case PartitioningApproach::REPARTITION:
                 return std::string("repartition");
             default:
                 return std::string("refine");
@@ -253,11 +254,11 @@ namespace pacmensl {
     PartitioningApproach str2partapproach(std::string str) {
         std::transform(str.begin(), str.end(), str.begin(), ::tolower);
         if (str == "from_scratch" || str == "partition") {
-            return FROMSCRATCH;
+            return PartitioningApproach::FROMSCRATCH;
         } else if (str == "repart" || str == "repartition") {
-            return REPARTITION;
+            return PartitioningApproach::REPARTITION;
         } else {
-            return REFINE;
+            return PartitioningApproach::REFINE;
         }
     }
 }

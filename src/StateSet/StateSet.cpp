@@ -8,10 +8,10 @@ pacmensl::StateSet::StateSet( MPI_Comm comm, pacmensl::StateSetType type, int nu
                               pacmensl::PartitioningType part, pacmensl::PartitioningApproach repart ) {
     switch ( type ) {
         case BASE:
-            state_set_ = new StateSetBase( comm, num_species, part, repart );
+            state_set_ = new StateSetBase(comm);
             break;
         case CONSTRAINED:
-            state_set_ = new StateSetConstrained( comm, num_species, part, repart );
+            state_set_ = new StateSetConstrained(comm);
             break;
     }
 }

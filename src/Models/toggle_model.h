@@ -14,7 +14,7 @@ namespace toggle_cme {
     const double ayx{2.6e-3}, axy{6.1e-3}, nyx{3.0e0}, nxy{2.1e0},
             kx0{2.2e-3}, kx{1.7e-2}, dx{3.8e-4}, ky0{6.8e-5}, ky{1.6e-2}, dy{3.8e-4};
 
-    // Function to constraint the shape of the FSP
+    // Function to constraint the shape of the Fsp
     void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
                      int *vals, void *args){
 

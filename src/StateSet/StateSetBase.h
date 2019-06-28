@@ -10,227 +10,184 @@
 
 #include "StatePartitioner.h"
 #include "Sys.h"
+#include "pacmenMath.h"
 
 namespace pacmensl {
 
-    struct FiniteStateSubsetLogger {
-        /// For event logging
-        PetscLogEvent state_exploration_event;
-        PetscLogEvent check_constraints_event;
-        PetscLogEvent add_states_event;
-        PetscLogEvent call_partitioner_event;
-        PetscLogEvent zoltan_dd_stuff_event;
-        PetscLogEvent total_update_dd_event;
-        PetscLogEvent distribute_frontiers_event;
+struct FiniteStateSubsetLogger {
+  /// For event logging
+  PetscLogEvent state_exploration_event;
+  PetscLogEvent check_constraints_event;
+  PetscLogEvent add_states_event;
+  PetscLogEvent call_partitioner_event;
+  PetscLogEvent zoltan_dd_stuff_event;
+  PetscLogEvent total_update_dd_event;
+  PetscLogEvent distribute_frontiers_event;
 
-        void register_all( MPI_Comm comm );
+  void register_all(MPI_Comm comm);
 
-        void event_begin( PetscLogEvent event );
+  void event_begin(PetscLogEvent event);
 
-        void event_end( PetscLogEvent event );
-    };
+  void event_end(PetscLogEvent event);
+};
 
-/// Base class for the Finite State Subset object.
+
 /**
- * The Finite State Subset object contains the data and methods related to the storage, management, and parallel
+ * @brief Base class for the Finite State Subset object.
+ * @details The Finite State Subset object contains the data and methods related to the storage, management, and
+ * parallel
  * distribution of the states included by the Finite State Projection algorithm. Our current implementation relies on
  * Zoltan's dynamic load-balancing tools for the parallel distribution of these states into the processors.
  * */
-    class StateSetBase {
-    public: NOT_COPYABLE_NOT_MOVABLE( StateSetBase );
+class StateSetBase {
+ public: NOT_COPYABLE_NOT_MOVABLE(StateSetBase);
 
-        explicit StateSetBase( MPI_Comm new_comm, int num_species, PartitioningType lb_type = GRAPH,
-                               PartitioningApproach lb_approach = REPARTITION );
+  explicit StateSetBase(MPI_Comm new_comm);
+  PacmenslErrorCode SetNumSpecies(int num_species);
+  int SetStoichiometryMatrix(const arma::Mat<int> &SM);
+  int AddStates(const arma::Mat<int> &X);
+  int SetLoadBalancingScheme(PartitioningType type, PartitioningApproach approach = PartitioningApproach::REPARTITION);
 
-        /// Set the stoichiometry matrix using Armadillo's matrix class.
-        /**
-         * Call level: collective.
-         * The user must ensure that all processors must enter the same stoichiometry matrix.
-         */
-        void SetStoichiometryMatrix( const arma::Mat< int > &SM );
+  virtual PacmenslErrorCode SetUp();
 
-        /// Set the stoichiometry matrix using C array.
-        /**
-         * Call level: collective.
-         * @param num_species : number of species
-         * @param num_reactions : number of reactions
-         * @param values : array of stoichiometry entries, where values[num_species*i],..,values[num_species*(i+1)-1] store the entries corresponding to the i-th reaction.
-         * The user must ensure that all processors must enter the same stoichiometry matrix.
-         */
-        void SetStoichiometryMatrixC( int num_species, int num_reactions, const int *values );
+  virtual PacmenslErrorCode Expand() { return 0; };
 
-        /// Set the initial states.
-        /**
-         * Call level: collective.
-         * Each processor enters its own set of initial states. Initial state could be empty, but at least one processor
-         * must insert at least one state. Initial states from different processors must not overlap.
-         */
-        void SetInitialStates( arma::Mat< PetscInt > X0 );
+  arma::Row<PetscInt> State2Index(arma::Mat<PetscInt> &state) const;
+  void State2Index(arma::Mat<PetscInt> &state, int *indx) const;
+  void State2Index(int num_states, const int *state, int *indx) const;
 
-        /// Set the initial states.
-        /**
-         * Call level: collective.
-         * @param num_states: number of states.
-         * @param vals: array of states, where vals[i*num_states, .. (i-1)*num_states-1] stores entries of the i-th state.
-         * Each processor enters its own set of initial states. Initial state could be empty, but at least one processor
-         * must insert at least one state. The user must ensure that vals have num_species*num_states entries, where num_species
-         * is the number of species the calling StateSetBase class was constructed with.
-         */
-        void SetInitialStates( int num_states, int* vals );
+  MPI_Comm GetComm() const;
+  int GetNumLocalStates() const;
+  int GetNumGlobalStates() const;
+  int GetNumSpecies() const;
+  int GetNumReactions() const;
+  const arma::Mat<int> &GetStatesRef() const;
+  arma::Mat<int> CopyStatesOnProc() const;
+  void CopyStatesOnProc(int num_local_states, int *state_array) const;
+  std::tuple<int, int> GetOrderingStartEnd() const;
 
-        /// Add a set of states to the global and local state set
-        /**
-         * Call level: collective.
-         * @param X : armadillo matrix of states to be added. X.n_rows = number of species. Each processor input its own
-         * local X. Different input sets from different processors may overlap.
-         */
-        void AddStates( const arma::Mat< int > &X );
+  int Clear();
+  virtual ~StateSetBase();
 
-        /// Add a set of states to the global and local state set
-        /**
-         * Call level: collective.
-         * @param num_states: number of states.
-         * @param vals: array of states, where vals[i*num_states, .. (i-1)*num_states-1] stores entries of the i-th state.
-         * Each processor enters its own set of initial states. The user must ensure that vals have num_species*num_states entries, where num_species
-         * is the number of species the calling StateSetBase class was constructed with.
-         */
-        void AddStates( int num_states, int* vals);
+ protected:
 
-        arma::Row< PetscInt > State2Index( arma::Mat< PetscInt > &state ) const;
+  static const int hash_table_length_ = 1000000;
 
-        void State2Index( arma::Mat< PetscInt > &state, int *indx ) const;
+  MPI_Comm comm_ = nullptr;
 
-        void State2Index( int num_states, const int* state, int *indx) const;
+  int set_up_ = 0;
+  int stoich_set_ = 0;
 
-        virtual void Expand( ) {};
+  int comm_size_;
+  int my_rank_;
 
-        MPI_Comm GetComm( ) const;
+  arma::Mat<int> stoichiometry_matrix_; ///< Stoichiometry matrix. Initialized via SetStoichiometryMatrix().
+  int num_species_ = 0; ///< Number of species
 
-        int GetNumLocalStates( ) const;
+  int num_reactions_ = 0; ///< Number of reactions. Initialized via SetStoichiometryMatrix().
+  int num_global_states_ = 0; ///< Total number of states on all owning processors. This is determined via \ref
+  // update_state_layout_.
+  int num_local_states_ = 0; ///< Number of states own by this processor.
 
-        int GetNumGlobalStates( ) const;
+  double lb_threshold_ = 0.2; ///< Threshold for calling load-balancing after state set expansion. Only call
+  // load-balancing if the new state set has more than lb_threshold_*100 percent of the old state set.
+  int num_global_states_old_ = 0; ///< Number of global states before a call to Expand(). This helps determine
+  // whether load balancing is needed.
 
-        int GetNumSpecies( ) const;
+  FiniteStateSubsetLogger logger_; ///< Data structure for logging.
 
-        int GetNumReactions( ) const;
+  PartitioningType lb_type_ = PartitioningType::GRAPH; ///< Type of partitioning in the load-balancing algorithm. See also PartitioningType.
+  PartitioningApproach lb_approach_ = PartitioningApproach::REPARTITION; ///< Approach to partitioning. See PartitioningApproach.
+  StatePartitioner partitioner_; ///< Object to do load-balancing for the owning StateSetBase object.
 
-        /// Get access to the list of states stored in the calling processor.
-        /**
-         * Call level: not collective.
-         * Note: The reference is for read-only purpose.
-         * @return const reference to the armadillo matrix that stores the states on the calling processor. Each column represents a state.
-         */
-        const arma::Mat< int > &GetStatesRef( ) const;
+  /// Armadillo array to store states owned by this processor
+  /**
+   * States are stored as column vectors of integers.
+   */
+  arma::Mat<int> local_states_;
 
-        /// Copy the list of states stored in the calling processor.
-        /**
-         * Call level: not collective.
-         * @return armadillo matrix that stores the states on the calling processor. Each column represents a state.
-         */
-        arma::Mat< int > CopyStatesOnProc( ) const;
+  /**
+   * @brief Status of local states.
+   * @details Status(i) = 1 if state i (in local ordering) is active, -1 if inactive.
+   */
+  arma::Row<char> local_states_status_;
 
-        /// Copy the list of states stored in the calling processor into a C array.
-        /**
-         * Call level: not collective.
-         * @param num_local_states : (in/out) number of local states.
-         * @param state_array : pointer to the copied states.
-         * NOTE: do not allocate memory for state_array since this will be done within the function.
-         */
-        void CopyStatesOnProc( int num_local_states, int* state_array) const;
+  /**
+   * @brief Parallel layout of the state set.
+   * @details state_layout_(i) = number of states owned by processor i.
+   */
+  arma::Row<int> state_layout_;
 
-        std::tuple< int, int > GetOrderingStartEnd( ) const;
+  /**
+   * @brief Starting global indices of local state subsets.
+   * @details processor i owns states with global indices from ind_starts_(i) to ind_starts(i+1)-1.
+   */
+  arma::Row<int> ind_starts_;
 
-        ~StateSetBase( );
+  /**
+   * @brief local indexing of frontier states on this processor.
+   */
+  arma::uvec frontier_lids_;
 
-    protected:
+  /**
+   * @brief global ids of frontier states on this processor. Each global id is a multi-dimensional integral vector.
+   */
+  arma::Mat<int> local_frontier_gids_;
 
-        static const int hash_table_length_ = 1000000;
-
-        MPI_Comm comm_;
-
-        int set_up_ = 0;
-        int stoich_set_ = 0;
-
-        int comm_size_;
-        int my_rank_;
-
-        arma::Mat< int > stoichiometry_matrix_;
-        double lb_threshold_ = 0.2;
-
-        int num_species_;
-        int num_reactions_;
-        int num_global_states_;
-        int num_local_states_ = 0;
-        int num_global_states_old_ = 0;
-
-        FiniteStateSubsetLogger logger_;
-
-        StatePartitioner partitioner_;
-
-        /// Armadillo array to store states owned by this processor
-        /**
-         * States are stored as column vectors of integers.
-         */
-        arma::Mat< int > local_states_;
-        arma::Row< char > local_states_status_;
-
-        arma::Row< int > state_layout_;
-        arma::Row< int > ind_starts_;
-
-        /// Variable to store local ids of frontier states
-        arma::uvec frontier_lids_;
-        arma::Mat< int > local_frontier_gids_;
-        arma::Mat< int > frontiers_;
+  /**
+   * @brief The actual frontier states assigned for this processor. These frontiers need not be owned by the
+   * processor (contrary to those in local_states_).
+   */
+  arma::Mat<int> frontiers_;
 
 
-        /// Zoltan directory
-        /**
-         * This is essentially a parallel hash table. We use it to store existing states for fast lookup.
-         */
-        Zoltan_DD_Struct *state_directory_;
+  /// Directory of states
+  /**
+   * This is essentially a parallel hash table. We use it to store existing states for fast lookup.
+   * The GID/key field of each entry is the multi-dimensional state vector.
+   * The LID field is the local index of the state in its owning processor.
+   * The data field is the state's status. 0: inactive, 1: active. Active states are used to generate new states during
+   * state space exploration.
+   *
+   * __See also__
+   * Zoltan's manual page: http://www.cs.sandia.gov/Zoltan/ug_html/ug_util_dd.html
+   */
+  Zoltan_DD_Struct *state_directory_ = nullptr;
 
-        /// Zoltan struct for load-balancing the state space search
-        Zoltan_Struct *zoltan_explore_;
+  /// Zoltan struct for load-balancing the state space search
+  Zoltan_Struct *zoltan_explore_ = nullptr;
 
-        void init_zoltan_parameters( );
+  void init_zoltan_parameters();
 
-        void distribute_frontiers( );
+  void distribute_frontiers();
 
-        void load_balance( );
+  void load_balance();
 
-        void update_layout( );
+  int update_layout();
 
-        void update_state_indices( );
+  void update_state_indices();
+  void update_state_status(arma::Mat<PetscInt> states, arma::Row<char> status);
+  void update_state_indices_status(arma::Mat<PetscInt> states, arma::Row<PetscInt> local_ids,
+                                   arma::Row<char> status);
+  void retrieve_state_status();
 
-        void update_state_status( arma::Mat< PetscInt > states, arma::Row< char > status );
-
-        void update_state_indices_status( arma::Mat< PetscInt > states, arma::Row< PetscInt > local_ids,
-                                          arma::Row< char > status );
-
-        void retrieve_state_status( );
-
-        static int zoltan_num_frontier( void *data, int *ierr );
-
-        static void zoltan_frontier_list( void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
-                                          ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts, int *ierr );
-
-        static int zoltan_frontier_size( void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
-                                         ZOLTAN_ID_PTR local_id, int *ierr );
-
-        static void
-        pack_frontiers( void *data, int num_gid_entries, int num_lid_entries, int num_ids, ZOLTAN_ID_PTR global_ids,
-                        ZOLTAN_ID_PTR local_ids, int *dest, int *sizes, int *idx, char *buf, int *ierr );
-
-        static void
-        unpack_frontiers( void *data, int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids, int *sizes, int *idx,
-                          char *buf, int *ierr );
-
-        static void mid_frontier_migration( void *data, int num_gid_entries, int num_lid_entries, int num_import,
-                                            ZOLTAN_ID_PTR import_global_ids, ZOLTAN_ID_PTR import_local_ids,
-                                            int *import_procs, int *import_to_part, int num_export,
-                                            ZOLTAN_ID_PTR export_global_ids, ZOLTAN_ID_PTR export_local_ids,
-                                            int *export_procs, int *export_to_part, int *ierr );
-    };
+  static int zoltan_num_frontier(void *data, int *ierr);
+  static void zoltan_frontier_list(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
+                                   ZOLTAN_ID_PTR local_ids, int wgt_dim, float *obj_wgts, int *ierr);
+  static int zoltan_frontier_size(void *data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_id,
+                                  ZOLTAN_ID_PTR local_id, int *ierr);
+  static void
+  pack_frontiers(void *data, int num_gid_entries, int num_lid_entries, int num_ids, ZOLTAN_ID_PTR global_ids,
+                 ZOLTAN_ID_PTR local_ids, int *dest, int *sizes, int *idx, char *buf, int *ierr);
+  static void
+  unpack_frontiers(void *data, int num_gid_entries, int num_ids, ZOLTAN_ID_PTR global_ids, int *sizes, int *idx,
+                   char *buf, int *ierr);
+  static void mid_frontier_migration(void *data, int num_gid_entries, int num_lid_entries, int num_import,
+                                     ZOLTAN_ID_PTR import_global_ids, ZOLTAN_ID_PTR import_local_ids,
+                                     int *import_procs, int *import_to_part, int num_export,
+                                     ZOLTAN_ID_PTR export_global_ids, ZOLTAN_ID_PTR export_local_ids,
+                                     int *export_procs, int *export_to_part, int *ierr);
+};
 }
 
 #endif //PACMENSL_FINITESTATESUBSET_H

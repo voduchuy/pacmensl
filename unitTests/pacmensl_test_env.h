@@ -5,15 +5,17 @@
 #ifndef PACMENSL_MY_TEST_ENV_H
 #define PACMENSL_MY_TEST_ENV_H
 
+#include "Sys.h"
 #include "gtest_mpi_listener.h"
 
-namespace pacmensl { namespace test {
+namespace pacmensl {
+namespace test {
 class PACMENSLEnvironment : public ::testing::Environment {
  public:
   void SetUp() override {
     char **argv;
-    int argc = 0;
-    int err = PACMENSLInit(&argc, &argv, ( char * ) 0);
+    int  argc = 0;
+    int  err  = PACMENSLInit(&argc, &argv, ( char * ) 0);
     ASSERT_FALSE(err);
   }
 
@@ -24,11 +26,11 @@ class PACMENSLEnvironment : public ::testing::Environment {
 
   ~PACMENSLEnvironment() override {}
 };
-}}
+}
+}
 
 int main(int argc, char *argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
-
   // Initialize MPI
   MPI_Init(&argc, &argv);
 

@@ -99,7 +99,7 @@ public:
     virtual void SetUp() {
         int is_mpi_initialized;
         ASSERT_EQ(MPI_Initialized(&is_mpi_initialized), MPI_SUCCESS);
-        if (!is_mpi_initialized) {
+        if (is_mpi_initialized == 0) {
             printf("MPI must be initialized before RUN_ALL_TESTS!\n");
             printf("Add '::testing::InitGoogleTest(&argc, argv);\n");
             printf("     MPI_Init(&argc, &argv);' to your 'main' function!\n");
@@ -110,7 +110,7 @@ public:
     virtual void TearDown() {
         int is_mpi_finalized;
         ASSERT_EQ(MPI_Finalized(&is_mpi_finalized), MPI_SUCCESS);
-        if (!is_mpi_finalized) {
+        if (is_mpi_finalized == 0) {
             int rank;
             ASSERT_EQ(MPI_Comm_rank(MPI_COMM_WORLD, &rank), MPI_SUCCESS);
             if (rank == 0) { printf("Finalizing MPI...\n"); }
@@ -137,7 +137,7 @@ public:
     {
         int is_mpi_initialized;
         assert(MPI_Initialized(&is_mpi_initialized) == MPI_SUCCESS);
-        if (!is_mpi_initialized) {
+        if (is_mpi_initialized == 0) {
             printf("MPI must be initialized before RUN_ALL_TESTS!\n");
             printf("Add '::testing::InitGoogleTest(&argc, argv);\n");
             printf("     MPI_Init(&argc, &argv);' to your 'main' function!\n");
@@ -168,7 +168,7 @@ public:
 
         int is_mpi_initialized;
         assert(MPI_Initialized(&is_mpi_initialized) == MPI_SUCCESS);
-        if (!is_mpi_initialized) {
+        if (is_mpi_initialized == 0) {
             printf("MPI must be initialized before RUN_ALL_TESTS!\n");
             printf("Add '::testing::InitGoogleTest(&argc, argv);\n");
             printf("     MPI_Init(&argc, &argv);' to your 'main' function!\n");
@@ -183,7 +183,7 @@ public:
     ~MPIMinimalistPrinter() {
         int is_mpi_finalized;
         assert(MPI_Finalized(&is_mpi_finalized) == MPI_SUCCESS);
-        if (!is_mpi_finalized) {
+        if (is_mpi_finalized==0) {
             MPI_Comm_free(&comm);
         }
     }

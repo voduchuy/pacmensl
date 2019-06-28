@@ -16,18 +16,18 @@ namespace pacmensl {
     class StatePartitioner {
     private:
         MPI_Comm comm = nullptr;
-        StatePartitionerBase *base = nullptr;
+        StatePartitionerBase *data = nullptr;
     public:
         explicit StatePartitioner(MPI_Comm _comm) { MPI_Comm_dup(_comm, &comm); };
 
-        void set_up(PartitioningType part_type, PartitioningApproach part_approach = REPARTITION);
+        void SetUp(PartitioningType part_type, PartitioningApproach part_approach = PartitioningApproach::REPARTITION);
 
-        void partition(arma::Mat<int> &states, Zoltan_DD_Struct *state_directory, arma::Mat<int> &stoich_mat,
-                       int *layout);
+        int Partition(arma::Mat<int> &states, Zoltan_DD_Struct *state_directory, arma::Mat<int> &stoich_mat,
+                      int *layout);
 
         ~StatePartitioner() {
-            MPI_Comm_free(&comm);
-            delete base;
+          delete data;
+          MPI_Comm_free(&comm);
         }
     };
 }

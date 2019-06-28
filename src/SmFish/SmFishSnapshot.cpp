@@ -97,8 +97,8 @@ double pacmensl::SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
   ierr = MPI_Allreduce(&predicted_probabilities_local[0],
                        &predicted_probabilities[0],
                        num_observations,
-                       MPI_DOUBLE,
-                       MPI_SUM,
+                       MPIU_REAL,
+                       MPIU_SUM,
                        comm);
   MPICHKERRABORT(comm, ierr);
 

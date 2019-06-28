@@ -14,8 +14,7 @@ typedef std::function<int(int, int, int, int *, int *,
 
 class StateSetConstrained : public StateSetBase {
  public:
-  StateSetConstrained(MPI_Comm new_comm, int num_species, PartitioningType lb_type = GRAPH,
-                      PartitioningApproach lb_approach = REPARTITION);
+  explicit StateSetConstrained(MPI_Comm new_comm = MPI_COMM_WORLD);
 
   int CheckConstraints(PetscInt num_states, PetscInt *x, PetscInt *satisfied) const;
 
@@ -23,15 +22,17 @@ class StateSetConstrained : public StateSetBase {
 
   int GetNumConstraints() const;
 
-  void SetShape(const fsp_constr_multi_fn &lhs_fun, arma::Row<int> &rhs_bounds, void *args = nullptr);
+  PacmenslErrorCode SetShape(const fsp_constr_multi_fn &lhs_fun, arma::Row<int> &rhs_bounds, void *args = nullptr);
 
-  void SetShape(int num_constraints, const fsp_constr_multi_fn &lhs_fun, int *bounds, void *args = nullptr);
+  PacmenslErrorCode SetShape(int num_constraints, const fsp_constr_multi_fn &lhs_fun, int *bounds, void *args = nullptr);
 
-  void SetShapeBounds(arma::Row<PetscInt> &rhs_bounds);
+  PacmenslErrorCode SetShapeBounds(arma::Row<PetscInt> &rhs_bounds);
 
-  void SetShapeBounds(int num_constraints, int *bounds);
+  PacmenslErrorCode SetShapeBounds(int num_constraints, int *bounds);
 
-  void Expand() override;
+  PacmenslErrorCode SetUp() override;
+
+  PacmenslErrorCode Expand() override;
 
  protected:
 

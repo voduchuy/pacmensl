@@ -115,8 +115,8 @@ int main(int argc, char *argv[]) {
   il1b_model.t_fun_ = t_fun;
 
   // Default options
-  PartitioningType fsp_par_type = GRAPH;
-  PartitioningApproach fsp_repart_approach = REPARTITION;
+  PartitioningType fsp_par_type = PartitioningType::GRAPH;
+  PartitioningApproach fsp_repart_approach = PartitioningApproach::REPARTITION;
   ODESolverType fsp_odes_type = KRYLOV;
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;

@@ -18,7 +18,7 @@ arma::Mat<PetscInt> SM{{1, -1, 0, 0, 0, 0},
 // reaction parameters
 const PetscReal k1{100.0}, ka{20.0}, ket{6.0}, kg{1.0};
 
-// Function to constraint the shape of the FSP
+// Function to constraint the shape of the Fsp
 int lhs_constr(PetscInt num_species,
                PetscInt num_constrs,
                PetscInt num_states,
@@ -143,8 +143,8 @@ int main(int argc, char *argv[]) {
   arma::Mat<PetscInt> stoich_mat = SM;
 
   // Default options
-  PartitioningType fsp_par_type = GRAPH;
-  PartitioningApproach fsp_repart_approach = REPARTITION;
+  PartitioningType fsp_par_type = PartitioningType::GRAPH;
+  PartitioningApproach fsp_repart_approach = PartitioningApproach::REPARTITION;
   ODESolverType fsp_odes_type = CVODE_BDF;
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;

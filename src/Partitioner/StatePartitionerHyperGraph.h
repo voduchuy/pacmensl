@@ -38,7 +38,7 @@ namespace pacmensl {
     public:
         StatePartitionerHyperGraph(MPI_Comm _comm) : StatePartitionerBase(_comm) {};
 
-        ~StatePartitionerHyperGraph();
+        ~StatePartitionerHyperGraph() override {};
     };
 }
 #endif //PACMENSL_FINITESTATESUBSETHYPERGRAPH_H

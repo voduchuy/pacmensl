@@ -14,7 +14,7 @@ namespace repressilator_cme {
 // reaction parameters
     const PetscReal k1{100.0}, ka{20.0}, ket{6.0}, kg{1.0};
 
-    // Function to constraint the shape of the FSP
+    // Function to constraint the shape of the Fsp
     void  lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states,
                        int *vals){
 

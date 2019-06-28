@@ -5,7 +5,7 @@ static char help[] = "Test smFish data object.\n\n";
 
 #include <gtest/gtest.h>
 #include <pacmensl_all.h>
-#include "my_test_env.h"
+#include "pacmensl_test_env.h"
 
 using namespace pacmensl;
 

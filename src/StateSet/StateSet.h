@@ -9,7 +9,7 @@
 #include "StateSetConstrained.h"
 
 namespace pacmensl{
-    typedef enum StateSetType{BASE, CONSTRAINED};
+    typedef enum {BASE, CONSTRAINED} StateSetType;
     class StateSet {
     public:
         StateSet(MPI_Comm comm, StateSetType type, int num_species, PartitioningType part, PartitioningApproach repart);

@@ -19,58 +19,61 @@ namespace pacmensl {
 using Real = PetscReal;
 using Int = PetscInt;
 
-
-/// Distributed data type for the truncated CME operator on a hyper-rectangle
 /**
- *
+ * @brief Base class for the time-dependent FSP-truncated CME matrix.
+ * @details We currently assume that the CME matrix could be decomposed into the form
+ *  \f$ A(t) = \sum_{r=1}^{M}{c_r(t, \theta)A_r} \f$
+ * where c_r(t,\theta) are scalar-valued functions that depend on the time variable and parameters, while the matrices \f$ A_r \f$ are constant.
  **/
 class FspMatrixBase {
+ public:
+  /* constructors */
+  explicit FspMatrixBase(MPI_Comm comm);
+  FspMatrixBase(const FspMatrixBase &A); // untested
+  FspMatrixBase(FspMatrixBase &&A) noexcept; // untested
 
+  /* Assignments */
+  FspMatrixBase &operator=(const FspMatrixBase &A);
+  FspMatrixBase &operator=(FspMatrixBase &&A) noexcept;
+
+  virtual PacmenslErrorCode
+  GenerateValues(const StateSetBase &fsp, const arma::Mat<Int> &SM, const PropFun &propensity, void *propensity_args,
+                 const TcoefFun &new_t_fun, void *t_fun_args);
+
+  virtual int Destroy();
+
+  virtual int Action(PetscReal t, Vec x, Vec y);
+
+  PetscInt GetLocalGhostLength() const;
+
+  int GetNumLocalRows() const { return num_rows_local_; };
+
+  virtual ~FspMatrixBase();
  protected:
   MPI_Comm comm_ = nullptr;
-  int my_rank_;
-  int comm_size_;
+  int      rank_;
+  int      comm_size_;
 
-  Int num_reactions_;
-  Int n_rows_global_;
-  Int n_rows_local_;
+  Int num_reactions_   = 0;
+  Int num_rows_global_ = 0;
+  Int num_rows_local_  = 0;
 
   // Local data of the matrix
   std::vector<Mat> diag_mats_;
   std::vector<Mat> offdiag_mats_;
 
   // Data for computing the matrix action
-  Vec work_; ///< Work vector for computing operator times vector
-  Vec lvec_; ///< Local vector to receive scattered data from the input vec
-  Vec xx, yy, zz; ///< Local portion of the vectors
-  PetscInt lvec_length_; ///< Number of ghost entries owned by the local process
-  VecScatter action_ctx_; ///< Scatter context for computing matrix action
+  Vec        work_        = nullptr; ///< Work vector for computing operator times vector
+  Vec        lvec_        = nullptr; ///< Local vector to receive scattered data from the input vec
+  Vec        xx           = nullptr, yy = nullptr, zz = nullptr; ///< Local portion of the vectors
+  PetscInt   lvec_length_ = 0; ///< Number of ghost entries owned by the local process
+  VecScatter action_ctx_  = nullptr; ///< Scatter context for computing matrix action
 
-  TcoefFun t_fun_ = nullptr;
-  void* t_fun_args_ = nullptr;
-  arma::Row< Real > time_coefficients_;
+  TcoefFun        t_fun_       = nullptr;
+  void            *t_fun_args_ = nullptr;
+  arma::Row<Real> time_coefficients_;
 
-  virtual int DetermineLayout_( const StateSetBase &fsp);
-
- public:
-  NOT_COPYABLE_NOT_MOVABLE(FspMatrixBase);
-
-  /* constructors */
-  explicit FspMatrixBase(MPI_Comm comm);
-
-  virtual int
-  GenerateValues( const StateSetBase &fsp, const arma::Mat< Int > &SM, const PropFun &propensity, void *propensity_args,
-                  const TcoefFun &new_t_fun, void *t_fun_args );
-
-  virtual int Destroy();
-
-  virtual int action( PetscReal t, Vec x, Vec y);
-
-  PetscInt get_local_ghost_length() const;
-
-  int get_num_rows_local() const { return n_rows_local_; };
-
-  ~FspMatrixBase();
+  virtual int DetermineLayout_(const StateSetBase &fsp);
 };
 
 }

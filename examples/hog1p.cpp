@@ -66,7 +66,7 @@ int t_fun(double t, int num_coefs, PetscReal *outputs, void *args) {
   return 0;
 }
 
-// Function to constraint the shape of the FSP
+// Function to constraint the shape of the Fsp
 int lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, PetscInt *states, int *vals,
                void *args) {
   if (num_species != 5) {
@@ -151,8 +151,8 @@ int main(int argc, char *argv[]) {
 
 
   // Default options
-  PartitioningType fsp_par_type = GRAPH;
-  PartitioningApproach fsp_repart_approach = REPARTITION;
+  PartitioningType fsp_par_type = PartitioningType::GRAPH;
+  PartitioningApproach fsp_repart_approach = PartitioningApproach::REPARTITION;
   ODESolverType fsp_odes_type = CVODE_BDF;
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;

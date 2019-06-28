@@ -104,22 +104,25 @@ int pacmensl::DiscreteDistribution::GetStateView( int &num_states, int &num_spec
     num_states = states_.n_cols;
     num_species = states_.n_rows;
     states = &states_[0];
+    return 0;
 }
 
 int pacmensl::DiscreteDistribution::GetProbView( int &num_states, double *&p ) {
     int ierr;
     ierr = VecGetSize(p_, &num_states);
-    CHKERRABORT(comm_, ierr);
+    CHKERRQ(ierr);
     ierr = VecGetArray(p_, &p);
-    CHKERRABORT(comm_,ierr);
+    CHKERRQ(ierr);
+    return 0;
 }
 
 int pacmensl::DiscreteDistribution::RestoreProbView( double *&p ) {
     int ierr;
     if (p != nullptr){
         ierr = VecRestoreArray(p_, &p);
-        CHKERRABORT(comm_, ierr);
+        CHKERRQ(ierr);
     }
+    return 0;
 }
 
 arma::Col<PetscReal> pacmensl::Compute1DMarginal(const pacmensl::DiscreteDistribution dist, int species) {
@@ -145,6 +148,6 @@ arma::Col<PetscReal> pacmensl::Compute1DMarginal(const pacmensl::DiscreteDistrib
   }
   VecRestoreArray(dist.p_, &p_dat);
   arma::Col<PetscReal> md(md_on_proc.n_elem);
-  MPI_Allreduce((void *) md_on_proc.memptr(), (void *) md.memptr(), md_on_proc.n_elem, MPI_DOUBLE, MPI_SUM, dist.comm_);
+  MPI_Allreduce((void *) md_on_proc.memptr(), (void *) md.memptr(), md_on_proc.n_elem, MPIU_REAL, MPIU_SUM, dist.comm_);
   return md;
 }

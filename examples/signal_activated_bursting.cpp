@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
   ierr = pacmensl::PACMENSLInit(&argc, &argv, help);
   CHKERRQ(ierr);
 
-  // Begin Parallel FSP context
+  // Begin Parallel Fsp context
   {
     MPI_Comm comm;
     MPI_Comm_dup(PETSC_COMM_WORLD, &comm);
@@ -123,8 +123,8 @@ int main(int argc, char *argv[]) {
     il1b_model.t_fun_ = t_fun;
 
     // Default options
-    PartitioningType fsp_par_type = GRAPH;
-    PartitioningApproach fsp_repart_approach = REPARTITION;
+    PartitioningType fsp_par_type = PartitioningType::GRAPH;
+    PartitioningApproach fsp_repart_approach = PartitioningApproach::REPARTITION;
     ODESolverType fsp_odes_type = CVODE_BDF;
     PetscBool output_marginal = PETSC_FALSE;
     PetscBool fsp_log_events = PETSC_FALSE;
@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
 
     fsp_solver.ClearState();
   }
-  //End Parallel FSP context
+  //End Parallel Fsp context
   ierr = pacmensl::PACMENSLFinalize();
   return ierr;
 }

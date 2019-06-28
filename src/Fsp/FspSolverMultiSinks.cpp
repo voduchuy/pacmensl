@@ -8,27 +8,27 @@ namespace pacmensl {
 FspSolverMultiSinks::FspSolverMultiSinks(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type) {
   int ierr;
   ierr = MPI_Comm_dup(_comm, &(FspSolverMultiSinks::comm_));
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   ierr = MPI_Comm_rank(comm_, &my_rank_);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   ierr = MPI_Comm_size(comm_, &comm_size_);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   partitioning_type_ = _part_type;
   odes_type_ = _solve_type;
 }
 
-int FspSolverMultiSinks::SetInitialBounds(arma::Row<int> &_fsp_size) {
+PacmenslErrorCode FspSolverMultiSinks::SetInitialBounds(arma::Row<int> &_fsp_size) {
   fsp_bounds_ = _fsp_size;
   return 0;
 }
 
-int FspSolverMultiSinks::SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr) {
+PacmenslErrorCode FspSolverMultiSinks::SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr) {
   fsp_constr_funs_ = lhs_constr;
   have_custom_constraints_ = true;
   return 0;
 }
 
-int FspSolverMultiSinks::SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors) {
+PacmenslErrorCode FspSolverMultiSinks::SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors) {
   fsp_expasion_factors_ = _expansion_factors;
   return 0;
 }
@@ -38,9 +38,9 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
   PetscInt solver_stat;
   Vec Pnew;
 
-  if (logging_enabled) PACMENSLCHKERREXCEPT(PetscLogEventBegin(Solving, 0, 0, 0, 0));
+  if (logging_enabled) PACMENSLCHKERRTHROW(PetscLogEventBegin(Solving, 0, 0, 0, 0));
 
-  if (verbosity_ > 1) ode_solver_->set_print_intermediate(1);
+  if (verbosity_ > 1) ode_solver_->SetStatusOutput(1);
 
   fsp_tol_ = fsp_tol;
   t_final_ = t_final;
@@ -48,13 +48,13 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
 
   solver_stat = 1;
   while (solver_stat) {
-    if (logging_enabled) PACMENSLCHKERREXCEPT(PetscLogEventBegin(ODESolve, 0, 0, 0, 0));
-    ode_solver_->set_initial_solution(p_);
+    if (logging_enabled) PACMENSLCHKERRTHROW(PetscLogEventBegin(ODESolve, 0, 0, 0, 0));
+    ode_solver_->SetInitialSolution(p_);
     solver_stat = ode_solver_->Solve();
-    if (logging_enabled) PACMENSLCHKERREXCEPT(PetscLogEventEnd(ODESolve, 0, 0, 0, 0));
-
+    if (logging_enabled) PACMENSLCHKERRTHROW(PetscLogEventEnd(ODESolve, 0, 0, 0, 0));
+    if (solver_stat != 0 && solver_stat != 1) PACMENSLCHKERRTHROW(solver_stat);
     // Expand the FspSolverBase if the solver halted prematurely
-    if (solver_stat) {
+    if (solver_stat == 1) {
       for (auto i{0}; i < to_expand_.n_elem; ++i) {
         if (to_expand_(i) == 1) {
           fsp_bounds_(i) = ( int ) std::round(
@@ -74,43 +74,43 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
       // Get local states_ corresponding to the current solution_
       arma::Mat<PetscInt> states_old = state_set_->CopyStatesOnProc();
       if (logging_enabled) {
-        PACMENSLCHKERREXCEPT(PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
+        PACMENSLCHKERRTHROW(PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0));
       }
       (( StateSetConstrained * ) state_set_)->SetShapeBounds(fsp_bounds_);
       state_set_->Expand();
       if (logging_enabled) {
-        PACMENSLCHKERREXCEPT(PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
+        PACMENSLCHKERRTHROW(PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0));
       }
       if (verbosity_) {
         PetscPrintf(comm_, "\n ------------- \n");
-        PetscPrintf(comm_, "New FSP number of states_: %d \n", state_set_->GetNumGlobalStates());
+        PetscPrintf(comm_, "New Fsp number of states_: %d \n", state_set_->GetNumGlobalStates());
         PetscPrintf(comm_, "\n ------------- \n");
       }
 
       // free data of the ODE solver (they will be rebuilt at the beginning of the loop)
       A_->Destroy();
       if (logging_enabled) {
-        PACMENSLCHKERREXCEPT(PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
+        PACMENSLCHKERRTHROW(PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
       }
       (( FspMatrixConstrained * ) A_)
           ->GenerateValues(*(( StateSetConstrained * ) state_set_), model_.stoichiometry_matrix_,
                            model_.prop_, model_.prop_args_, model_.t_fun_, model_.t_fun_args_);
       if (logging_enabled) {
-        PACMENSLCHKERREXCEPT(PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
+        PACMENSLCHKERRTHROW(PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
       }
 
       // Generate the expanded vector and scatter forward the current solution_
       if (logging_enabled) {
-        PACMENSLCHKERREXCEPT(PetscLogEventBegin(SolutionScatter, 0, 0, 0, 0));
+        PACMENSLCHKERRTHROW(PetscLogEventBegin(SolutionScatter, 0, 0, 0, 0));
       }
       ierr = VecCreate(comm_, &Pnew);
-      PACMENSLCHKERREXCEPT(ierr);
-      ierr = VecSetSizes(Pnew, A_->get_num_rows_local(), PETSC_DECIDE);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
+      ierr = VecSetSizes(Pnew, A_->GetNumLocalRows(), PETSC_DECIDE);
+      PACMENSLCHKERRTHROW(ierr);
       ierr = VecSetUp(Pnew);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
       ierr = VecSet(Pnew, 0.0);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
 
       // Scatter from old vector to the expanded vector
       IS new_locations;
@@ -119,14 +119,14 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
         new_states_locations = state_set_->State2Index(states_old);
       }
       catch (...) {
-        PACMENSLCHKERREXCEPT(ierr);
+        PACMENSLCHKERRTHROW(ierr);
       };
       arma::Row<Int> new_sinks_locations;
       if (my_rank_ == comm_size_ - 1) {
         new_sinks_locations.set_size(sinks_.n_elem);
         Int i_end_new;
         ierr = VecGetOwnershipRange(Pnew, NULL, &i_end_new);
-        PACMENSLCHKERREXCEPT(ierr);
+        PACMENSLCHKERRTHROW(ierr);
         for (auto i{0}; i < new_sinks_locations.n_elem; ++i) {
           new_sinks_locations[i] = i_end_new - (( Int ) new_sinks_locations.n_elem) + i;
         }
@@ -137,32 +137,32 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
       arma::Row<Int> new_locations_vals = arma::join_horiz(new_states_locations, new_sinks_locations);
       ierr = ISCreateGeneral(comm_, ( PetscInt ) new_locations_vals.n_elem, &new_locations_vals[0],
                              PETSC_COPY_VALUES, &new_locations);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
       VecScatter scatter;
       ierr = VecScatterCreate(*p_, NULL, Pnew, new_locations, &scatter);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
       ierr = VecScatterBegin(scatter, *p_, Pnew, INSERT_VALUES, SCATTER_FORWARD);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
       ierr = VecScatterEnd(scatter, *p_, Pnew, INSERT_VALUES, SCATTER_FORWARD);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
       ierr = ISDestroy(&new_locations);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
       ierr = VecScatterDestroy(&scatter);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
 
       // Swap p_ to the expanded vector
       ierr = VecDestroy(p_);
-      PACMENSLCHKERREXCEPT(ierr);
+      PACMENSLCHKERRTHROW(ierr);
       *p_ = Pnew;
 
       if (logging_enabled) {
-        PACMENSLCHKERREXCEPT(PetscLogEventEnd(SolutionScatter, 0, 0, 0, 0));
+        PACMENSLCHKERRTHROW(PetscLogEventEnd(SolutionScatter, 0, 0, 0, 0));
       }
     }
   }
 
   if (logging_enabled) {
-    PACMENSLCHKERREXCEPT(PetscLogEventEnd(Solving, 0, 0, 0, 0));
+    PACMENSLCHKERRTHROW(PetscLogEventEnd(Solving, 0, 0, 0, 0));
   }
 
   return DiscreteDistribution(comm_, t_final, state_set_, *p_);
@@ -173,7 +173,7 @@ FspSolverMultiSinks::~FspSolverMultiSinks() {
   if (comm_) MPI_Comm_free(&comm_);
 }
 
-int FspSolverMultiSinks::ClearState() {
+PacmenslErrorCode FspSolverMultiSinks::ClearState() {
   int ierr;
   have_custom_constraints_ = false;
   if (p_ != nullptr) {
@@ -194,7 +194,7 @@ int FspSolverMultiSinks::ClearState() {
   return 0;
 }
 
-int FspSolverMultiSinks::SetUp() {
+PacmenslErrorCode FspSolverMultiSinks::SetUp() {
   int ierr{0};
   // Make sure all the necessary parameters have been set
   try {
@@ -211,6 +211,7 @@ int FspSolverMultiSinks::SetUp() {
       throw std::runtime_error("Initial states and/or probabilities were not set before calling FspSolver.SetUp().");
     }
   } catch (std::runtime_error &e) {
+    PetscPrintf(comm_, "\n %s \n", e.what());
     ierr = -1;
   }
   PACMENSLCHKERRQ(ierr);
@@ -221,64 +222,68 @@ int FspSolverMultiSinks::SetUp() {
     CHKERRQ(ierr);
     ierr = PetscLogEventRegister("Finite state subset partitioning", 0, &StateSetPartitioning);
     CHKERRQ(ierr);
-    ierr = PetscLogEventRegister("Generate FSP matrices", 0, &MatrixGeneration);
+    ierr = PetscLogEventRegister("Generate Fsp matrices", 0, &MatrixGeneration);
     CHKERRQ(ierr);
     ierr = PetscLogEventRegister("Advance reduced problem", 0, &ODESolve);
     CHKERRQ(ierr);
-    ierr = PetscLogEventRegister("FSP RHS evaluation", 0, &RHSEvaluation);
+    ierr = PetscLogEventRegister("Fsp RHS evaluation", 0, &RHSEvaluation);
     CHKERRQ(ierr);
-    ierr = PetscLogEventRegister("FSP Solution scatter", 0, &SolutionScatter);
+    ierr = PetscLogEventRegister("Fsp Solution scatter", 0, &SolutionScatter);
     CHKERRQ(ierr);
-    ierr = PetscLogEventRegister("FSP Set-up", 0, &SettingUp);
+    ierr = PetscLogEventRegister("Fsp Set-up", 0, &SettingUp);
     CHKERRQ(ierr);
-    ierr = PetscLogEventRegister("FSP Solving total", 0, &Solving);
+    ierr = PetscLogEventRegister("Fsp Solving total", 0, &Solving);
     CHKERRQ(ierr);
     ierr = PetscLogEventBegin(SettingUp, 0, 0, 0, 0);
     CHKERRQ(ierr);
   }
 
-  state_set_ = new StateSetConstrained(comm_, model_.stoichiometry_matrix_.n_rows, partitioning_type_,
-                                       repart_approach_);
+  state_set_ = new StateSetConstrained(comm_);
   state_set_->SetStoichiometryMatrix(model_.stoichiometry_matrix_);
   if (have_custom_constraints_) {
     (( StateSetConstrained * ) state_set_)->SetShape(fsp_constr_funs_, fsp_bounds_, nullptr);
   } else {
     (( StateSetConstrained * ) state_set_)->SetShapeBounds(fsp_bounds_);
   }
-  state_set_->SetInitialStates(init_states_);
+  state_set_->SetUp();
+  state_set_->AddStates(init_states_);
   if (logging_enabled) {
     ierr = PetscLogEventBegin(StateSetPartitioning, 0, 0, 0, 0);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
   }
-  state_set_->Expand();
+  ierr = state_set_->Expand();
+  PACMENSLCHKERRQ(ierr);
   if (logging_enabled) {
     ierr = PetscLogEventEnd(StateSetPartitioning, 0, 0, 0, 0);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
   }
 
   A_ = new FspMatrixConstrained(comm_);
   if (logging_enabled) {
-    CHKERRABORT(comm_, PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
+    CHKERRQ(PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
   }
-  (( FspMatrixConstrained * ) A_)
+  ierr = (( FspMatrixConstrained * ) A_)
       ->GenerateValues(*(( StateSetConstrained * ) state_set_),
                        model_.stoichiometry_matrix_,
                        model_.prop_,
                        model_.prop_args_,
                        model_.t_fun_,
                        model_.t_fun_args_);
+  PACMENSLCHKERRQ(ierr);
   if (logging_enabled) {
-    CHKERRABORT(comm_, PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
+    CHKERRQ(PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
   }
   if (logging_enabled) {
     tmatvec_ = [&](Real t, Vec x, Vec y) {
-      CHKERRABORT(comm_, PetscLogEventBegin(RHSEvaluation, 0, 0, 0, 0));
-      (( FspMatrixConstrained * ) A_)->action(t, x, y);
-      CHKERRABORT(comm_, PetscLogEventEnd(RHSEvaluation, 0, 0, 0, 0));
+      int ierr;
+      CHKERRQ(PetscLogEventBegin(RHSEvaluation, 0, 0, 0, 0));
+      ierr = (( FspMatrixConstrained * ) A_)->Action(t, x, y);
+      CHKERRQ(PetscLogEventEnd(RHSEvaluation, 0, 0, 0, 0));
+      return ierr;
     };
   } else {
     tmatvec_ = [&](Real t, Vec x, Vec y) {
-      (( FspMatrixConstrained * ) A_)->action(t, x, y);
+      return (( FspMatrixConstrained * ) A_)->Action(t, x, y);
     };
   }
 
@@ -290,7 +295,7 @@ int FspSolverMultiSinks::SetUp() {
     default:ode_solver_ = new CvodeFsp(comm_, CV_BDF);
   }
 
-  ode_solver_->set_rhs(this->tmatvec_);
+  ode_solver_->SetRhs(this->tmatvec_);
   auto error_checking_fp = [&](PetscReal t, Vec p, void *data) {
     return CheckFspTolerance_(t, p);
   };
@@ -300,19 +305,20 @@ int FspSolverMultiSinks::SetUp() {
     ierr = PetscLogEventEnd(SettingUp, 0, 0, 0, 0);
     CHKERRQ(ierr);
   }
-  ode_solver_->SetUp();
+  ierr = ode_solver_->SetUp();
+  PACMENSLCHKERRQ(ierr);
 
   sinks_.set_size((( StateSetConstrained * ) state_set_)->GetNumConstraints());
   to_expand_.set_size(sinks_.n_elem);
-  return 0;
+  return ierr;
 }
 
-int FspSolverMultiSinks::SetVerbosity(int verbosity_level) {
+PacmenslErrorCode FspSolverMultiSinks::SetVerbosity(int verbosity_level) {
   verbosity_ = verbosity_level;
   return 0;
 }
 
-int FspSolverMultiSinks::SetInitialDistribution(const arma::Mat<Int> &_init_states,
+PacmenslErrorCode FspSolverMultiSinks::SetInitialDistribution(const arma::Mat<Int> &_init_states,
                                                 const arma::Col<PetscReal> &_init_probs) {
   init_states_ = _init_states;
   init_probs_ = _init_probs;
@@ -326,8 +332,9 @@ const StateSetBase *FspSolverMultiSinks::GetStateSet() {
   return state_set_;
 }
 
-int FspSolverMultiSinks::SetLogging(PetscBool logging) {
+PacmenslErrorCode FspSolverMultiSinks::SetLogging(PetscBool logging) {
   logging_enabled = logging;
+  return 0;
 }
 
 FspSolverComponentTiming FspSolverMultiSinks::GetAvgComponentTiming() {
@@ -341,7 +348,7 @@ FspSolverComponentTiming FspSolverMultiSinks::GetAvgComponentTiming() {
     int ierr = PetscLogEventGetPerfInfo(PETSC_DETERMINE, event, &info);
     CHKERRABORT(comm_, ierr);
     tmp = info.time;
-    MPI_Allreduce(&tmp, &timing, 1, MPIU_REAL, MPI_SUM, comm_);
+    MPI_Allreduce(&tmp, &timing, 1, MPIU_REAL, MPIU_SUM, comm_);
     timing /= PetscReal(comm_size);
     return timing;
   };
@@ -360,7 +367,7 @@ FiniteProblemSolverPerfInfo FspSolverMultiSinks::GetSolverPerfInfo() {
   return ode_solver_->GetAvgPerfInfo();
 }
 
-int FspSolverMultiSinks::SetFromOptions() {
+PacmenslErrorCode FspSolverMultiSinks::SetFromOptions() {
   PetscErrorCode ierr;
   char opt[100];
   PetscMPIInt num_procs;
@@ -374,7 +381,7 @@ int FspSolverMultiSinks::SetFromOptions() {
     partitioning_type_ = str2part(std::string(opt));
   }
   if (num_procs == 1) {
-    partitioning_type_ = GRAPH;
+    partitioning_type_ = PartitioningType::GRAPH;
   }
 
   ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
@@ -404,7 +411,7 @@ int FspSolverMultiSinks::SetFromOptions() {
   return 0;
 }
 
-int FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p) {
+PacmenslErrorCode FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p) {
   int ierr;
   to_expand_.fill(0);
   // Find the sink states_
@@ -412,29 +419,29 @@ int FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p) {
   if (my_rank_ == comm_size_ - 1) {
     const PetscReal *local_p_data;
     ierr = VecGetArrayRead(p, &local_p_data);
-    PACMENSLCHKERREXCEPT(ierr);
-    int n_loc = A_->get_num_rows_local();
+    PACMENSLCHKERRTHROW(ierr);
+    int n_loc = A_->GetNumLocalRows();
     for (int i{0}; i < sinks_of_p.n_elem; ++i) {
       sinks_of_p(i) = local_p_data[n_loc - sinks_.n_elem + i];
     }
     ierr = VecRestoreArrayRead(p, &local_p_data);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
   } else {
     sinks_of_p.fill(0.0);
   }
 
   MPI_Datatype scalar_type;
   ierr = PetscDataTypeToMPIDataType(PETSC_DOUBLE, &scalar_type);
-  PACMENSLCHKERREXCEPT(ierr);
-  ierr = MPI_Allreduce(&sinks_of_p[0], &sinks_[0], sinks_of_p.n_elem, scalar_type, MPI_SUM, comm_);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
+  ierr = MPI_Allreduce(&sinks_of_p[0], &sinks_[0], sinks_of_p.n_elem, scalar_type, MPIU_SUM, comm_);
+  PACMENSLCHKERRTHROW(ierr);
   for (int i{0}; i < ( int ) sinks_.n_elem; ++i) {
     if (sinks_(i)/fsp_tol_ > (1.0/double(sinks_.n_elem) )*(t / t_final_)) to_expand_(i) = 1;
   }
   return to_expand_.max();
 }
 
-int FspSolverMultiSinks::SetModel(Model &model) {
+PacmenslErrorCode FspSolverMultiSinks::SetModel(Model &model) {
   FspSolverMultiSinks::model_ = model;
   return 0;
 }
@@ -444,25 +451,25 @@ DiscreteDistribution FspSolverMultiSinks::Solve(PetscReal t_final, PetscReal fsp
   if (p_ == nullptr) {
     p_ = new Vec;
     ierr = VecCreate(comm_, p_);
-    PACMENSLCHKERREXCEPT(ierr);
-    ierr = VecSetSizes(*p_, A_->get_num_rows_local(), PETSC_DECIDE);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
+    ierr = VecSetSizes(*p_, A_->GetNumLocalRows(), PETSC_DECIDE);
+    PACMENSLCHKERRTHROW(ierr);
     ierr = VecSetType(*p_, VECMPI);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
     ierr = VecSetUp(*p_);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
   }
   ierr = VecSet(*p_, 0.0);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   arma::Row<Int> indices = state_set_->State2Index(init_states_);
   ierr = VecSetValues(*p_, PetscInt(init_probs_.n_elem), &indices[0], &init_probs_[0], INSERT_VALUES);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   ierr = VecAssemblyBegin(*p_);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   ierr = VecAssemblyEnd(*p_);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
 
-  ode_solver_->set_current_time(0.0);
+  ode_solver_->SetCurrentTime(0.0);
 
   DiscreteDistribution solution = FspSolverMultiSinks::Advance_(t_final, fsp_tol);
 
@@ -476,23 +483,23 @@ FspSolverMultiSinks::SolveTspan(const std::vector<PetscReal> &tspan, PetscReal f
   if (p_ == nullptr) {
     p_ = new Vec;
     ierr = VecCreate(comm_, p_);
-    PACMENSLCHKERREXCEPT(ierr);
-    ierr = VecSetSizes(*p_, A_->get_num_rows_local(), PETSC_DECIDE);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
+    ierr = VecSetSizes(*p_, A_->GetNumLocalRows(), PETSC_DECIDE);
+    PACMENSLCHKERRTHROW(ierr);
     ierr = VecSetType(*p_, VECMPI);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
     ierr = VecSetUp(*p_);
-    PACMENSLCHKERREXCEPT(ierr);
+    PACMENSLCHKERRTHROW(ierr);
   }
   ierr = VecSet(*p_, 0.0);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   arma::Row<Int> indices = state_set_->State2Index(init_states_);
   ierr = VecSetValues(*p_, PetscInt(init_probs_.n_elem), &indices[0], &init_probs_[0], INSERT_VALUES);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   ierr = VecAssemblyBegin(*p_);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
   ierr = VecAssemblyEnd(*p_);
-  PACMENSLCHKERREXCEPT(ierr);
+  PACMENSLCHKERRTHROW(ierr);
 
   int num_time_points = tspan.size();
   outputs.resize(num_time_points);
@@ -501,7 +508,7 @@ FspSolverMultiSinks::SolveTspan(const std::vector<PetscReal> &tspan, PetscReal f
 
   DiscreteDistribution sol;
 
-  ode_solver_->set_current_time(0.0);
+  ode_solver_->SetCurrentTime(0.0);
   for (int i = 0; i < num_time_points; ++i) {
     sol = FspSolverMultiSinks::Advance_(tspan[i], tspan[i] * fsp_tol / t_max);
     outputs[i] = sol;
@@ -510,12 +517,12 @@ FspSolverMultiSinks::SolveTspan(const std::vector<PetscReal> &tspan, PetscReal f
   return outputs;
 }
 
-int FspSolverMultiSinks::SetOdesType(ODESolverType odes_type) {
+PacmenslErrorCode FspSolverMultiSinks::SetOdesType(ODESolverType odes_type) {
   FspSolverMultiSinks::odes_type_ = odes_type;
   return 0;
 }
 
-int FspSolverMultiSinks::SetLoadBalancingMethod(PartitioningType part_type) {
+PacmenslErrorCode FspSolverMultiSinks::SetLoadBalancingMethod(PartitioningType part_type) {
   partitioning_type_ = part_type;
   return 0;
 }
