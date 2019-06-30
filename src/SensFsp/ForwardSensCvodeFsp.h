@@ -38,8 +38,8 @@ class ForwardSensCvodeFsp : public ForwardSensSolverBase {
   N_Vector *sens_vecs_tmp = nullptr;
 
   PetscReal t_now_tmp_ = 0.0;
-  PetscReal rel_tol    = 1.0e-4;
-  PetscReal abs_tol    = 1.0e-8;
+  PetscReal rel_tol    = 1.0e-6;
+  PetscReal abs_tol    = 1.0e-14;
   int       cvode_stat = 0;
   static int cvode_rhs(double t, N_Vector u, N_Vector udot, void *data);
   static int cvode_jac(N_Vector v, N_Vector Jv, realtype t,

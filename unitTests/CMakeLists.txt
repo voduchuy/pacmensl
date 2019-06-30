@@ -6,6 +6,7 @@ set(TEST_PROGRAMS
         test_smfish
         test_sensmat
         test_sensfsp_solver
+        test_petscwrap
         )
 
 include_directories(${GTEST_INCLUDE_DIRS})

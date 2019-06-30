@@ -40,7 +40,6 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
   if (verbosity_ > 1) ode_solver_->SetStatusOutput(1);
 
   fsp_tol_ = fsp_tol;
-  t_final_ = t_final;
   ode_solver_->SetFinalTime(t_final);
 
   solver_stat = 1;
@@ -422,6 +421,7 @@ DiscreteDistribution FspSolverMultiSinks::Solve(PetscReal t_final, PetscReal fsp
   ierr = VecAssemblyEnd(*p_); PACMENSLCHKERRTHROW(ierr);
 
   t_now_ = 0.0;
+  t_final_ = t_final;
   DiscreteDistribution solution = FspSolverMultiSinks::Advance_(t_final, fsp_tol);
 
   return solution;
@@ -452,8 +452,9 @@ FspSolverMultiSinks::SolveTspan(const std::vector<PetscReal> &tspan, PetscReal f
   DiscreteDistribution sol;
 
   t_now_ = 0.0;
+  t_final_ = t_max;
   for (int i = 0; i < num_time_points; ++i) {
-    sol = FspSolverMultiSinks::Advance_(tspan[i], tspan[i] * fsp_tol / t_max);
+    sol = FspSolverMultiSinks::Advance_(tspan[i], fsp_tol);
     outputs[i] = sol;
   }
 
@@ -505,11 +506,14 @@ PacmenslErrorCode FspSolverMultiSinks::Make_Discrete_Distribution(DiscreteDistri
   IS src_loc;
   VecScatter scatter;
   auto src_indx = state_set_->State2Index(state_set_->GetStatesRef());
-  ierr = ISCreateGeneral(comm_, src_indx.n_elem, &src_indx[0], PETSC_OWN_POINTER, &src_loc); CHKERRQ(ierr);
+  ierr = ISCreateGeneral(comm_, src_indx.n_elem, &src_indx[0], PETSC_USE_POINTER, &src_loc); CHKERRQ(ierr);
   ierr = VecScatterCreate(*p_, src_loc, dist.p_, NULL, &scatter); CHKERRQ(ierr);
 
   ierr = VecScatterBegin(scatter, *p_, dist.p_, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
   ierr = VecScatterEnd(scatter, *p_, dist.p_, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+
+  ISDestroy(&src_loc);
+  VecScatterDestroy(&scatter);
   return 0;
 }
 

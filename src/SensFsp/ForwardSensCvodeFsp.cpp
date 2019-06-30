@@ -169,7 +169,7 @@ PetscInt pacmensl::ForwardSensCvodeFsp::Solve() {
       CVODECHKERRQ(cvode_stat);
       t_now_tmp_ = t_final_;
     }
-    cvode_stat = CVodeGetSens(cvode_mem, &t_now_tmp_, sens_vecs_tmp);
+    cvode_stat = CVodeGetSensDky(cvode_mem, t_now_tmp_, 0, sens_vecs_tmp);
     CVODECHKERRQ(cvode_stat);
 
     // Check that the temporary solution_ satisfies Fsp tolerance
@@ -183,7 +183,7 @@ PetscInt pacmensl::ForwardSensCvodeFsp::Solve() {
     if (stop == 1) {
       cvode_stat = CVodeGetDky(cvode_mem, t_now_, 0, solution_tmp);
       CVODECHKERRQ(cvode_stat);
-      cvode_stat = CVodeGetSens(cvode_mem, &t_now_, sens_vecs_tmp);
+      cvode_stat = CVodeGetSensDky(cvode_mem, t_now_, 0, sens_vecs_tmp);
       CVODECHKERRQ(cvode_stat);
       break;
     } else {

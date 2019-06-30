@@ -183,14 +183,14 @@ TEST_F(FspTest, toggle_compare_ode_methods) {
   int bdf_vec_size, krylov_vec_size;
   ierr = VecGetSize(p_final_bdf.p_, &bdf_vec_size);
   ASSERT_FALSE(ierr);
-  ierr = VecGetSize(p_final_krylov.p_, &krylov_vec_size);
+  ierr                          = VecGetSize(p_final_krylov.p_, &krylov_vec_size);
   ASSERT_FALSE(ierr);
   ASSERT_EQ(bdf_vec_size, krylov_vec_size);
 
-  VecScatter scatter;
-  IS         new_loc;
+  VecScatter         scatter;
+  IS                 new_loc;
   const StateSetBase *state_set = fsp.GetStateSet();
-  arma::Row<int> indx = state_set->State2Index(p_final_bdf.states_);
+  arma::Row<int>     indx       = state_set->State2Index(p_final_bdf.states_);
 
   ierr = ISCreateGeneral(PETSC_COMM_WORLD, indx.n_elem, indx.memptr(), PETSC_USE_POINTER, &new_loc);
   ASSERT_FALSE(ierr);
@@ -212,7 +212,6 @@ TEST_F(FspTest, toggle_compare_ode_methods) {
   ierr = VecNorm(q, NORM_1, &stmp);
   ASSERT_FALSE(ierr);
   ASSERT_LE(stmp, fsp_tol);
-  std::cout << stmp;
 
   ierr = VecDestroy(&q);
   ASSERT_FALSE(ierr);
@@ -230,4 +229,82 @@ TEST_F(FspTest, toggle_compare_ode_methods) {
     ASSERT_FALSE(ierr);
   }
 
+}
+
+class FspPoissonTest : public ::testing::Test {
+ protected:
+  FspPoissonTest() {}
+
+  void SetUp() override {
+    auto propensity =
+             [&](int reaction, int num_species, int num_states, const int *state, PetscReal *output, void *args) {
+               for (int i{0}; i < num_states; ++i) {
+                 output[i] = 1.0;
+               }
+               return 0;
+             };
+    auto t_fun      = [&](double t, int num_coefs, double *outputs, void *args) {
+      outputs[0] = lambda;
+      return 0;
+    };
+
+    poisson_model = Model(stoich_matrix,
+                          t_fun,
+                          nullptr,
+                          propensity,
+                          nullptr);
+  }
+
+  void TearDown() override {
+
+  }
+
+  ~FspPoissonTest() {}
+
+  Model                poisson_model;
+  PetscReal            lambda            = 2.0;
+  arma::Mat<int>       stoich_matrix     = {1};
+  arma::Mat<int>       x0                = {0};
+  arma::Col<PetscReal> p0                = {1.0};
+  arma::Row<int>       fsp_size          = {5};
+  arma::Row<PetscReal> expansion_factors = {0.1};
+  PetscReal            t_final{1.0}, fsp_tol{1.0e-6};
+};
+
+TEST_F(FspPoissonTest, test_poisson_analytic) {
+  PetscInt             ierr;
+  PetscReal            stmp;
+  DiscreteDistribution p_final;
+
+  FspSolverMultiSinks fsp(PETSC_COMM_WORLD);
+
+  ierr = fsp.SetModel(poisson_model);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialBounds(fsp_size);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetExpansionFactors(expansion_factors);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialDistribution(x0, p0);
+  ASSERT_FALSE(ierr);
+
+  ierr = fsp.SetUp();
+  ASSERT_FALSE(ierr);
+  p_final = fsp.Solve(t_final, fsp_tol);
+  fsp.ClearState();
+
+  // Check that the solution is close to Poisson
+  stmp        = 0.0;
+  PetscReal *p_dat;
+  int num_states;
+  p_final.GetProbView(num_states, p_dat);
+  PetscReal pdf;
+  int       n;
+  for (int  i = 0; i < num_states; ++i) {
+    n   = p_final.states_(0, i);
+    pdf = exp(-lambda * t_final) * pow(lambda * t_final, double(n)) / tgamma(n + 1);
+    stmp += abs(p_dat[i] - pdf);
+  }
+  p_final.RestoreProbView(p_dat);
+  MPI_Allreduce(&stmp, MPI_IN_PLACE, 1, MPIU_REAL, MPIU_SUM, PETSC_COMM_WORLD);
+  ASSERT_LE(stmp, fsp_tol);
 }

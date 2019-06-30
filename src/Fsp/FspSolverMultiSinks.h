@@ -18,6 +18,7 @@
 #include"KrylovFsp.h"
 #include"CvodeFsp.h"
 #include"Sys.h"
+#include"PetscWrap.h"
 
 namespace pacmensl {
 struct FspSolverComponentTiming {
@@ -78,32 +79,32 @@ class FspSolverMultiSinks {
  protected:
 
   MPI_Comm comm_ = nullptr;
-  int my_rank_;
-  int comm_size_;
+  int      my_rank_;
+  int      comm_size_;
 
-  PartitioningType partitioning_type_ = PartitioningType::GRAPH;
-  PartitioningApproach repart_approach_ = PartitioningApproach::REPARTITION;
-  ODESolverType odes_type_ = CVODE_BDF;
+  PartitioningType     partitioning_type_ = PartitioningType::GRAPH;
+  PartitioningApproach repart_approach_   = PartitioningApproach::REPARTITION;
+  ODESolverType        odes_type_         = CVODE_BDF;
 
-  StateSetBase *state_set_ = nullptr;
-  Vec *p_ = nullptr;
-  FspMatrixBase *A_ = nullptr;
+  StateSetBase  *state_set_  = nullptr;
+  Vec           *p_          = nullptr;
+  FspMatrixBase *A_          = nullptr;
   OdeSolverBase *ode_solver_ = nullptr;
-  bool set_up_ = false;
+  bool          set_up_      = false;
 
-  Model model_;
+  Model                                   model_;
 
   std::function<int(PetscReal, Vec, Vec)> tmatvec_;
 
-  arma::Mat<Int> init_states_;
+  arma::Mat<Int>       init_states_;
   arma::Col<PetscReal> init_probs_;
 
-  int verbosity_ = 0;
+  int  verbosity_               = 0;
   bool have_custom_constraints_ = false;
 
   fsp_constr_multi_fn fsp_constr_funs_;
-  arma::Row<int> fsp_bounds_;
-  arma::Row<Real> fsp_expasion_factors_;
+  arma::Row<int>      fsp_bounds_;
+  arma::Row<Real>     fsp_expasion_factors_;
 
   // For error checking and expansion parameters
   int CheckFspTolerance_(PetscReal t, Vec p);
@@ -111,16 +112,16 @@ class FspSolverMultiSinks {
   virtual void set_expansion_parameters_() {};
   Real fsp_tol_ = 1.0;
   Real t_final_ = 0.0;
-  Real t_now_ = 0.0;
+  Real t_now_   = 0.0;
 
   arma::Row<PetscReal> sinks_;
-  arma::Row<int> to_expand_;
+  arma::Row<int>       to_expand_;
 
   DiscreteDistribution Advance_(PetscReal t_final, PetscReal fsp_tol);
-  PacmenslErrorCode Make_Discrete_Distribution(DiscreteDistribution& dist);
+  PacmenslErrorCode Make_Discrete_Distribution(DiscreteDistribution &dist);
 
   // For logging events using PETSc LogEvent
-  PetscBool logging_enabled = PETSC_FALSE;
+  PetscBool     logging_enabled = PETSC_FALSE;
   PetscLogEvent StateSetPartitioning;
   PetscLogEvent MatrixGeneration;
   PetscLogEvent ODESolve;

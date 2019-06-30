@@ -14,6 +14,7 @@
 #include "Sys.h"
 #include "StateSetBase.h"
 #include "StateSetConstrained.h"
+#include "PetscWrap.h"
 
 namespace pacmensl {
 using Real = PetscReal;
@@ -59,8 +60,8 @@ class FspMatrixBase {
   Int num_rows_local_  = 0;
 
   // Local data of the matrix
-  std::vector<Mat> diag_mats_;
-  std::vector<Mat> offdiag_mats_;
+  std::vector<Petsc<Mat>> diag_mats_;
+  std::vector<Petsc<Mat>> offdiag_mats_;
 
   // Data for computing the matrix action
   Vec        work_        = nullptr; ///< Work vector for computing operator times vector

@@ -202,7 +202,7 @@ std::vector<pacmensl::SensDiscreteDistribution> pacmensl::SensFspSolverMultiSink
   t_now_   = 0.0;
   t_final_ = t_max;
   for (int i = 0; i < num_time_points; ++i) {
-    outputs[i] = Advance_(tspan[i], tspan[i] * fsp_tol / t_max);
+    outputs[i] = Advance_(tspan[i], fsp_tol);
   }
 
   return outputs;
@@ -271,7 +271,7 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
     solver_stat = sens_solver_->Solve();
     if (solver_stat != 0 && solver_stat != 1) PACMENSLCHKERRTHROW(solver_stat);
     t_now_ = sens_solver_->GetCurrentTime();
-    ierr = sens_solver_->FreeWorkspace(); PACMENSLCHKERRTHROW(ierr);
+    ierr   = sens_solver_->FreeWorkspace(); PACMENSLCHKERRTHROW(ierr);
     // Expand the FspSolverBase if the solver halted prematurely
     if (solver_stat == 1) {
       for (auto           i{0}; i < to_expand_.n_elem; ++i) {
@@ -357,5 +357,41 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
     }
   }
 
-  return SensDiscreteDistribution(comm_, t_now_, state_set_.get(), p_, dp_);
+  SensDiscreteDistribution out;
+  ierr = MakeSensDiscreteDistribution_(out); PACMENSLCHKERRTHROW(ierr);
+  return out;
+}
+
+PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::MakeSensDiscreteDistribution_(pacmensl::SensDiscreteDistribution &dist) {
+  PacmenslErrorCode ierr;
+
+  ierr = MPI_Comm_dup(comm_, &dist.comm_); CHKERRMPI(ierr);
+  dist.t_      = t_now_;
+  dist.states_ = state_set_->CopyStatesOnProc();
+
+  ierr = VecCreate(dist.comm_, &dist.p_); CHKERRQ(ierr);
+  ierr = VecSetSizes(dist.p_, state_set_->GetNumLocalStates(), PETSC_DECIDE); CHKERRQ(ierr);
+  ierr = VecSetType(dist.p_, VECMPI); CHKERRQ(ierr);
+  ierr                = VecSetUp(dist.p_); CHKERRQ(ierr);
+
+  // Scatter solution to dist (omitting the sink states)
+  IS         src_loc;
+  VecScatter scatter;
+  auto       src_indx = state_set_->State2Index(state_set_->GetStatesRef());
+  ierr = ISCreateGeneral(comm_, src_indx.n_elem, &src_indx[0], PETSC_USE_POINTER, &src_loc); CHKERRQ(ierr);
+  ierr = VecScatterCreate(p_, src_loc, dist.p_, NULL, &scatter); CHKERRQ(ierr);
+
+  ierr = VecScatterBegin(scatter, p_, dist.p_, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+  ierr = VecScatterEnd(scatter, p_, dist.p_, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+
+  dist.dp_.resize(dp_.size());
+  for (int i{0}; i < dp_.size(); ++i) {
+    ierr = VecDuplicate(dist.p_, &dist.dp_[i]); CHKERRQ(ierr);
+    ierr = VecScatterBegin(scatter, dp_[i], dist.dp_[i], INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+    ierr = VecScatterEnd(scatter, dp_[i], dist.dp_[i], INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+  }
+
+  ISDestroy(&src_loc);
+  VecScatterDestroy(&scatter);
+  return 0;
 }

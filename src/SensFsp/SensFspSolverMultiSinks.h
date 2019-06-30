@@ -90,6 +90,7 @@ class SensFspSolverMultiSinks {
 
   arma::Row<int> to_expand_;
   SensDiscreteDistribution Advance_(PetscReal t_final, PetscReal fsp_tol);
+  PacmenslErrorCode MakeSensDiscreteDistribution_(SensDiscreteDistribution& dist);
 };
 }
 #endif //PACMENSL_SRC_SENSFSP_SENSFSPSOLVERMULTISINKS_H_

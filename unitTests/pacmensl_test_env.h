@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
   int ierr = RUN_ALL_TESTS();
 
   if (ierr == 0){
-    printf("Successful!\n");
+    printf("SUCCESS!\n");
   }
 
   return ierr;

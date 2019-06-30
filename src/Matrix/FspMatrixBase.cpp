@@ -54,9 +54,9 @@ FspMatrixBase::FspMatrixBase(const FspMatrixBase &A) {
     diag_mats_.resize(num_reactions_);
     offdiag_mats_.resize(num_reactions_);
     for (int i{0}; i < num_reactions_; ++i) {
-      ierr = MatDuplicate(A.diag_mats_[i], MAT_COPY_VALUES, &diag_mats_[i]);
+      ierr = MatDuplicate(*const_cast<Mat*>(A.diag_mats_[i].mem()), MAT_COPY_VALUES, diag_mats_[i].mem());
       PETSCCHKERRTHROW(ierr);
-      ierr = MatDuplicate(A.offdiag_mats_[i], MAT_COPY_VALUES, &offdiag_mats_[i]);
+      ierr = MatDuplicate(*const_cast<Mat*>(A.offdiag_mats_[i].mem()), MAT_COPY_VALUES, offdiag_mats_[i].mem());
       PETSCCHKERRTHROW(ierr);
     }
   }
@@ -156,9 +156,9 @@ FspMatrixBase &FspMatrixBase::operator=(const FspMatrixBase &A) {
     diag_mats_.resize(num_reactions_);
     offdiag_mats_.resize(num_reactions_);
     for (int i{0}; i < num_reactions_; ++i) {
-      ierr = MatDuplicate(A.diag_mats_[i], MAT_COPY_VALUES, &diag_mats_[i]);
+      ierr = MatDuplicate(*const_cast<Mat*>(A.diag_mats_[i].mem()), MAT_COPY_VALUES, diag_mats_[i].mem());
       PETSCCHKERRTHROW(ierr);
-      ierr = MatDuplicate(A.offdiag_mats_[i], MAT_COPY_VALUES, &offdiag_mats_[i]);
+      ierr = MatDuplicate(*const_cast<Mat*>(A.offdiag_mats_[i].mem()), MAT_COPY_VALUES, offdiag_mats_[i].mem());
       PETSCCHKERRTHROW(ierr);
     }
   }
@@ -399,7 +399,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
 
   arma::Col<PetscReal> diag_vals(n_local_states);
   for (PetscInt        i_reaction{0}; i_reaction < num_reactions_; ++i_reaction) {
-    ierr = MatCreate(PETSC_COMM_SELF, &diag_mats_[i_reaction]);
+    ierr = MatCreate(PETSC_COMM_SELF, diag_mats_[i_reaction].mem());
     CHKERRQ(ierr);
     ierr = MatSetType(diag_mats_[i_reaction], MATSEQAIJ);
     CHKERRQ(ierr);
@@ -408,7 +408,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
     ierr = MatSeqAIJSetPreallocation(diag_mats_[i_reaction], PETSC_NULL, d_nnz.colptr(i_reaction));
     CHKERRQ(ierr);
 
-    ierr = MatCreate(PETSC_COMM_SELF, &offdiag_mats_[i_reaction]);
+    ierr = MatCreate(PETSC_COMM_SELF, offdiag_mats_[i_reaction].mem());
     CHKERRQ(ierr);
     ierr = MatSetType(offdiag_mats_[i_reaction], MATSEQAIJ);
     CHKERRQ(ierr);
@@ -452,16 +452,8 @@ FspMatrixBase::~FspMatrixBase() {
 
 int FspMatrixBase::Destroy() {
   PetscErrorCode ierr;
-  for (PetscInt  i{0}; i < num_reactions_; ++i) {
-    if (diag_mats_[i] != nullptr) {
-      ierr = MatDestroy(&diag_mats_[i]);
-      CHKERRQ(ierr);
-    }
-    if (offdiag_mats_[i] != nullptr) {
-      ierr = MatDestroy(&offdiag_mats_[i]);
-      CHKERRQ(ierr);
-    }
-  }
+  diag_mats_.clear();
+  offdiag_mats_.clear();
   if (xx != nullptr) {
     ierr = VecDestroy(&xx);
     CHKERRQ(ierr);
