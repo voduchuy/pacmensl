@@ -5,7 +5,6 @@
 #ifndef PACMENSL_ODESOLVERBASE_H
 #define PACMENSL_ODESOLVERBASE_H
 
-#include <sundials/sundials_nvector.h>
 #include "Sys.h"
 
 namespace pacmensl {
@@ -57,8 +56,8 @@ class OdeSolverBase {
 
   Vec *solution_ = nullptr;
   std::function<int (PetscReal t, Vec x, Vec y)> rhs_;
-  PetscReal t_now_ = 0.0;
 
+  PetscReal t_now_ = 0.0;
   PetscReal t_final_ = 0.0;
 
   // For logging and monitoring

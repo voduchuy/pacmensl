@@ -7,15 +7,17 @@
 
 using PacmenslErrorCode = int;
 
-#ifndef NDEBUG
+
 #define PACMENSLCHKERRQ(ierr){\
     if (ierr != 0) {\
         int rank;\
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);\
         printf("PACMENSL Error: function %s line %d file %s on rank %d \n.", __func__, __LINE__, __FILE__, rank);\
+        if (!std::strcmp(__func__, "main")) MPI_Abort(MPI_COMM_WORLD, ierr);\
         return ierr;\
     }\
 }
+
 #define PACMENSLCHKERRTHROW(ierr){\
 if (ierr != 0) {\
         int rank;\
@@ -25,18 +27,6 @@ if (ierr != 0) {\
         throw std::runtime_error(msg.str());\
     }\
 }
-#else
-#define PACMENSLCHKERRQ(ierr){\
-    if (ierr != 0) {\
-        return ierr;\
-    }\
-}
-#define PACMENSLCHKERRTHROW(ierr){\
-if (ierr != 0) {\
-        throw std::runtime_error("");\
-    }\
-}
-#endif
 
 #define ZOLTANCHKERRABORT(comm, ierr){\
             if (ierr == ZOLTAN_FATAL){\
@@ -56,6 +46,7 @@ if (ierr != ZOLTAN_OK && ierr != ZOLTAN_WARN) {\
         else{\
           printf("Call to Zoltan returns memory error: function %s line %d file %s on rank %d \n.", __func__, __LINE__, __FILE__, rank);\
         }\
+        if (!std::strcmp(__func__, "main")) MPI_Abort(MPI_COMM_WORLD, ierr);\
         return ierr;\
     }\
 }\
@@ -88,4 +79,27 @@ if (ierr != 0) {\
 }
 
 
+#define CVODECHKERRABORT(comm, flag){\
+    if (flag < 0) \
+    {\
+    PetscPrintf(comm, "\nSUNDIALS_ERROR: function failed in file %s line %d with flag = %d\n\n",\
+    __FILE__,__LINE__, flag);\
+    MPI_Abort(comm, 1);\
+    }\
+    }
+#define CVODECHKERRQ(flag){\
+    if (flag < 0) \
+    {\
+    int rank;\
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);\
+    printf("\nSUNDIALS_ERROR: function failed on rank %d in file %s line %d with flag = %d\n\n",\
+    rank,__FILE__,__LINE__, flag);\
+    return -1;\
+    }\
+    }
+
+
 #endif //PACMENSL_SRC_SYS_ERRORHANDLING_H_
+
+
+//"The main difference between a BS vendor (Krugman) and a doer (Musk) is that a doer, necessarily, has scars." Nassim Taleb

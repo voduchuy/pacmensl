@@ -1,6 +1,6 @@
 set(EXT_LIBRARIES
         -larmadillo
-        -lsundials_cvode
+        -lsundials_cvodes
         -lsundials_nvecpetsc
         -lzoltan
         -lparmetis

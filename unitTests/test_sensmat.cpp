@@ -23,6 +23,8 @@ using namespace pacmensl;
 class SensMatrixTest : public ::testing::Test {
  protected:
 
+  SensMatrixTest() {}
+
   void SetUp() override {
     fsp_size = arma::Row<int>({12});
     t_fun    = [&](double t, int num_coefs, double *outputs, void *args) {
@@ -62,9 +64,9 @@ class SensMatrixTest : public ::testing::Test {
     };
 
     smodel                        = pacmensl::SensModel(stoichiometry, t_fun, nullptr, propensity, nullptr,
-                                                        std::vector<pacmensl::PropFun>({propensity, propensity}),
-                                                        std::vector<void *>({nullptr, nullptr}),
                                                         std::vector<pacmensl::TcoefFun>({d_t_fun1, d_t_fun2}),
+                                                        std::vector<void *>({nullptr, nullptr}),
+                                                        std::vector<pacmensl::PropFun>({propensity, propensity}),
                                                         std::vector<void *>({nullptr, nullptr}),
                                                         arma::Mat<char>{0});
 
@@ -187,7 +189,7 @@ TEST_F(SensMatrixTest, mat_constr_generation) {
 
   ierr = VecSum(Q, &Q_sum);
   ASSERT_FALSE(ierr);
-  ASSERT_DOUBLE_EQ(Q_sum,0.0);
+  ASSERT_DOUBLE_EQ(Q_sum, 0.0);
 
   for (int i_par{0}; i_par < 2; ++i_par) {
     ierr = A.SensAction(i_par, 0.0, P, Q);

@@ -38,7 +38,7 @@ namespace pacmensl {
         ~DiscreteDistribution();
     };
 
-    arma::Col<PetscReal> Compute1DMarginal(const DiscreteDistribution dist, int species);
+    arma::Col<PetscReal> Compute1DMarginal(const DiscreteDistribution &dist, int species);
 }
 
 #endif //PACMENSL_FSPSOLUTION_H

@@ -5,14 +5,14 @@
 #include "SensModel.h"
 
 pacmensl::SensModel::SensModel(const arma::Mat<int> &stoichiometry_matrix,
-                               const pacmensl::TcoefFun &t_fun,
+                               const TcoefFun &t_fun,
                                void *t_fun_args,
-                               const pacmensl::PropFun &prop,
+                               const PropFun &prop,
                                void *prop_args,
-                               const std::vector<pacmensl::PropFun> &dpropensity_xfac,
-                               const std::vector<void *> &dpropensity_xfac_args,
-                               const std::vector<pacmensl::TcoefFun> &dpropensity_tfac,
+                               const std::vector<TcoefFun> &dpropensity_tfac,
                                const std::vector<void *> &dpropensity_tfac_args,
+                               const std::vector<PropFun> &dpropensity_xfac,
+                               const std::vector<void *> &dpropensity_xfac_args,
                                const arma::Mat<char> &dpropensity_nz) {
   num_reactions_ = stoichiometry_matrix.n_cols;
   num_parameters_ = dpropensity_xfac.size();

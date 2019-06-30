@@ -16,28 +16,19 @@
 #include "Sys.h"
 
 
-#define CVODECHKERRABORT(comm, flag){\
-    if (flag < 0) \
-    {\
-    PetscPrintf(comm, "\nSUNDIALS_ERROR: function failed in file %s line %d with flag = %d\n\n",\
-    __FILE__,__LINE__, flag);\
-    MPI_Abort(comm, 1);\
-    }\
-    }
-#define CVODECHKERRQ(flag){\
-    if (flag < 0) \
-    {\
-    int rank;\
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);\
-    printf("\nSUNDIALS_ERROR: function failed on rank %d in file %s line %d with flag = %d\n\n",\
-    rank,__FILE__,__LINE__, flag);\
-    return -1;\
-    }\
-    }
-
-
 namespace pacmensl {
 class CvodeFsp : public OdeSolverBase {
+ public:
+  explicit CvodeFsp(MPI_Comm _comm, int lmm = CV_BDF);
+  int SetCVodeTolerances(PetscReal _r_tol, PetscReal _abs_tol);
+
+  PacmenslErrorCode SetUp() override ;
+
+  PetscInt Solve() override;
+
+  int FreeWorkspace() override;
+
+  ~CvodeFsp();
  protected:
   int lmm_;
   void *cvode_mem = nullptr;
@@ -52,15 +43,6 @@ class CvodeFsp : public OdeSolverBase {
                        N_Vector u, N_Vector fu,
                        void *FPS_ptr, N_Vector tmp);
   N_Vector solution_tmp = nullptr;
- public:
-  explicit CvodeFsp(MPI_Comm _comm, int lmm = CV_BDF);
-  int SetCVodeTolerances(PetscReal _r_tol, PetscReal _abs_tol);
-
-  PetscInt Solve() override;
-
-  int FreeWorkspace() override;
-
-  ~CvodeFsp();
 };
 }
 

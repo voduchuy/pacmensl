@@ -13,8 +13,6 @@ PetscInt pacmensl::KrylovFsp::Solve() {
 
   PetscInt petsc_err;
 
-  SetUpWorkSpace();
-
   // Copy solution_ to the temporary solution variable
   petsc_err = VecCopy(*solution_, solution_tmp_);
   CHKERRQ(petsc_err);
@@ -52,7 +50,6 @@ PetscInt pacmensl::KrylovFsp::Solve() {
   // Copy data from temporary vector to solution_ vector
   petsc_err = VecCopy(solution_tmp_, *solution_);
   CHKERRQ(petsc_err);
-  FreeWorkspace();
   return stop;
 }
 
@@ -310,5 +307,11 @@ int pacmensl::KrylovFsp::SetUp() {
     ierr = PetscLogEventRegister("KrylovFsp GetDky", 0, &event_getdky_);
     CHKERRQ(ierr);
   }
+  SetUpWorkSpace();
+  return 0;
+}
+
+PacmenslErrorCode pacmensl::KrylovFsp::SetTolerance(PetscReal tol) {
+  tol_ = tol;
   return 0;
 }

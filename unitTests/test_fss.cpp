@@ -17,7 +17,7 @@ using namespace pacmensl;
 
 // Test if StateSet can detect wrong inputs into constructors and setters and throws the appropriate exceptions
 TEST(StateSetExpansion, toggle_state_set_insertion_error_handling) {
-  // Stoichiometri matrix
+  // Stoichiometric matrix
   arma::Mat<int> SM{{1, -1, 0, 0},
                     {0, 0, 1, -1}};
 

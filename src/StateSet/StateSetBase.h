@@ -52,7 +52,7 @@ class StateSetBase {
 
   virtual PacmenslErrorCode Expand() { return 0; };
 
-  arma::Row<PetscInt> State2Index(arma::Mat<PetscInt> &state) const;
+  arma::Row<PetscInt> State2Index(const arma::Mat<int> &state) const;
   void State2Index(arma::Mat<PetscInt> &state, int *indx) const;
   void State2Index(int num_states, const int *state, int *indx) const;
 

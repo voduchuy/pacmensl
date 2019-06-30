@@ -74,7 +74,7 @@ int t_fun(PetscReal t, int n_coefs, double *outputs, void *args) {
 }
 }
 
-class OdeTest : public ::testing::Test {
+class SensOdeTest : public ::testing::Test {
  protected:
   void SetUp() override {
     PetscMPIInt rank;
@@ -130,108 +130,35 @@ TEST_F(OdeTest, use_cvode_bdf) {
   ASSERT_GE(Psum, 1.0 - 1.0e-8);
   VecDestroy(&P);
 }
-
-TEST_F(OdeTest, cvode_handling_bad_mat_vec) {
-  PacmenslErrorCode ierr;
-  auto AV = [&](PetscReal t, Vec x, Vec y) {
-    return -1;
-  };
-
-  Vec P;
-  VecCreate(PETSC_COMM_WORLD, &P);
-  VecSetSizes(P, A->GetNumLocalRows(), PETSC_DECIDE);
-  VecSetFromOptions(P);
-  VecSetValue(P, 0, 1.0, INSERT_VALUES);
-  VecSetUp(P);
-  VecAssemblyBegin(P);
-  VecAssemblyEnd(P);
-
-  PetscReal fsp_tol = 1.0e-2, t_final = 100.0;
-  CvodeFsp  cvode_solver(PETSC_COMM_WORLD, CV_BDF);
-  ierr = cvode_solver.SetFinalTime(t_final); ASSERT_EQ(ierr, 0);
-  ierr = cvode_solver.SetInitialSolution(&P); ASSERT_EQ(ierr, 0);
-  ierr = cvode_solver.SetRhs(AV); ASSERT_EQ(ierr, 0);
-  ierr = cvode_solver.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
-  ierr = cvode_solver.SetUp(); ASSERT_EQ(ierr, 0);
-  PetscInt solver_stat = cvode_solver.Solve();
-  ASSERT_EQ(solver_stat, -1);
-
-  PetscReal Psum;
-  VecSum(P, &Psum);
-  ASSERT_LE(Psum, 1.0 + 1.0e-8);
-  ASSERT_GE(Psum, 1.0 - 1.0e-8);
-  VecDestroy(&P);
-}
-
-TEST_F(OdeTest, use_krylov) {
-  PacmenslErrorCode ierr;
-  auto AV = [&](PetscReal t, Vec x, Vec y) {
-    return A->Action(t, x, y);
-  };
-
-  Vec P;
-  VecCreate(PETSC_COMM_WORLD, &P);
-  VecSetSizes(P, A->GetNumLocalRows(), PETSC_DECIDE);
-  VecSetFromOptions(P);
-  VecSetValue(P, 0, 1.0, INSERT_VALUES);
-  VecSetUp(P);
-  VecAssemblyBegin(P);
-  VecAssemblyEnd(P);
-
-  PetscReal fsp_tol = 1.0e-2, t_final = 100.0;
-  KrylovFsp krylov_solver(PETSC_COMM_WORLD);
-
-  ierr = krylov_solver.SetFinalTime(t_final);
-  ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetInitialSolution(&P);
-  ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetRhs(AV);
-  ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetStatusOutput(0);
-  ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetUp();
-  ASSERT_EQ(ierr, 0);
-  PetscInt solver_stat = krylov_solver.Solve();
-  krylov_solver.FreeWorkspace();
-  ASSERT_FALSE(solver_stat);
-
-  PetscReal Psum;
-  VecSum(P, &Psum);
-  ASSERT_LE(Psum, 1.0 + 1.0e-8);
-  ASSERT_GE(Psum, 1.0 - 1.0e-8);
-  VecDestroy(&P);
-}
-
-TEST_F(OdeTest, krylov_handling_bad_mat_vec) {
-  int  ierr;
-  auto AV = [&](PetscReal t, Vec x, Vec y) {
-    return -1;
-  };
-
-  Vec P;
-  VecCreate(PETSC_COMM_WORLD, &P);
-  VecSetSizes(P, A->GetNumLocalRows(), PETSC_DECIDE);
-  VecSetFromOptions(P);
-  VecSetValue(P, 0, 1.0, INSERT_VALUES);
-  VecSetUp(P);
-  VecAssemblyBegin(P);
-  VecAssemblyEnd(P);
-
-  PetscReal fsp_tol = 1.0e-2, t_final = 100.0;
-  KrylovFsp krylov_solver(PETSC_COMM_WORLD);
-
-  ierr = krylov_solver.SetFinalTime(t_final);
-  ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetInitialSolution(&P);
-  ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetRhs(AV);
-  ASSERT_EQ(ierr, 0);
-  ierr                 = krylov_solver.SetStatusOutput(0);
-  ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetUp();
-  ASSERT_EQ(ierr, 0);
-  PetscInt solver_stat = krylov_solver.Solve();
-  ASSERT_EQ(solver_stat, -1);
-
-  VecDestroy(&P);
-}
+//
+//TEST_F(OdeTest, cvode_handling_bad_mat_vec) {
+//  PacmenslErrorCode ierr;
+//  auto AV = [&](PetscReal t, Vec x, Vec y) {
+//    return -1;
+//  };
+//
+//  Vec P;
+//  VecCreate(PETSC_COMM_WORLD, &P);
+//  VecSetSizes(P, A->GetNumLocalRows(), PETSC_DECIDE);
+//  VecSetFromOptions(P);
+//  VecSetValue(P, 0, 1.0, INSERT_VALUES);
+//  VecSetUp(P);
+//  VecAssemblyBegin(P);
+//  VecAssemblyEnd(P);
+//
+//  PetscReal fsp_tol = 1.0e-2, t_final = 100.0;
+//  CvodeFsp  cvode_solver(PETSC_COMM_WORLD, CV_BDF);
+//  ierr = cvode_solver.SetFinalTime(t_final); ASSERT_EQ(ierr, 0);
+//  ierr = cvode_solver.SetInitialSolution(&P); ASSERT_EQ(ierr, 0);
+//  ierr = cvode_solver.SetRhs(AV); ASSERT_EQ(ierr, 0);
+//  ierr = cvode_solver.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
+//  ierr = cvode_solver.SetUp(); ASSERT_EQ(ierr, 0);
+//  PetscInt solver_stat = cvode_solver.Solve();
+//  ASSERT_EQ(solver_stat, -1);
+//
+//  PetscReal Psum;
+//  VecSum(P, &Psum);
+//  ASSERT_LE(Psum, 1.0 + 1.0e-8);
+//  ASSERT_GE(Psum, 1.0 - 1.0e-8);
+//  VecDestroy(&P);
+//}

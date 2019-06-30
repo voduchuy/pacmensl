@@ -13,9 +13,11 @@ class KrylovFsp : public OdeSolverBase {
 
   explicit KrylovFsp(MPI_Comm comm);
 
-  virtual int SetUp() override;
+  int SetUp() override;
 
   PetscInt Solve() override;
+
+  PacmenslErrorCode SetTolerance(PetscReal tol);
 
   int FreeWorkspace() override;
 

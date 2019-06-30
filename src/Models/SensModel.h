@@ -38,10 +38,10 @@ class SensModel {
                      void *t_fun_args,
                      const PropFun &prop,
                      void *prop_args,
-                     const std::vector<PropFun> &dpropensity_xfac,
-                     const std::vector<void *> &dpropensity_xfac_args,
                      const std::vector<TcoefFun> &dpropensity_tfac,
                      const std::vector<void *> &dpropensity_tfac_args,
+                     const std::vector<PropFun> &dpropensity_xfac,
+                     const std::vector<void *> &dpropensity_xfac_args,
                      const arma::Mat<char> &dpropensity_nz);
 
   SensModel(const SensModel &model);

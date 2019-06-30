@@ -111,11 +111,13 @@ class FspSolverMultiSinks {
   virtual void set_expansion_parameters_() {};
   Real fsp_tol_ = 1.0;
   Real t_final_ = 0.0;
+  Real t_now_ = 0.0;
 
   arma::Row<PetscReal> sinks_;
   arma::Row<int> to_expand_;
 
   DiscreteDistribution Advance_(PetscReal t_final, PetscReal fsp_tol);
+  PacmenslErrorCode Make_Discrete_Distribution(DiscreteDistribution& dist);
 
   // For logging events using PETSc LogEvent
   PetscBool logging_enabled = PETSC_FALSE;
@@ -126,6 +128,10 @@ class FspSolverMultiSinks {
   PetscLogEvent RHSEvaluation;
   PetscLogEvent SettingUp;
   PetscLogEvent Solving;
+
+ public:
+  PacmenslErrorCode SetCvodeTolerances(PetscReal rel_tol, PetscReal abs_tol);
+  PacmenslErrorCode SetKrylovTolerances(PetscReal tol);
 };
 }
 

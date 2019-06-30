@@ -1,6 +1,9 @@
 set(SENSFSP_LIBS
+        SensDiscreteDistribution
         SensFspMatrix
         ForwardSensSolverBase
+        ForwardSensCvodeFsp
+        SensFspSolverMultiSinks
         )
 
 foreach (LIB ${SENSFSP_LIBS})

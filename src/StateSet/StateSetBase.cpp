@@ -295,7 +295,7 @@ PacmenslErrorCode StateSetBase::update_layout() {
  * @param state: matrix of input states. Each column represent a state. Each processor inputs its own set of states.
  * @return Armadillo row vector of indices. The index of each state is nonzero of the state is a member of the finite state subset. Otherwise, the index is -1 (if state does not exist in the subset, or some entries of the state are 0) or -2-i if the state violates constraint i.
  */
-arma::Row<int> StateSetBase::State2Index(arma::Mat<int> &state) const {
+arma::Row<int> StateSetBase::State2Index(const arma::Mat<int> &state) const {
   arma::Row<int> indices(state.n_cols);
   indices.fill(0);
 

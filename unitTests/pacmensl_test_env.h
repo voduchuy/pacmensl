@@ -45,7 +45,13 @@ int main(int argc, char *argv[]) {
   // Adds MPI listener; Google Test owns this pointer
   listeners.Append(new MPIMinimalistPrinter);
 
-  return RUN_ALL_TESTS();
+  int ierr = RUN_ALL_TESTS();
+
+  if (ierr == 0){
+    printf("Successful!\n");
+  }
+
+  return ierr;
 }
 
 #endif //PACMENSL_MY_TEST_ENV_H

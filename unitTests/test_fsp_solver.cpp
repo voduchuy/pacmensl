@@ -24,13 +24,13 @@ void lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states,
                 void *args) {
 
   for (int i{0}; i < num_states; ++i) {
-    vals[i * num_constrs] = states[num_species * i];
+    vals[i * num_constrs]     = states[num_species * i];
     vals[i * num_constrs + 1] = states[num_species * i + 1];
     vals[i * num_constrs + 2] = states[num_species * i] * states[num_species * i + 1];
   }
 }
 
-arma::Row<int> rhs_constr{200, 200, 2000};
+arma::Row<int>    rhs_constr{200, 200, 2000};
 arma::Row<double> expansion_factors{0.2, 0.2, 0.2};
 
 // propensity function for toggle
@@ -77,9 +77,9 @@ using namespace pacmensl;
 class FspTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    t_final = 100.0;
-    fsp_tol = 1.0e-8;
-    X0 = X0.t();
+    t_final      = 100.0;
+    fsp_tol      = 1.0e-7;
+    X0           = X0.t();
     toggle_model = Model(toggle_cme::SM, toggle_cme::t_fun, nullptr, toggle_cme::propensity, nullptr);
   }
 
@@ -87,54 +87,63 @@ class FspTest : public ::testing::Test {
 
   }
 
-  PetscReal t_final, fsp_tol;
-  arma::Mat<PetscInt> X0{0, 0};
-  arma::Col<PetscReal> p0 = {1.0};
+  PetscReal            t_final, fsp_tol;
+  arma::Mat<PetscInt>  X0{0, 0};
+  arma::Col<PetscReal> p0                = {1.0};
 
-  Model toggle_model;
-  arma::Row<int> fsp_size = {50, 50};
+  Model                toggle_model;
+  arma::Row<int>       fsp_size          = {5, 5};
   arma::Row<PetscReal> expansion_factors = {0.25, 0.25};
 };
 
 TEST_F(FspTest, test_wrong_call_sequence_detection) {
-  int ierr;
+  int                 ierr;
   FspSolverMultiSinks fsp(PETSC_COMM_WORLD);
   ierr = fsp.SetUp();
   ASSERT_EQ(ierr, -1);
 }
 
 TEST_F(FspTest, test_handling_t_fun_error) {
-  int ierr;
-  DiscreteDistribution p_final_bdf;
+  int                               ierr;
+  DiscreteDistribution              p_final_bdf;
   std::vector<DiscreteDistribution> p_snapshots_bdf;
-  FspSolverMultiSinks fsp( PETSC_COMM_WORLD );
-  std::vector<PetscReal> tspan =
-      arma::conv_to<std::vector<PetscReal>>::from(arma::linspace<arma::Row<PetscReal>>(0.0, t_final, 3));
-  Model bad_model = toggle_model;
-  bad_model.t_fun_ = [&] (double t, int n, double* vals, void* args){
+  FspSolverMultiSinks               fsp(PETSC_COMM_WORLD);
+  std::vector<PetscReal>            tspan     =
+                                        arma::conv_to<std::vector<PetscReal>>::from(arma::linspace<arma::Row<PetscReal>>(
+                                            0.0,
+                                            t_final,
+                                            3));
+  Model                             bad_model = toggle_model;
+  bad_model.t_fun_ = [&](double t, int n, double *vals, void *args) {
     return -1;
   };
 
-  ierr = fsp.SetModel( bad_model ); ASSERT_FALSE(ierr);
-  ierr = fsp.SetInitialBounds( fsp_size ); ASSERT_FALSE(ierr);
-  ierr = fsp.SetExpansionFactors( expansion_factors ); ASSERT_FALSE(ierr);
-  ierr = fsp.SetVerbosity( 0 ); ASSERT_FALSE(ierr);
-  ierr = fsp.SetInitialDistribution( X0, p0 ); ASSERT_FALSE(ierr);
+  ierr = fsp.SetModel(bad_model);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialBounds(fsp_size);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetExpansionFactors(expansion_factors);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetVerbosity(0);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialDistribution(X0, p0);
+  ASSERT_FALSE(ierr);
 
-  fsp.SetOdesType( CVODE_BDF );
-  ierr = fsp.SetUp( ); ASSERT_FALSE(ierr);
-  ASSERT_THROW(p_final_bdf = fsp.Solve( t_final, fsp_tol ), std::runtime_error);
+  fsp.SetOdesType(CVODE_BDF);
+  ierr = fsp.SetUp();
+  ASSERT_FALSE(ierr);
+  ASSERT_THROW(p_final_bdf = fsp.Solve(t_final, fsp_tol), std::runtime_error);
   ASSERT_THROW(p_snapshots_bdf = fsp.SolveTspan(tspan, fsp_tol), std::runtime_error);
   fsp.ClearState();
 }
 
 TEST_F(FspTest, toggle_compare_ode_methods) {
-  PetscInt ierr;
-  PetscReal stmp;
-  DiscreteDistribution p_final_bdf, p_final_krylov;
+  PetscInt                          ierr;
+  PetscReal                         stmp;
+  DiscreteDistribution              p_final_bdf, p_final_krylov;
   std::vector<DiscreteDistribution> p_snapshots_bdf, p_snapshots_krylov;
-  std::vector<PetscReal> tspan;
-  Vec q;
+  std::vector<PetscReal>            tspan;
+  Vec                               q;
 
   // Get processor rank and number of processors
   PetscMPIInt rank, num_procs;
@@ -152,14 +161,22 @@ TEST_F(FspTest, toggle_compare_ode_methods) {
   fsp.SetInitialDistribution(X0, p0);
 
   fsp.SetOdesType(CVODE_BDF);
-  fsp.SetUp();
-  p_final_bdf = fsp.Solve(t_final, fsp_tol);
+  ierr = fsp.SetUp();
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetCvodeTolerances(1.0e-8, 1.0e-14);
+  ASSERT_FALSE(ierr);
+  p_final_bdf     = fsp.Solve(t_final, fsp_tol);
   p_snapshots_bdf = fsp.SolveTspan(tspan, fsp_tol);
   fsp.ClearState();
 
   fsp.SetOdesType(KRYLOV);
-  fsp.SetUp();
-  p_final_krylov = fsp.Solve(t_final, fsp_tol);
+  fsp.SetInitialBounds(fsp_size);
+  fsp.SetExpansionFactors(expansion_factors);
+  ierr = fsp.SetUp();
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetKrylovTolerances(1.0e-10);
+  ASSERT_FALSE(ierr);
+  p_final_krylov     = fsp.Solve(t_final, fsp_tol);
   p_snapshots_krylov = fsp.SolveTspan(tspan, fsp_tol);
 
   // Choice of ODE solvers must not affect the state space size
@@ -170,36 +187,47 @@ TEST_F(FspTest, toggle_compare_ode_methods) {
   ASSERT_FALSE(ierr);
   ASSERT_EQ(bdf_vec_size, krylov_vec_size);
 
-  ierr = VecDuplicate(p_final_bdf.p_, &q);
+  VecScatter scatter;
+  IS         new_loc;
+  const StateSetBase *state_set = fsp.GetStateSet();
+  arma::Row<int> indx = state_set->State2Index(p_final_bdf.states_);
+
+  ierr = ISCreateGeneral(PETSC_COMM_WORLD, indx.n_elem, indx.memptr(), PETSC_USE_POINTER, &new_loc);
+  ASSERT_FALSE(ierr);
+  ierr = VecScatterCreate(p_final_bdf.p_, NULL, p_final_krylov.p_, new_loc, &scatter);
   ASSERT_FALSE(ierr);
 
-  ierr = VecCopy(p_final_bdf.p_, q);
+  // Scatter bdf-solved vector to q
+  ierr = VecDuplicate(p_final_bdf.p_, &q);
+  ASSERT_FALSE(ierr);
+  ierr = VecSet(q, 0.0);
+  ASSERT_FALSE(ierr);
+  ierr = VecScatterBegin(scatter, p_final_bdf.p_, q, INSERT_VALUES, SCATTER_FORWARD);
+  ASSERT_FALSE(ierr);
+  ierr = VecScatterEnd(scatter, p_final_bdf.p_, q, INSERT_VALUES, SCATTER_FORWARD);
   ASSERT_FALSE(ierr);
 
   ierr = VecAXPY(q, -1.0, p_final_krylov.p_);
   ASSERT_FALSE(ierr);
   ierr = VecNorm(q, NORM_1, &stmp);
   ASSERT_FALSE(ierr);
-  PetscPrintf(PETSC_COMM_WORLD, "Final solution Krylov - BDF = %.2e \n", stmp);
-
-  for (int i{0}; i < tspan.size(); ++i) {
-    ierr = VecCopy(p_snapshots_bdf[i].p_, q);
-    ASSERT_FALSE(ierr);
-    ierr = VecAXPY(q, -1.0, p_snapshots_krylov[i].p_);
-    ASSERT_FALSE(ierr);
-    ierr = VecNorm(q, NORM_1, &stmp);
-    ASSERT_FALSE(ierr);
-    PetscPrintf(PETSC_COMM_WORLD, "Final solution at t = %.2e Krylov - BDF = %.2e \n", tspan.at(i), stmp);
-
-    ierr = VecSum(p_final_bdf.p_, &stmp);
-    ASSERT_FALSE(ierr);
-    PetscPrintf(PETSC_COMM_WORLD, "Sum(p_final_bdf) = %.2e \n", stmp);
-
-    ierr = VecSum(p_final_krylov.p_, &stmp);
-    ASSERT_FALSE(ierr);
-    PetscPrintf(PETSC_COMM_WORLD, "Sum(p_final_krylov) = %.2e \n", stmp);
-  }
+  ASSERT_LE(stmp, fsp_tol);
+  std::cout << stmp;
 
   ierr = VecDestroy(&q);
   ASSERT_FALSE(ierr);
+
+  for (int i{0}; i < tspan.size(); ++i) {
+    ierr = VecSum(p_final_bdf.p_, &stmp);
+    ASSERT_FALSE(ierr);
+    ASSERT_LE(1.0 - stmp, fsp_tol);
+
+    ierr = VecSum(p_final_krylov.p_, &stmp);
+    ASSERT_FALSE(ierr);
+    ASSERT_LE(1.0 - stmp, fsp_tol);
+
+    ierr = VecDestroy(&q);
+    ASSERT_FALSE(ierr);
+  }
+
 }
