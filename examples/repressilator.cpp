@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
   PetscReal t_final = 10.0;
   PetscReal fsp_tol = 1.0e-4;
   std::string model_name = "repressilator";
-  Model repressilator_model(SM, t_fun, nullptr, propensity, nullptr);
+  Model repressilator_model(SM, t_fun, propensity, nullptr, nullptr);
   arma::Mat<PetscInt> X0 = {21, 0, 0};
   X0 = X0.t();
   arma::Col<PetscReal> p0 = {1.0};
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetExpansionFactors(expansion_factors);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol);
-  const StateSetConstrained *fss = ( StateSetConstrained * ) fsp_solver.GetStateSet();
+  std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_custom_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_custom"),
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetFromOptions();
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol);
-  fss = ( StateSetConstrained * ) fsp_solver.GetStateSet();
+  fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),

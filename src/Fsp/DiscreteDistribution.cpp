@@ -58,25 +58,27 @@ pacmensl::DiscreteDistribution::operator=(const pacmensl::DiscreteDistribution &
 
 pacmensl::DiscreteDistribution &
 pacmensl::DiscreteDistribution::operator=(pacmensl::DiscreteDistribution &&dist) noexcept {
-  PetscErrorCode ierr;
+  if (this != &dist) {
+    PetscErrorCode ierr;
 
-  if (comm_ != nullptr) {
-    ierr = MPI_Comm_free(&comm_); MPICHKERRABORT(comm_, ierr);
+    if (comm_ != nullptr) {
+      ierr = MPI_Comm_free(&comm_); MPICHKERRABORT(comm_, ierr);
+    }
+    if (p_ != PETSC_NULL) {
+      ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
+    }
+    states_.clear();
+
+    comm_   = dist.comm_;
+    t_      = dist.t_;
+    states_ = std::move(dist.states_);
+    p_      = dist.p_;
+
+    dist.comm_ = nullptr;
+    dist.p_    = PETSC_NULL;
+    dist.states_.clear();
+
   }
-  if (p_ != PETSC_NULL) {
-    ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
-  }
-  states_.clear();
-
-  comm_   = dist.comm_;
-  t_      = dist.t_;
-  states_ = std::move(dist.states_);
-  p_      = dist.p_;
-
-  dist.comm_ = nullptr;
-  dist.p_    = PETSC_NULL;
-  dist.states_.clear();
-
   return *this;
 }
 
@@ -101,7 +103,7 @@ int pacmensl::DiscreteDistribution::GetStateView(int &num_states, int &num_speci
 
 int pacmensl::DiscreteDistribution::GetProbView(int &num_states, double *&p) {
   int ierr;
-  ierr = VecGetSize(p_, &num_states); CHKERRQ(ierr);
+  ierr = VecGetLocalSize(p_, &num_states); CHKERRQ(ierr);
   ierr = VecGetArray(p_, &p); CHKERRQ(ierr);
   return 0;
 }

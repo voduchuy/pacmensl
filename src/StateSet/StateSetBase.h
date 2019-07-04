@@ -100,7 +100,7 @@ class StateSetBase {
   PartitioningApproach lb_approach_ = PartitioningApproach::REPARTITION; ///< Approach to partitioning. See PartitioningApproach.
   StatePartitioner partitioner_; ///< Object to do load-balancing for the owning StateSetBase object.
 
-  /// Armadillo array to store states owned by this processor
+  /// Armadillo array to store states owned by this
   /**
    * States are stored as column vectors of integers.
    */

@@ -48,7 +48,7 @@ class OdeSolverBase {
 
   virtual PacmenslErrorCode FreeWorkspace() { solution_ = nullptr; return 0;};
 
-  ~OdeSolverBase();
+  virtual ~OdeSolverBase();
  protected:
   MPI_Comm comm_ = MPI_COMM_NULL;
   int my_rank_;

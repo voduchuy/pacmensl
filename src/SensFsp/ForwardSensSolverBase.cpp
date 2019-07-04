@@ -2,6 +2,7 @@
 // Created by Huy Vo on 2019-06-28.
 //
 
+#include <PetscWrap/PetscWrap.h>
 #include "ForwardSensSolverBase.h"
 
 pacmensl::ForwardSensSolverBase::ForwardSensSolverBase(MPI_Comm new_comm) {
@@ -14,19 +15,19 @@ pacmensl::ForwardSensSolverBase::ForwardSensSolverBase(MPI_Comm new_comm) {
   MPICHKERRTHROW(ierr);
 }
 
-PacmenslErrorCode pacmensl::ForwardSensSolverBase::SetInitialSolution(Vec &sol) {
+PacmenslErrorCode pacmensl::ForwardSensSolverBase::SetInitialSolution(pacmensl::Petsc<Vec> &sol) {
   if (sol == nullptr){
     return -1;
   }
-  solution_ = &sol;
+  solution_ = sol.mem();
   return 0;
 }
 
-PacmenslErrorCode pacmensl::ForwardSensSolverBase::SetInitialSensitivity(std::vector<Vec> &sens_vecs) {
+PacmenslErrorCode pacmensl::ForwardSensSolverBase::SetInitialSensitivity(std::vector<Petsc < Vec>> &sens_vecs) {
   num_parameters_ = sens_vecs.size();
   sens_vecs_.resize(num_parameters_);
   for (auto i=0; i < num_parameters_; ++i){
-    sens_vecs_[i] = &sens_vecs[i];
+    sens_vecs_[i] = sens_vecs[i].mem();
   }
   return 0;
 }

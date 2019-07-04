@@ -76,11 +76,13 @@ using namespace pacmensl;
 
 class FspTest : public ::testing::Test {
  protected:
+  FspTest() {}
+
   void SetUp() override {
     t_final      = 100.0;
-    fsp_tol      = 1.0e-7;
+    fsp_tol      = 1.0e-6;
     X0           = X0.t();
-    toggle_model = Model(toggle_cme::SM, toggle_cme::t_fun, nullptr, toggle_cme::propensity, nullptr);
+    toggle_model = Model(toggle_cme::SM, toggle_cme::t_fun, toggle_cme::propensity, nullptr, nullptr);
   }
 
   void TearDown() override {
@@ -114,7 +116,7 @@ TEST_F(FspTest, test_handling_t_fun_error) {
                                             t_final,
                                             3));
   Model                             bad_model = toggle_model;
-  bad_model.t_fun_ = [&](double t, int n, double *vals, void *args) {
+  bad_model.prop_t_ = [&](double t, int n, double *vals, void *args) {
     return -1;
   };
 
@@ -130,105 +132,12 @@ TEST_F(FspTest, test_handling_t_fun_error) {
   ASSERT_FALSE(ierr);
 
   fsp.SetOdesType(CVODE_BDF);
-  ierr = fsp.SetUp();
-  ASSERT_FALSE(ierr);
   ASSERT_THROW(p_final_bdf = fsp.Solve(t_final, fsp_tol), std::runtime_error);
+  fsp.ClearState();
+
+  ierr = fsp.SetUp();
+  ASSERT_FALSE(ierr);
   ASSERT_THROW(p_snapshots_bdf = fsp.SolveTspan(tspan, fsp_tol), std::runtime_error);
-  fsp.ClearState();
-}
-
-TEST_F(FspTest, toggle_compare_ode_methods) {
-  PetscInt                          ierr;
-  PetscReal                         stmp;
-  DiscreteDistribution              p_final_bdf, p_final_krylov;
-  std::vector<DiscreteDistribution> p_snapshots_bdf, p_snapshots_krylov;
-  std::vector<PetscReal>            tspan;
-  Vec                               q;
-
-  // Get processor rank and number of processors
-  PetscMPIInt rank, num_procs;
-  MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
-  MPI_Comm_size(PETSC_COMM_WORLD, &num_procs);
-
-  tspan = arma::conv_to<std::vector<PetscReal>>::from(arma::linspace<arma::Row<PetscReal>>(0.0, t_final, 3));
-
-  FspSolverMultiSinks fsp(PETSC_COMM_WORLD);
-
-  fsp.SetModel(toggle_model);
-  fsp.SetInitialBounds(fsp_size);
-  fsp.SetExpansionFactors(expansion_factors);
-  fsp.SetVerbosity(0);
-  fsp.SetInitialDistribution(X0, p0);
-
-  fsp.SetOdesType(CVODE_BDF);
-  ierr = fsp.SetUp();
-  ASSERT_FALSE(ierr);
-  ierr = fsp.SetCvodeTolerances(1.0e-8, 1.0e-14);
-  ASSERT_FALSE(ierr);
-  p_final_bdf     = fsp.Solve(t_final, fsp_tol);
-  p_snapshots_bdf = fsp.SolveTspan(tspan, fsp_tol);
-  fsp.ClearState();
-
-  fsp.SetOdesType(KRYLOV);
-  fsp.SetInitialBounds(fsp_size);
-  fsp.SetExpansionFactors(expansion_factors);
-  ierr = fsp.SetUp();
-  ASSERT_FALSE(ierr);
-  ierr = fsp.SetKrylovTolerances(1.0e-10);
-  ASSERT_FALSE(ierr);
-  p_final_krylov     = fsp.Solve(t_final, fsp_tol);
-  p_snapshots_krylov = fsp.SolveTspan(tspan, fsp_tol);
-
-  // Choice of ODE solvers must not affect the state space size
-  int bdf_vec_size, krylov_vec_size;
-  ierr = VecGetSize(p_final_bdf.p_, &bdf_vec_size);
-  ASSERT_FALSE(ierr);
-  ierr                          = VecGetSize(p_final_krylov.p_, &krylov_vec_size);
-  ASSERT_FALSE(ierr);
-  ASSERT_EQ(bdf_vec_size, krylov_vec_size);
-
-  VecScatter         scatter;
-  IS                 new_loc;
-  const StateSetBase *state_set = fsp.GetStateSet();
-  arma::Row<int>     indx       = state_set->State2Index(p_final_bdf.states_);
-
-  ierr = ISCreateGeneral(PETSC_COMM_WORLD, indx.n_elem, indx.memptr(), PETSC_USE_POINTER, &new_loc);
-  ASSERT_FALSE(ierr);
-  ierr = VecScatterCreate(p_final_bdf.p_, NULL, p_final_krylov.p_, new_loc, &scatter);
-  ASSERT_FALSE(ierr);
-
-  // Scatter bdf-solved vector to q
-  ierr = VecDuplicate(p_final_bdf.p_, &q);
-  ASSERT_FALSE(ierr);
-  ierr = VecSet(q, 0.0);
-  ASSERT_FALSE(ierr);
-  ierr = VecScatterBegin(scatter, p_final_bdf.p_, q, INSERT_VALUES, SCATTER_FORWARD);
-  ASSERT_FALSE(ierr);
-  ierr = VecScatterEnd(scatter, p_final_bdf.p_, q, INSERT_VALUES, SCATTER_FORWARD);
-  ASSERT_FALSE(ierr);
-
-  ierr = VecAXPY(q, -1.0, p_final_krylov.p_);
-  ASSERT_FALSE(ierr);
-  ierr = VecNorm(q, NORM_1, &stmp);
-  ASSERT_FALSE(ierr);
-  ASSERT_LE(stmp, fsp_tol);
-
-  ierr = VecDestroy(&q);
-  ASSERT_FALSE(ierr);
-
-  for (int i{0}; i < tspan.size(); ++i) {
-    ierr = VecSum(p_final_bdf.p_, &stmp);
-    ASSERT_FALSE(ierr);
-    ASSERT_LE(1.0 - stmp, fsp_tol);
-
-    ierr = VecSum(p_final_krylov.p_, &stmp);
-    ASSERT_FALSE(ierr);
-    ASSERT_LE(1.0 - stmp, fsp_tol);
-
-    ierr = VecDestroy(&q);
-    ASSERT_FALSE(ierr);
-  }
-
 }
 
 class FspPoissonTest : public ::testing::Test {
@@ -250,8 +159,8 @@ class FspPoissonTest : public ::testing::Test {
 
     poisson_model = Model(stoich_matrix,
                           t_fun,
-                          nullptr,
                           propensity,
+                          nullptr,
                           nullptr);
   }
 
@@ -271,7 +180,7 @@ class FspPoissonTest : public ::testing::Test {
   PetscReal            t_final{1.0}, fsp_tol{1.0e-6};
 };
 
-TEST_F(FspPoissonTest, test_poisson_analytic) {
+TEST_F(FspPoissonTest, test_poisson_cvode) {
   PetscInt             ierr;
   PetscReal            stmp;
   DiscreteDistribution p_final;
@@ -287,7 +196,43 @@ TEST_F(FspPoissonTest, test_poisson_analytic) {
   ierr = fsp.SetInitialDistribution(x0, p0);
   ASSERT_FALSE(ierr);
 
-  ierr = fsp.SetUp();
+  p_final = fsp.Solve(t_final, fsp_tol);
+  fsp.ClearState();
+
+  // Check that the solution is close to Poisson
+  stmp        = 0.0;
+  PetscReal *p_dat;
+  int num_states;
+  p_final.GetProbView(num_states, p_dat);
+  PetscReal pdf;
+  int       n;
+  for (int  i = 0; i < num_states; ++i) {
+    n   = p_final.states_(0, i);
+    pdf = exp(-lambda * t_final) * pow(lambda * t_final, double(n)) / tgamma(n + 1);
+    stmp += abs(p_dat[i] - pdf);
+  }
+  p_final.RestoreProbView(p_dat);
+  MPI_Allreduce(&stmp, MPI_IN_PLACE, 1, MPIU_REAL, MPIU_SUM, PETSC_COMM_WORLD);
+  ASSERT_LE(stmp, fsp_tol);
+}
+
+TEST_F(FspPoissonTest, test_poisson_krylov) {
+  PetscInt             ierr;
+  PetscReal            stmp;
+  DiscreteDistribution p_final;
+
+  FspSolverMultiSinks fsp(PETSC_COMM_WORLD);
+
+  ierr = fsp.SetModel(poisson_model);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialBounds(fsp_size);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetExpansionFactors(expansion_factors);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialDistribution(x0, p0);
+  ASSERT_FALSE(ierr);
+
+  ierr = fsp.SetOdesType(KRYLOV);
   ASSERT_FALSE(ierr);
   p_final = fsp.Solve(t_final, fsp_tol);
   fsp.ClearState();

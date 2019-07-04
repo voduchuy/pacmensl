@@ -12,10 +12,13 @@ namespace pacmensl {
 namespace test {
 class PACMENSLEnvironment : public ::testing::Environment {
  public:
+  PACMENSLEnvironment(int argc, char* argv[]){
+    argc_ = argc;
+    argv_ = argv;
+  }
+
   void SetUp() override {
-    char **argv;
-    int  argc = 0;
-    int  err  = PACMENSLInit(&argc, &argv, ( char * ) 0);
+    int  err  = PACMENSLInit(&argc_, &argv_, ( char * ) 0);
     ASSERT_FALSE(err);
   }
 
@@ -25,6 +28,9 @@ class PACMENSLEnvironment : public ::testing::Environment {
   }
 
   ~PACMENSLEnvironment() override {}
+
+  int argc_;
+  char **argv_;
 };
 }
 }
@@ -33,8 +39,10 @@ int main(int argc, char *argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   // Initialize MPI
   MPI_Init(&argc, &argv);
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  ::testing::AddGlobalTestEnvironment(new pacmensl::test::PACMENSLEnvironment);
+  ::testing::AddGlobalTestEnvironment(new pacmensl::test::PACMENSLEnvironment(argc, argv));
 
   // Get the event listener list.
   ::testing::TestEventListeners &listeners = ::testing::UnitTest::GetInstance()->listeners();
@@ -47,8 +55,8 @@ int main(int argc, char *argv[]) {
 
   int ierr = RUN_ALL_TESTS();
 
-  if (ierr == 0){
-    printf("SUCCESS!\n");
+  if (ierr == 0 ){
+    if (rank == 0) printf("SUCCESS!\n");
   }
 
   return ierr;

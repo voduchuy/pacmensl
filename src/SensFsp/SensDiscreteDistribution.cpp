@@ -4,7 +4,8 @@
 
 #include "SensDiscreteDistribution.h"
 
-pacmensl::SensDiscreteDistribution::SensDiscreteDistribution() : DiscreteDistribution() {
+pacmensl::SensDiscreteDistribution::SensDiscreteDistribution() : DiscreteDistribution()
+{
 }
 
 pacmensl::SensDiscreteDistribution::SensDiscreteDistribution(MPI_Comm comm,
@@ -14,10 +15,12 @@ pacmensl::SensDiscreteDistribution::SensDiscreteDistribution(MPI_Comm comm,
                                                              const std::vector<Vec> &dp) : DiscreteDistribution(comm,
                                                                                                                 t,
                                                                                                                 state_set,
-                                                                                                                p) {
+                                                                                                                p)
+{
   PacmenslErrorCode ierr;
   dp_.resize(dp.size());
-  for (int i{0}; i < dp_.size(); ++i) {
+  for (int i{0}; i < dp_.size(); ++i)
+  {
     ierr = VecDuplicate(dp[i], &dp_[i]);
     PACMENSLCHKERRTHROW(ierr);
     ierr = VecCopy(dp.at(i), dp_.at(i));
@@ -26,71 +29,92 @@ pacmensl::SensDiscreteDistribution::SensDiscreteDistribution(MPI_Comm comm,
 }
 
 pacmensl::SensDiscreteDistribution::SensDiscreteDistribution(const pacmensl::SensDiscreteDistribution &dist)
-    : DiscreteDistribution(( const pacmensl::DiscreteDistribution & ) dist) {
+    : DiscreteDistribution(( const pacmensl::DiscreteDistribution & ) dist)
+{
   PacmenslErrorCode ierr;
   dp_.resize(dist.dp_.size());
-  for (int i{0}; i < dp_.size(); ++i) {
+  for (int i{0}; i < dp_.size(); ++i)
+  {
     VecDuplicate(dist.dp_[i], &dp_[i]);
     VecCopy(dist.dp_[i], dp_[i]);
   }
 }
 
 pacmensl::SensDiscreteDistribution::SensDiscreteDistribution(pacmensl::SensDiscreteDistribution &&dist) noexcept
-    : DiscreteDistribution(( pacmensl::DiscreteDistribution && ) dist) {
+    : DiscreteDistribution(( pacmensl::DiscreteDistribution && ) dist)
+{
   dp_ = std::move(dist.dp_);
 }
 
-pacmensl::SensDiscreteDistribution &pacmensl::SensDiscreteDistribution::operator=(const pacmensl::SensDiscreteDistribution &dist) {
+pacmensl::SensDiscreteDistribution &pacmensl::SensDiscreteDistribution::operator=(const pacmensl::SensDiscreteDistribution &dist)
+{
   DiscreteDistribution::operator=(( const DiscreteDistribution & ) dist);
 
-  for (int i{0}; i < dp_.size(); ++i) {
+  for (int i{0}; i < dp_.size(); ++i)
+  {
     VecDestroy(&dp_[i]);
   }
   dp_.resize(dist.dp_.size());
-  for (int i{0}; i < dp_.size(); ++i) {
+  for (int i{0}; i < dp_.size(); ++i)
+  {
     VecDuplicate(dist.dp_[i], &dp_[i]);
     VecCopy(dist.dp_[i], dp_[i]);
   }
   return *this;
 }
 
-pacmensl::SensDiscreteDistribution &pacmensl::SensDiscreteDistribution::operator=(pacmensl::SensDiscreteDistribution &&dist) noexcept {
-  DiscreteDistribution::operator=(( DiscreteDistribution && ) dist);
-  for (int i{0}; i < dp_.size(); ++i) {
-    VecDestroy(&dp_[i]);
+pacmensl::SensDiscreteDistribution &pacmensl::SensDiscreteDistribution::operator=(pacmensl::SensDiscreteDistribution &&dist) noexcept
+{
+  if (this != &dist)
+  {
+    DiscreteDistribution::operator=(( DiscreteDistribution && ) dist);
+    for (int i{0}; i < dp_.size(); ++i)
+    {
+      VecDestroy(&dp_[i]);
+    }
+    dp_ = std::move(dist.dp_);
   }
-  dp_ = std::move(dist.dp_);
   return *this;
 }
 
-PacmenslErrorCode pacmensl::SensDiscreteDistribution::GetSensView(int is, int num_states, double *&p) {
+PacmenslErrorCode pacmensl::SensDiscreteDistribution::GetSensView(int is, int &num_states, double *&p)
+{
   int ierr;
   if (is >= dp_.size()) return -1;
-  ierr = VecGetSize(dp_[is], &num_states);
+  ierr = VecGetLocalSize(dp_[is], &num_states);
   CHKERRQ(ierr);
   ierr = VecGetArray(dp_[is], &p);
   CHKERRQ(ierr);
   return 0;
 }
 
-PacmenslErrorCode pacmensl::SensDiscreteDistribution::RestoreSensView(int is, int num_states, double *&p) {
+PacmenslErrorCode pacmensl::SensDiscreteDistribution::RestoreSensView(int is, double *&p)
+{
   PacmenslErrorCode ierr;
   if (is >= dp_.size()) return -1;
-  if (p != nullptr) {
+  if (p != nullptr)
+  {
     ierr = VecRestoreArray(dp_[is], &p);
     CHKERRQ(ierr);
   }
   return 0;
 }
 
-pacmensl::SensDiscreteDistribution::~SensDiscreteDistribution() {
-  for (int i{0}; i < dp_.size(); ++i) {
+pacmensl::SensDiscreteDistribution::~SensDiscreteDistribution()
+{
+  for (int i{0}; i < dp_.size(); ++i)
+  {
     VecDestroy(&dp_[i]);
   }
 }
 
-arma::Col<PetscReal> pacmensl::Compute1DSensMarginal(const pacmensl::SensDiscreteDistribution& dist, int is, int species) {
+PacmenslErrorCode pacmensl::Compute1DSensMarginal(const pacmensl::SensDiscreteDistribution &dist,
+                                                  int is,
+                                                  int species,
+                                                  arma::Col<PetscReal> &out)
+{
   if (is > dist.dp_.size()) PACMENSLCHKERRTHROW(-1);
+
   arma::Col<PetscReal> md_on_proc;
   // Find the max molecular count
   int                  num_species = dist.states_.n_rows;
@@ -108,16 +132,78 @@ arma::Col<PetscReal> pacmensl::Compute1DSensMarginal(const pacmensl::SensDiscret
   md_on_proc.fill(0.0);
   PetscReal *dp_dat;
   VecGetArray(dist.dp_[is], &dp_dat);
-  for (int i{0}; i < dist.states_.n_cols; ++i) {
+  for (int i{0}; i < dist.states_.n_cols; ++i)
+  {
     md_on_proc(dist.states_(species, i)) += dp_dat[i];
   }
   VecRestoreArray(dist.dp_[is], &dp_dat);
-  arma::Col<PetscReal> md(md_on_proc.n_elem);
+
+  if (out.is_empty()){
+    out.set_size(md_on_proc.size());
+  }
   MPI_Allreduce(( void * ) md_on_proc.memptr(),
-                ( void * ) md.memptr(),
+                ( void * ) out.memptr(),
                 md_on_proc.n_elem,
                 MPIU_REAL,
                 MPIU_SUM,
                 dist.comm_);
-  return md;
+
+  return 0;
+}
+
+PacmenslErrorCode pacmensl::ComputeFIM(SensDiscreteDistribution &dist, arma::Mat<PetscReal> &fim)
+{
+  int ierr;
+  if (!fim.is_empty() && (fim.n_rows != dist.dp_.size() || fim.n_cols != dist.dp_.size())) return -1;
+  if (fim.is_empty())
+  {
+    fim.set_size(dist.dp_.size(), dist.dp_.size());
+  }
+  bool     warn{false};
+  int      num_par = dist.dp_.size();
+  for (int i       = 0; i < num_par; ++i)
+  {
+    for (int j{0}; j <= i; ++j)
+    {
+      fim(i, j) = 0.0;
+      int num_states;
+      PetscReal *si;
+      PetscReal *sj;
+      PetscReal *p;
+      ierr = dist.GetProbView(num_states, p); PACMENSLCHKERRQ(ierr);
+      ierr = dist.GetSensView(i, num_states, si); PACMENSLCHKERRQ(ierr);
+      if (i!=j)
+      {
+        ierr = dist.GetSensView(j, num_states, sj); PACMENSLCHKERRQ(ierr);
+      }
+      else{
+        sj = si;
+      }
+      for (int k{0}; k < num_states; ++k)
+      {
+        if (p[k] < 1.0e-16)
+        {
+          p[k] = 1.0e-16;
+          warn = true;
+        }
+        fim(i, j) += si[k] * sj[k] / p[k];
+      }
+      dist.RestoreProbView(p);
+      dist.RestoreSensView(i, si);
+      if (i!=j)
+      {
+        dist.RestoreSensView(j, sj);
+      }
+      PetscReal tmp;
+      ierr = MPI_Allreduce((void*)(fim.colptr(j) + i), &tmp, 1, MPIU_REAL, MPIU_SUM, dist.comm_); PACMENSLCHKERRQ(ierr);
+      fim(i,j) = tmp;
+    }
+  }
+  for (int i = 0; i < num_par; ++i){
+    for (int j{i+1}; j < num_par; ++j){
+      fim(i, j) = fim(j, i);
+    }
+  }
+  if (warn) PetscPrintf(dist.comm_, "Warning: rounding was done in FIM computation.\n");
+  return 0;
 }

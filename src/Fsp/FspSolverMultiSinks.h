@@ -48,21 +48,21 @@ class FspSolverMultiSinks {
 
   PacmenslErrorCode SetModel(Model &model);
 
-  PacmenslErrorCode SetVerbosity(int verbosity_level);
-
   PacmenslErrorCode SetInitialDistribution(const arma::Mat<Int> &_init_states, const arma::Col<PetscReal> &_init_probs);
+
+  PacmenslErrorCode SetUp();
+
+  PacmenslErrorCode SetFromOptions();
 
   PacmenslErrorCode SetLogging(PetscBool logging);
 
-  PacmenslErrorCode SetFromOptions();
+  PacmenslErrorCode SetVerbosity(int verbosity_level);
 
   PacmenslErrorCode SetLoadBalancingMethod(PartitioningType part_type);
 
   PacmenslErrorCode SetOdesType(ODESolverType odes_type);
 
-  PacmenslErrorCode SetUp();
-
-  const StateSetBase *GetStateSet();
+  std::shared_ptr<const StateSetBase> GetStateSet();
 
   FspSolverComponentTiming GetAvgComponentTiming();
 
@@ -86,10 +86,11 @@ class FspSolverMultiSinks {
   PartitioningApproach repart_approach_   = PartitioningApproach::REPARTITION;
   ODESolverType        odes_type_         = CVODE_BDF;
 
-  StateSetBase  *state_set_  = nullptr;
-  Vec           *p_          = nullptr;
-  FspMatrixBase *A_          = nullptr;
-  OdeSolverBase *ode_solver_ = nullptr;
+  std::shared_ptr<StateSetConstrained> state_set_;
+  std::shared_ptr<FspMatrixConstrained> A_;
+  std::shared_ptr<OdeSolverBase> ode_solver_;
+  std::shared_ptr<Petsc<Vec>> p_;
+
   bool          set_up_      = false;
 
   Model                                   model_;
@@ -100,8 +101,8 @@ class FspSolverMultiSinks {
   arma::Col<PetscReal> init_probs_;
 
   int  verbosity_               = 0;
-  bool have_custom_constraints_ = false;
 
+  bool have_custom_constraints_ = false;
   fsp_constr_multi_fn fsp_constr_funs_;
   arma::Row<int>      fsp_bounds_;
   arma::Row<Real>     fsp_expasion_factors_;

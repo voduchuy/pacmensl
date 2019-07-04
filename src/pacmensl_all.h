@@ -4,6 +4,8 @@
 
 #ifndef PACMENSL_ALL_H
 #define PACMENSL_ALL_H
+#include "Sys.h"
+#include "ErrorHandling.h"
 #include "StateSetBase.h"
 #include "StateSetConstrained.h"
 #include "FspMatrixBase.h"
@@ -13,4 +15,8 @@
 #include "CvodeFsp.h"
 #include "FspSolverMultiSinks.h"
 #include "SmFishSnapshot.h"
+#include "PetscWrap.h"
+#include "SensDiscreteDistribution.h"
+#include "SensFspMatrix.h"
+#include "SensFspSolverMultiSinks.h"
 #endif //PACMENSL_ALL_H

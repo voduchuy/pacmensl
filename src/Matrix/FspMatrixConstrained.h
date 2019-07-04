@@ -19,8 +19,13 @@ class FspMatrixConstrained : public FspMatrixBase {
   FspMatrixConstrained& operator=(const FspMatrixConstrained &A);
   FspMatrixConstrained& operator=(FspMatrixConstrained &&A) noexcept;
 
-  PacmenslErrorCode GenerateValues(const StateSetBase &state_set, const arma::Mat<int> &SM, const PropFun &prop,
-                                   void *prop_args, const TcoefFun &new_t_fun, void *t_fun_args) override;
+  PacmenslErrorCode GenerateValues(const StateSetBase &state_set,
+                                   const arma::Mat<Int> &SM,
+                                   const TcoefFun &new_prop_t,
+                                   const PropFun &prop,
+                                   const std::vector<int> &enable_reactions,
+                                   void *prop_t_args,
+                                   void *prop_args) override;
 
   int Destroy() override;
 

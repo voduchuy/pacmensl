@@ -91,7 +91,13 @@ class OdeTest : public ::testing::Test {
     fsp.Expand();
 
     A = new FspMatrixConstrained(PETSC_COMM_WORLD);
-    A->GenerateValues(fsp, toggle_cme::SM, toggle_cme::propensity, nullptr, toggle_cme::t_fun, nullptr);
+    A->GenerateValues(fsp,
+                      toggle_cme::SM,
+                      toggle_cme::t_fun,
+                      toggle_cme::propensity,
+                      std::vector<int>(),
+                      nullptr,
+                      nullptr);
   };
 
   void TearDown() override { delete A; };

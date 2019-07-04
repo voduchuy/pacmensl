@@ -11,7 +11,8 @@
 #include "ForwardSensCvodeFsp.h"
 
 namespace pacmensl {
-class SensFspSolverMultiSinks {
+class SensFspSolverMultiSinks
+{
  public:
   NOT_COPYABLE_NOT_MOVABLE(SensFspSolverMultiSinks);
 
@@ -53,12 +54,13 @@ class SensFspSolverMultiSinks {
   PartitioningApproach repart_approach_   = PartitioningApproach::REPARTITION;
   ForwardSensType      sens_solver_type   = ForwardSensType::CVODE;
 
-  Vec              p_                                          = nullptr;
-  std::vector<Vec> dp_;
+  Petsc<Vec>              p_;
+  std::vector<Petsc<Vec>> dp_;
 
   std::shared_ptr<StateSetConstrained>                 state_set_;
   std::shared_ptr<SensFspMatrix<FspMatrixConstrained>> A_;
-  std::shared_ptr<ForwardSensCvodeFsp>               sens_solver_;
+  std::shared_ptr<ForwardSensCvodeFsp>                 sens_solver_;
+
   bool                                                 set_up_ = false;
 
   SensModel                                    model_;
@@ -77,20 +79,19 @@ class SensFspSolverMultiSinks {
   arma::Row<int>      fsp_bounds_;
 
   arma::Row<Real> fsp_expasion_factors_;
-
-  // For error checking and expansion parameters
-  int CheckFspTolerance_(PetscReal t, Vec p);
-
   virtual void set_expansion_parameters_() {};
+
+
   Real fsp_tol_ = 1.0;
   Real t_final_ = 0.0;
-
-  Real                 t_now_ = 0.0;
+  Real t_now_   = 0.0;
   arma::Row<PetscReal> sinks_;
 
-  arma::Row<int> to_expand_;
+  arma::Row<int>       to_expand_;
   SensDiscreteDistribution Advance_(PetscReal t_final, PetscReal fsp_tol);
-  PacmenslErrorCode MakeSensDiscreteDistribution_(SensDiscreteDistribution& dist);
+  int CheckFspTolerance_(PetscReal t, Vec p);
+
+  PacmenslErrorCode MakeSensDiscreteDistribution_(SensDiscreteDistribution &dist);
 };
 }
 #endif //PACMENSL_SRC_SENSFSP_SENSFSPSOLVERMULTISINKS_H_

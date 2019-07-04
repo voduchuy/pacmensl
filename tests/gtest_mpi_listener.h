@@ -88,7 +88,7 @@
 #include <cassert>
 #include <vector>
 
-// This class sets up the global unitTests environment, which is needed
+// This class sets up the global tests environment, which is needed
 // to finalize MPI.
 class MPIEnvironment : public ::testing::Environment {
 public:
@@ -188,9 +188,9 @@ public:
         }
     }
 
-    // Called before a unitTests starts.
+    // Called before a tests starts.
     virtual void OnTestStart(const ::testing::TestInfo& test_info) {
-        // Only need to report unitTests start info on rank 0
+        // Only need to report tests start info on rank 0
         if (rank == 0) {
             printf("*** Test %s.%s starting.\n",
                    test_info.test_case_name(), test_info.name());
@@ -199,14 +199,14 @@ public:
 
     // Called after an assertion failure or an explicit SUCCESS() macro.
     // In an MPI program, this means that certain ranks may not call this
-    // function if a unitTests part does not fail on all ranks. Consequently, it
+    // function if a tests part does not fail on all ranks. Consequently, it
     // is difficult to have explicit synchronization points here.
     virtual void OnTestPartResult
             (const ::testing::TestPartResult& test_part_result) {
         result_vector.push_back(test_part_result);
     }
 
-    // Called after a unitTests ends.
+    // Called after a tests ends.
     virtual void OnTestEnd(const ::testing::TestInfo& test_info) {
         int localResultCount = result_vector.size();
         std::vector<int> resultCountOnRank(size, 0);

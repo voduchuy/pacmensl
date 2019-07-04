@@ -6,8 +6,7 @@
 
 pacmensl::StationaryMCSolver::StationaryMCSolver(MPI_Comm comm) {
   int ierr;
-  ierr = MPI_Comm_dup(comm, &comm_);
-  PACMENSLCHKERREXCEPT(ierr);
+  ierr = MPI_Comm_dup(comm, &comm_); PACMENSLCHKERRTHROW(ierr);
 }
 
 int pacmensl::StationaryMCSolver::SetSolutionVec(Vec *vec) {
@@ -23,30 +22,32 @@ int pacmensl::StationaryMCSolver::SetMatDiagonal(Vec *diag) {
 int pacmensl::StationaryMCSolver::SetUp() {
   int ierr;
   // Create Mat shell
-  ierr = VecGetLocalSize(*solution_, &n_local_);
-  CHKERRQ(ierr);
-  ierr = VecGetSize(*solution_, &n_global_);
-  CHKERRQ(ierr);
-  ierr = MatCreateShell(comm_, n_local_, n_local_, n_global_, n_global_, ( void * ) &this->matvec_,
-                        &inf_generator_);
-  CHKERRQ(ierr);
-  ierr = MatShellSetOperation(inf_generator_, MATOP_MAT_MULT, ( void (*)(void)) &ModifiedMatrixAction);
-  CHKERRQ(ierr);
+  ierr = VecGetLocalSize(*solution_, &n_local_); CHKERRQ(ierr);
+  ierr = VecGetSize(*solution_, &n_global_); CHKERRQ(ierr);
+
+  inf_generator_ = std::unique_ptr<Petsc<Mat>>(new Petsc<Mat>);
+  ierr = MatCreateShell(comm_, n_local_, n_local_, n_global_, n_global_, ( void * ) this,
+                        inf_generator_->mem()); CHKERRQ(ierr);
+  ierr = MatSetOperation(*inf_generator_, MATOP_MULT, ( void (*)()) &ModifiedMatrixAction); CHKERRQ(ierr);
   // Create Krylov solver object
-  ierr = KSPCreate(comm_, &ksp_);
-  CHKERRQ(ierr);
-  ierr = KSPSetOperators(ksp_, inf_generator_, PETSC_NULL);
-  CHKERRQ(ierr);
+  ksp_ = std::unique_ptr<Petsc<KSP>>(new Petsc<KSP>);
+  ierr = KSPCreate(comm_, ksp_->mem()); CHKERRQ(ierr);
+  ierr = KSPSetOperators(*ksp_, *inf_generator_, *inf_generator_); CHKERRQ(ierr);
+  ierr = KSPSetType(*ksp_, KSPGMRES); CHKERRQ(ierr);
+  ierr = KSPSetInitialGuessNonzero(*ksp_, PETSC_TRUE); CHKERRQ(ierr);
+  ierr = KSPSetFromOptions(*ksp_); CHKERRQ(ierr);
+  ierr = KSPSetUp(*ksp_); CHKERRQ(ierr);
   return 0;
 }
 
-int pacmensl::StationaryMCSolver::SetMatVec(pacmensl::TIMatvec matvec) {
+int pacmensl::StationaryMCSolver::SetMatVec(const TIMatvec &matvec) {
   matvec_ = matvec;
   return 0;
 }
 
 /**
- * @brief Given the infinitesimal generator A of the discrete Markov process, compute the action (A + (2/n)*d*q^T)*v
+ * @brief Given the infinitesimal generator A of the discrete Markov process, compute the action
+ * \f$ \left(A + \frac{2}{n} d q^T \right)v \f$
  * where n is the number of rows of A, d = diag(A), q = (1,1,..,1)^T.
  * @details Collective.
  * @param A infinitesimal generator of the Markov chain.
@@ -56,39 +57,40 @@ int pacmensl::StationaryMCSolver::SetMatVec(pacmensl::TIMatvec matvec) {
  */
 int pacmensl::StationaryMCSolver::ModifiedMatrixAction(Mat A, Vec x, Vec y) {
   int ierr;
-  TIMatvec* mv;
-  ierr = MatShellGetContext(A, &mv);
-  CHKERRQ(ierr);
-  ierr = (*mv)(x, y);
-  PACMENSLCHKERRQ(ierr);
-
+  StationaryMCSolver* ctx;
+  ierr = MatShellGetContext(A, &ctx); CHKERRQ(ierr);
+  ierr = (ctx->matvec_)(x, y); PACMENSLCHKERRQ(ierr);
+  PetscReal alpha;
+  ierr = VecSum(x, &alpha); CHKERRQ(ierr);
+  alpha = alpha*2.0/ctx->n_global_;
+  ierr = VecAXPY(y, alpha, *ctx->mat_diagonal_); CHKERRQ(ierr);
   return 0;
 }
 
 int pacmensl::StationaryMCSolver::Clear() {
   int ierr;
-  if (ksp_ != nullptr){
-    ierr = KSPDestroy(&ksp_);
-    CHKERRQ(ierr);
-  }
   mat_diagonal_ = nullptr;
   solution_ = nullptr;
   matvec_ = nullptr;
-  if (inf_generator_ != nullptr){
-    ierr = MatDestroy(&inf_generator_);
-    CHKERRQ(ierr);
-  }
   return 0;
 }
 
 pacmensl::StationaryMCSolver::~StationaryMCSolver() {
-  PACMENSLCHKERREXCEPT(Clear());
+  Clear();
   MPI_Comm_free(&comm_);
 }
 
 int pacmensl::StationaryMCSolver::Solve() {
   int ierr;
-  ierr = KSPSolve(ksp_, *solution_, *mat_diagonal_);
-  CHKERRQ(ierr);
+  PetscReal alpha;
+  ierr = KSPSolve(*ksp_, *mat_diagonal_, *solution_); CHKERRQ(ierr);
+  ierr = VecSum(*solution_, &alpha); CHKERRQ(ierr);
+  ierr = VecScale(*solution_, 1.0/alpha); CHKERRQ(ierr);
   return 0;
 }
+
+
+
+
+
+

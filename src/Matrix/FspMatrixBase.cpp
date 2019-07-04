@@ -3,13 +3,15 @@
 
 namespace pacmensl {
 
-FspMatrixBase::FspMatrixBase(MPI_Comm comm) {
+FspMatrixBase::FspMatrixBase(MPI_Comm comm)
+{
   MPI_Comm_dup(comm, &comm_);
   MPI_Comm_rank(comm_, &rank_);
   MPI_Comm_size(comm_, &comm_size_);
 }
 
-FspMatrixBase::FspMatrixBase(const FspMatrixBase &A) {
+FspMatrixBase::FspMatrixBase(const FspMatrixBase &A)
+{
   int ierr;
   ierr = MPI_Comm_dup(A.comm_, &comm_);
   MPICHKERRTHROW(ierr);
@@ -23,46 +25,56 @@ FspMatrixBase::FspMatrixBase(const FspMatrixBase &A) {
   num_reactions_   = A.num_reactions_;
   num_rows_global_ = A.num_rows_global_;
   num_rows_local_  = A.num_rows_local_;
+  enable_reactions_ = A.enable_reactions_;
 
-  if (A.xx) {
+  if (A.xx)
+  {
     ierr = VecDuplicate(A.xx, &xx);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.yy) {
+  if (A.yy)
+  {
     ierr = VecDuplicate(A.yy, &yy);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.zz) {
+  if (A.zz)
+  {
     ierr = VecDuplicate(A.zz, &zz);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.work_) {
+  if (A.work_)
+  {
     ierr = VecDuplicate(A.work_, &work_);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.action_ctx_) {
+  if (A.action_ctx_)
+  {
     ierr = VecScatterCopy(A.action_ctx_, &action_ctx_);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.lvec_) {
+  if (A.lvec_)
+  {
     lvec_length_ = A.lvec_length_;
     ierr         = VecDuplicate(A.lvec_, &lvec_);
     PETSCCHKERRTHROW(ierr);
   }
 
-  if (num_rows_global_) {
+  if (num_rows_global_)
+  {
     diag_mats_.resize(num_reactions_);
     offdiag_mats_.resize(num_reactions_);
-    for (int i{0}; i < num_reactions_; ++i) {
-      ierr = MatDuplicate(*const_cast<Mat*>(A.diag_mats_[i].mem()), MAT_COPY_VALUES, diag_mats_[i].mem());
+    for (int i{0}; i < num_reactions_; ++i)
+    {
+      ierr = MatDuplicate(*const_cast<Mat *>(A.diag_mats_[i].mem()), MAT_COPY_VALUES, diag_mats_[i].mem());
       PETSCCHKERRTHROW(ierr);
-      ierr = MatDuplicate(*const_cast<Mat*>(A.offdiag_mats_[i].mem()), MAT_COPY_VALUES, offdiag_mats_[i].mem());
+      ierr = MatDuplicate(*const_cast<Mat *>(A.offdiag_mats_[i].mem()), MAT_COPY_VALUES, offdiag_mats_[i].mem());
       PETSCCHKERRTHROW(ierr);
     }
   }
 }
 
-FspMatrixBase::FspMatrixBase(FspMatrixBase &&A) noexcept {
+FspMatrixBase::FspMatrixBase(FspMatrixBase &&A) noexcept
+{
   int ierr;
 
   Destroy();
@@ -79,6 +91,8 @@ FspMatrixBase::FspMatrixBase(FspMatrixBase &&A) noexcept {
   num_reactions_   = A.num_reactions_;
   num_rows_global_ = A.num_rows_global_;
   num_rows_local_  = A.num_rows_local_;
+  enable_reactions_ = A.enable_reactions_;
+
   lvec_length_     = A.lvec_length_;
   xx               = A.xx;
   yy               = A.yy;
@@ -107,7 +121,8 @@ FspMatrixBase::FspMatrixBase(FspMatrixBase &&A) noexcept {
   A.offdiag_mats_.clear();
 }
 
-FspMatrixBase &FspMatrixBase::operator=(const FspMatrixBase &A) {
+FspMatrixBase &FspMatrixBase::operator=(const FspMatrixBase &A)
+{
   int ierr;
 
   Destroy();
@@ -125,40 +140,49 @@ FspMatrixBase &FspMatrixBase::operator=(const FspMatrixBase &A) {
   num_reactions_   = A.num_reactions_;
   num_rows_global_ = A.num_rows_global_;
   num_rows_local_  = A.num_rows_local_;
+  enable_reactions_ = A.enable_reactions_;
 
-  if (A.xx) {
+  if (A.xx)
+  {
     ierr = VecDuplicate(A.xx, &xx);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.yy) {
+  if (A.yy)
+  {
     ierr = VecDuplicate(A.yy, &yy);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.zz) {
+  if (A.zz)
+  {
     ierr = VecDuplicate(A.zz, &zz);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.work_) {
+  if (A.work_)
+  {
     ierr = VecDuplicate(A.work_, &work_);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.action_ctx_) {
+  if (A.action_ctx_)
+  {
     ierr = VecScatterCopy(A.action_ctx_, &action_ctx_);
     PETSCCHKERRTHROW(ierr);
   }
-  if (A.lvec_) {
+  if (A.lvec_)
+  {
     lvec_length_ = A.lvec_length_;
     ierr         = VecDuplicate(A.lvec_, &lvec_);
     PETSCCHKERRTHROW(ierr);
   }
 
-  if (num_rows_global_) {
+  if (num_rows_global_)
+  {
     diag_mats_.resize(num_reactions_);
     offdiag_mats_.resize(num_reactions_);
-    for (int i{0}; i < num_reactions_; ++i) {
-      ierr = MatDuplicate(*const_cast<Mat*>(A.diag_mats_[i].mem()), MAT_COPY_VALUES, diag_mats_[i].mem());
+    for (int i{0}; i < num_reactions_; ++i)
+    {
+      ierr = MatDuplicate(*const_cast<Mat *>(A.diag_mats_[i].mem()), MAT_COPY_VALUES, diag_mats_[i].mem());
       PETSCCHKERRTHROW(ierr);
-      ierr = MatDuplicate(*const_cast<Mat*>(A.offdiag_mats_[i].mem()), MAT_COPY_VALUES, offdiag_mats_[i].mem());
+      ierr = MatDuplicate(*const_cast<Mat *>(A.offdiag_mats_[i].mem()), MAT_COPY_VALUES, offdiag_mats_[i].mem());
       PETSCCHKERRTHROW(ierr);
     }
   }
@@ -166,54 +190,61 @@ FspMatrixBase &FspMatrixBase::operator=(const FspMatrixBase &A) {
   return *this;
 }
 
-FspMatrixBase &FspMatrixBase::operator=(FspMatrixBase &&A) noexcept {
+FspMatrixBase &FspMatrixBase::operator=(FspMatrixBase &&A) noexcept
+{
   int ierr;
 
-  Destroy();
-  if (comm_) MPI_Comm_free(&comm_);
+  if (this != &A)
+  {
+    Destroy();
+    if (comm_) MPI_Comm_free(&comm_);
 
-  comm_      = A.comm_;
-  rank_      = A.rank_;
-  comm_size_ = A.comm_size_;
+    comm_      = A.comm_;
+    rank_      = A.rank_;
+    comm_size_ = A.comm_size_;
 
-  t_fun_             = A.t_fun_;
-  t_fun_args_        = A.t_fun_args_;
-  time_coefficients_ = A.time_coefficients_;
+    t_fun_             = A.t_fun_;
+    t_fun_args_        = A.t_fun_args_;
+    time_coefficients_ = A.time_coefficients_;
 
-  num_reactions_   = A.num_reactions_;
-  num_rows_global_ = A.num_rows_global_;
-  num_rows_local_  = A.num_rows_local_;
-  lvec_length_     = A.lvec_length_;
-  xx               = A.xx;
-  yy               = A.yy;
-  zz               = A.zz;
-  work_            = A.work_;
-  lvec_            = A.lvec_;
-  action_ctx_      = A.action_ctx_;
+    num_reactions_   = A.num_reactions_;
+    num_rows_global_ = A.num_rows_global_;
+    num_rows_local_  = A.num_rows_local_;
+    enable_reactions_ = A.enable_reactions_;
 
-  diag_mats_    = std::move(A.diag_mats_);
-  offdiag_mats_ = std::move(A.offdiag_mats_);
+    lvec_length_     = A.lvec_length_;
+    xx               = A.xx;
+    yy               = A.yy;
+    zz               = A.zz;
+    work_            = A.work_;
+    lvec_            = A.lvec_;
+    action_ctx_      = A.action_ctx_;
 
-  A.comm_       = nullptr;
-  A.rank_       = 0;
-  A.comm_size_  = 0;
-  A.t_fun_      = nullptr;
-  A.t_fun_args_ = nullptr;
-  A.time_coefficients_.clear();
-  A.num_reactions_ = 0;
-  A.xx             = nullptr;
-  A.yy             = nullptr;
-  A.zz             = nullptr;
-  A.work_          = nullptr;
-  A.lvec_          = nullptr;
-  A.action_ctx_    = nullptr;
-  A.diag_mats_.clear();
-  A.offdiag_mats_.clear();
+    diag_mats_    = std::move(A.diag_mats_);
+    offdiag_mats_ = std::move(A.offdiag_mats_);
+
+    A.comm_       = nullptr;
+    A.rank_       = 0;
+    A.comm_size_  = 0;
+    A.t_fun_      = nullptr;
+    A.t_fun_args_ = nullptr;
+    A.time_coefficients_.clear();
+    A.num_reactions_ = 0;
+    A.xx             = nullptr;
+    A.yy             = nullptr;
+    A.zz             = nullptr;
+    A.work_          = nullptr;
+    A.lvec_          = nullptr;
+    A.action_ctx_    = nullptr;
+    A.diag_mats_.clear();
+    A.offdiag_mats_.clear();
+  }
 
   return *this;
 }
 
-int FspMatrixBase::Action(PetscReal t, Vec x, Vec y) {
+int FspMatrixBase::Action(PetscReal t, Vec x, Vec y)
+{
   Int ierr;
 
   ierr = t_fun_(t, num_reactions_, time_coefficients_.memptr(), t_fun_args_);
@@ -229,7 +260,8 @@ int FspMatrixBase::Action(PetscReal t, Vec x, Vec y) {
 
   ierr = VecScatterBegin(action_ctx_, x, lvec_, INSERT_VALUES, SCATTER_FORWARD);
   CHKERRQ(ierr);
-  for (Int ir{0}; ir < num_reactions_; ++ir) {
+  for (auto ir : enable_reactions_)
+  {
     ierr = MatMult(diag_mats_[ir], xx, zz);
     CHKERRQ(ierr);
 
@@ -239,7 +271,8 @@ int FspMatrixBase::Action(PetscReal t, Vec x, Vec y) {
   ierr = VecScatterEnd(action_ctx_, x, lvec_, INSERT_VALUES, SCATTER_FORWARD);
   CHKERRQ(ierr);
 
-  for (Int ir{0}; ir < num_reactions_; ++ir) {
+  for (auto ir : enable_reactions_)
+  {
     ierr = MatMult(offdiag_mats_[ir], lvec_, zz);
     CHKERRQ(ierr);
 
@@ -256,10 +289,12 @@ int FspMatrixBase::Action(PetscReal t, Vec x, Vec y) {
 
 PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
                                                 const arma::Mat<Int> &SM,
-                                                const PropFun &propensity,
-                                                void *propensity_args,
-                                                const TcoefFun &new_t_fun,
-                                                void *t_fun_args) {
+                                                const TcoefFun &new_prop_t,
+                                                const PropFun &new_prop_x,
+                                                const std::vector<int> &enable_reactions,
+                                                void *prop_t_args,
+                                                void *prop_x_args)
+{
   PacmenslErrorCode    ierr;
   PetscInt             n_species, n_local_states, own_start, own_end;
   const arma::Mat<Int> &state_list = fsp.GetStatesRef();
@@ -286,11 +321,20 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   n_species      = fsp.GetNumSpecies();
   n_local_states = fsp.GetNumLocalStates();
   num_reactions_ = fsp.GetNumReactions();
-  t_fun_         = new_t_fun;
-  t_fun_args_    = t_fun_args;
+  t_fun_         = new_prop_t;
+  t_fun_args_    = prop_t_args;
   diag_mats_.resize(num_reactions_);
   offdiag_mats_.resize(num_reactions_);
   time_coefficients_.set_size(num_reactions_);
+  enable_reactions_ = enable_reactions;
+  if (enable_reactions_.empty())
+  {
+    enable_reactions_ = std::vector<int>(num_reactions_);
+    for (int i = 0; i < num_reactions_; ++i)
+    {
+      enable_reactions_[i] = i;
+    }
+  }
 
   MPI_Comm_rank(comm_, &rank_);
 
@@ -310,16 +354,20 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   ierr = VecGetOwnershipRange(work_, &own_start, &own_end);
   CHKERRQ(ierr);
   // Count nnz for matrix rows
-  for (auto i_reaction{0}; i_reaction < num_reactions_; ++i_reaction) {
+  for (auto i_reaction : enable_reactions_)
+  {
     can_reach_my_state = state_list - arma::repmat(SM.col(i_reaction), 1, state_list.n_cols);
     fsp.State2Index(can_reach_my_state, irnz.colptr(i_reaction));
-    propensity(i_reaction, can_reach_my_state.n_rows, can_reach_my_state.n_cols, &can_reach_my_state[0],
-               mat_vals.colptr(i_reaction), propensity_args);
+    new_prop_x(i_reaction, can_reach_my_state.n_rows, can_reach_my_state.n_cols, &can_reach_my_state[0],
+               mat_vals.colptr(i_reaction), prop_x_args);
 
-    for (auto i_state{0}; i_state < n_local_states; ++i_state) {
-      if (irnz(i_state, i_reaction) >= own_start && irnz(i_state, i_reaction) < own_end) {
+    for (auto i_state{0}; i_state < n_local_states; ++i_state)
+    {
+      if (irnz(i_state, i_reaction) >= own_start && irnz(i_state, i_reaction) < own_end)
+      {
         d_nnz(i_state, i_reaction) += 1;
-      } else if (irnz(i_state, i_reaction) >= 0) {
+      } else if (irnz(i_state, i_reaction) >= 0)
+      {
         irnz_off(i_state, i_reaction) = irnz(i_state, i_reaction);
         irnz(i_state, i_reaction)     = -1;
         o_nnz(i_state, i_reaction) += 1;
@@ -331,7 +379,8 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
 
   // Create mapping from global rows to local rows
   PetscInt  *my_global_indices = new PetscInt[num_rows_local_];
-  for (auto i{0}; i < num_rows_local_; ++i) {
+  for (auto i{0}; i < num_rows_local_; ++i)
+  {
     my_global_indices[i] = own_start + i;
   }
   ierr = ISLocalToGlobalMappingCreate(comm_, 1, num_rows_local_, my_global_indices, PETSC_COPY_VALUES,
@@ -347,8 +396,10 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   out_indices.resize(out_count);
   arma::Row<Int> out_indices2 = arma::unique(out_indices);
   out_count = 0;
-  for (auto i{0}; i < out_indices2.n_elem; ++i) {
-    if (out_indices2[i] < own_start || out_indices2[i] >= own_end) {
+  for (auto i{0}; i < out_indices2.n_elem; ++i)
+  {
+    if (out_indices2[i] < own_start || out_indices2[i] >= own_end)
+    {
       out_indices(out_count) = out_indices2[i];
       out_count += 1;
     }
@@ -384,7 +435,6 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   VecCreateSeq(PETSC_COMM_SELF, num_rows_local_, &zz);
   VecSetUp(zz);
 
-  // Generate values for diagonal and off-diagonal blocks
   // Convert the global indices of nonzero entries to local indices
   ierr = ISGlobalToLocalMappingApply(local2global_rows, IS_GTOLM_MASK, n_local_states * num_reactions_,
                                      irnz.memptr(), PETSC_NULL, irnz.memptr());
@@ -398,7 +448,8 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   CHKERRQ(ierr);
 
   arma::Col<PetscReal> diag_vals(n_local_states);
-  for (PetscInt        i_reaction{0}; i_reaction < num_reactions_; ++i_reaction) {
+  for (auto            i_reaction: enable_reactions_)
+  {
     ierr = MatCreate(PETSC_COMM_SELF, diag_mats_[i_reaction].mem());
     CHKERRQ(ierr);
     ierr = MatSetType(diag_mats_[i_reaction], MATSEQAIJ);
@@ -417,8 +468,9 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
     ierr = MatSeqAIJSetPreallocation(offdiag_mats_[i_reaction], PETSC_NULL, o_nnz.colptr(i_reaction));
     CHKERRQ(ierr);
 
-    propensity(i_reaction, n_species, n_local_states, &state_list[0], &diag_vals[0], propensity_args);
-    for (auto i_state{0}; i_state < n_local_states; ++i_state) {
+    new_prop_x(i_reaction, n_species, n_local_states, &state_list[0], &diag_vals[0], prop_x_args);
+    for (auto i_state{0}; i_state < n_local_states; ++i_state)
+    {
       // Set values for the diagonal block
       ierr = MatSetValue(diag_mats_[i_reaction], i_state, i_state, -1.0 * diag_vals[i_state],
                          INSERT_VALUES);
@@ -445,36 +497,44 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   return 0;
 }
 
-FspMatrixBase::~FspMatrixBase() {
+FspMatrixBase::~FspMatrixBase()
+{
   Destroy();
   if (comm_ != nullptr) MPI_Comm_free(&comm_);
 }
 
-int FspMatrixBase::Destroy() {
+int FspMatrixBase::Destroy()
+{
   PetscErrorCode ierr;
   diag_mats_.clear();
   offdiag_mats_.clear();
-  if (xx != nullptr) {
+  if (xx != nullptr)
+  {
     ierr = VecDestroy(&xx);
     CHKERRQ(ierr);
   }
-  if (yy != nullptr) {
+  if (yy != nullptr)
+  {
     ierr = VecDestroy(&yy);
     CHKERRQ(ierr);
   }
-  if (zz != nullptr) {
+  if (zz != nullptr)
+  {
     ierr = VecDestroy(&zz);
     CHKERRQ(ierr);
   }
-  if (work_ != nullptr) {
+  if (work_ != nullptr)
+  {
     ierr = VecDestroy(&work_);
     CHKERRQ(ierr);
   }
-  if (lvec_ != nullptr) {
+  if (lvec_ != nullptr)
+  {
     ierr = VecDestroy(&lvec_);
     CHKERRQ(ierr);
   }
-  if (action_ctx_ != nullptr) {
+  if (action_ctx_ != nullptr)
+  {
     ierr = VecScatterDestroy(&action_ctx_);
     CHKERRQ(ierr);
   }
@@ -488,17 +548,21 @@ int FspMatrixBase::Destroy() {
   return 0;
 }
 
-PetscInt FspMatrixBase::GetLocalGhostLength() const {
+PetscInt FspMatrixBase::GetLocalGhostLength() const
+{
   return lvec_length_;
 }
 
-int FspMatrixBase::DetermineLayout_(const StateSetBase &fsp) {
+int FspMatrixBase::DetermineLayout_(const StateSetBase &fsp)
+{
   PetscErrorCode ierr;
-  try {
+  try
+  {
     num_rows_local_ = fsp.GetNumLocalStates();
     ierr            = 0;
   }
-  catch (std::runtime_error &ex) {
+  catch (std::runtime_error &ex)
+  {
     ierr = -1;
   }
   PACMENSLCHKERRQ(ierr);
@@ -513,6 +577,13 @@ int FspMatrixBase::DetermineLayout_(const StateSetBase &fsp) {
   ierr = VecSetUp(work_);
   CHKERRQ(ierr);
 
+  return 0;
+}
+
+PacmenslErrorCode FspMatrixBase::SetTimeFun(TcoefFun new_t_fun, void *new_t_fun_args)
+{
+  t_fun_ = new_t_fun;
+  t_fun_args_ = new_t_fun_args;
   return 0;
 }
 

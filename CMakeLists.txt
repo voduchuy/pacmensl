@@ -23,7 +23,7 @@ if (NOT CMAKE_INSTALL_PREFIX)
 endif (NOT CMAKE_INSTALL_PREFIX)
 
 set(CMAKE_CXX_FLAGS "-std=c++11")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -O2 -DNDEBUG")
 
 # Decide whether to build shared or static library
 OPTION(BUILD_SHARED_LIBS "Build shared library" ON)
@@ -67,6 +67,8 @@ include_directories(src/Sys)
 include_directories(src/Models)
 include_directories(src/SmFish)
 include_directories(src/SensFsp)
+include_directories(src/PetscWrap)
+include_directories(src/StationaryFsp)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -77,7 +79,7 @@ add_subdirectory(src)
 
 # Add tests and examples
 if (BUILD_TESTS)
-    add_subdirectory(unitTests)
+    add_subdirectory(tests)
 endif (BUILD_TESTS)
 
 if (BUILD_EXAMPLES)

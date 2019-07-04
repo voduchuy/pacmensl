@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
 
   // Set up CME
   std::string model_name = "hog1p";
-  Model hog1p_model(hog1p_cme::SM, hog1p_cme::t_fun, nullptr, hog1p_cme::propensity, nullptr);
+  Model hog1p_model(hog1p_cme::SM, hog1p_cme::t_fun, hog1p_cme::propensity, nullptr, nullptr);
   PetscReal t_final = 60 * 3.0;
   PetscReal fsp_tol = 1.0e-4;
   arma::Mat<PetscInt> X0 = {0, 0, 0, 0, 0};
@@ -172,9 +172,8 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetInitialBounds(hog1p_cme::rhs_constr);
   fsp_solver.SetExpansionFactors(hog1p_cme::expansion_factors);
   fsp_solver.SetInitialDistribution(X0, p0);
-  fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol);
-  const StateSetConstrained *fss = ( StateSetConstrained * ) fsp_solver.GetStateSet();
+  std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_custom_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_custom"),
@@ -196,7 +195,6 @@ int main(int argc, char *argv[]) {
   fsp_solver.ClearState();
   fsp_solver.SetConstraintFunctions(hog1p_cme::lhs_constr);
   fsp_solver.SetInitialBounds(final_custom_constr);
-  fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol);
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_custom"),
@@ -219,9 +217,8 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetInitialBounds(rhs_constr_hyperrec);
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
-  fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol);
-  fss = ( StateSetConstrained * ) fsp_solver.GetStateSet();
+  fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),
@@ -242,7 +239,6 @@ int main(int argc, char *argv[]) {
   CHKERRQ(petsc_err);
   // Solve using fixed default constraints
   fsp_solver.SetInitialBounds(final_hyperrec_constr);
-  fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol);
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_hyperrec"),

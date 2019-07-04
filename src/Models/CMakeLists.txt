@@ -1,4 +1,4 @@
 add_library(MODEL_OBJ OBJECT Model.h Model.cpp SensModel.h SensModel.cpp)
 list(APPEND PACMENSL_OBJECTS "$<TARGET_OBJECTS:MODEL_OBJ>")
 set(PACMENSL_OBJECTS ${PACMENSL_OBJECTS} PARENT_SCOPE)
-install(FILES Model.h DESTINATION include/PACMENSL/)
+install(FILES Model.h SensModel.h DESTINATION include/PACMENSL/)

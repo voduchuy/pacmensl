@@ -33,13 +33,19 @@ class FspMatrixBase {
   FspMatrixBase(const FspMatrixBase &A); // untested
   FspMatrixBase(FspMatrixBase &&A) noexcept; // untested
 
+  PacmenslErrorCode SetTimeFun(TcoefFun new_t_fun, void *new_t_fun_args);
   /* Assignments */
   FspMatrixBase &operator=(const FspMatrixBase &A);
   FspMatrixBase &operator=(FspMatrixBase &&A) noexcept;
 
   virtual PacmenslErrorCode
-  GenerateValues(const StateSetBase &fsp, const arma::Mat<Int> &SM, const PropFun &propensity, void *propensity_args,
-                 const TcoefFun &new_t_fun, void *t_fun_args);
+  GenerateValues(const StateSetBase &fsp,
+                 const arma::Mat<Int> &SM,
+                 const TcoefFun &new_prop_t,
+                 const PropFun &new_prop_x,
+                 const std::vector<int> &enable_reactions,
+                 void *prop_t_args,
+                 void *prop_x_args);
 
   virtual int Destroy();
 
@@ -58,6 +64,7 @@ class FspMatrixBase {
   Int num_reactions_   = 0;
   Int num_rows_global_ = 0;
   Int num_rows_local_  = 0;
+  std::vector<int> enable_reactions_;
 
   // Local data of the matrix
   std::vector<Petsc<Mat>> diag_mats_;

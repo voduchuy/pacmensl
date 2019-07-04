@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
   std::string part_approach;
 
   std::string model_name = "transcr_reg_6d";
-  Model model(SM, t_fun, nullptr, propensity, nullptr);
+  Model model(SM, t_fun, propensity, nullptr, nullptr);
 
   PetscReal t_final = 60.00 * 5;
   PetscReal fsp_tol = 1.0e-4;
@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetFromOptions();
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol);
-  StateSetConstrained *fss = ( StateSetConstrained * ) fsp_solver.GetStateSet();
+  std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),

@@ -95,7 +95,7 @@ TEST_F(MatrixTest, mat_base_generation) {
   double Q_sum;
 
   FspMatrixBase A(PETSC_COMM_WORLD);
-  ierr = A.GenerateValues(*state_set, stoichiometry, propensity, nullptr, t_fun, nullptr);
+  ierr = A.GenerateValues(*state_set, stoichiometry, t_fun, propensity, std::vector<int>(), nullptr, nullptr);
   ASSERT_FALSE(ierr);
 
   Vec P, Q;
@@ -129,7 +129,7 @@ TEST_F(MatrixTest, mat_constrained_generate_values) {
   int ierr;
 
   FspMatrixConstrained A(PETSC_COMM_WORLD);
-  A.GenerateValues(*state_set, stoichiometry, propensity, nullptr, t_fun, nullptr);
+  A.GenerateValues(*state_set, stoichiometry, t_fun, propensity, std::vector<int>(), nullptr, nullptr);
 
   double Q_sum;
   Vec    P, Q;

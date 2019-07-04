@@ -10,6 +10,7 @@ add_library(CME_UTIL_OBJ OBJECT ${util_srcs})
 list(APPEND PACMENSL_OBJECTS "$<TARGET_OBJECTS:CME_UTIL_OBJ>")
 set(PACMENSL_OBJECTS ${PACMENSL_OBJECTS} PARENT_SCOPE)
 install(FILES ${util_headers} DESTINATION include/PACMENSL)
+install(FILES ErrorHandling.h pacmenMath.h DESTINATION include/PACMENSL)
 
 
 

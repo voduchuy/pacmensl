@@ -8,6 +8,7 @@
 #include <sundials/sundials_nvector.h>
 #include "OdeSolverBase.h"
 #include "Sys.h"
+#include "PetscWrap.h"
 
 namespace pacmensl {
 enum class ForwardSensType {
@@ -26,9 +27,9 @@ class ForwardSensSolverBase {
 
   PacmenslErrorCode SetFinalTime(PetscReal _t_final);
 
-  PacmenslErrorCode SetInitialSolution(Vec &sol);
+  PacmenslErrorCode SetInitialSolution(Petsc<Vec> &sol);
 
-  PacmenslErrorCode SetInitialSensitivity(std::vector<Vec> &sens_vecs);
+  PacmenslErrorCode SetInitialSensitivity(std::vector<Petsc < Vec>> &sens_vecs);
 
   PacmenslErrorCode SetRhs(RhsFun rhs);
 

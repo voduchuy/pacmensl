@@ -1,8 +1,5 @@
 //
-// Created by Huy Vo on 12/4/18.
-//
-//
-// Created by Huy Vo on 12/3/18.
+// Created by Huy Vo on 6/29/2019.
 //
 static char help[] = "Test the generation of the distributed Finite State Subset for the toggle model.\n\n";
 
@@ -35,12 +32,10 @@ class SensMatrixTest : public ::testing::Test {
 
     d_t_fun1 = [&](double t, int num_coefs, double *outputs, void *args) {
       outputs[0] = 1.0;
-      outputs[1] = 0.0;
       return 0;
     };
 
     d_t_fun2 = [&](double t, int num_coefs, double *outputs, void *args) {
-      outputs[0] = 0.0;
       outputs[1] = 1.0;
       return 0;
     };
@@ -63,12 +58,10 @@ class SensMatrixTest : public ::testing::Test {
       return 0;
     };
 
-    smodel                        = pacmensl::SensModel(stoichiometry, t_fun, nullptr, propensity, nullptr,
+    smodel                        = pacmensl::SensModel(stoichiometry, t_fun, propensity,
                                                         std::vector<pacmensl::TcoefFun>({d_t_fun1, d_t_fun2}),
-                                                        std::vector<void *>({nullptr, nullptr}),
                                                         std::vector<pacmensl::PropFun>({propensity, propensity}),
-                                                        std::vector<void *>({nullptr, nullptr}),
-                                                        arma::Mat<char>{0});
+                                                        std::vector<int>({0,1}), std::vector<int>({0,1,2}));
 
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
@@ -143,7 +136,7 @@ TEST_F(SensMatrixTest, mat_base_generation) {
   ASSERT_FALSE(ierr);
   ASSERT_DOUBLE_EQ(Q_sum, -1.0 * rate_right);
 
-  for (int i_par{0}; i_par < 2; ++i_par) {
+  for (int i_par{0}; i_par < 1; ++i_par) {
     PetscReal dqsum = (i_par == 0) ? -1.0 : 0.0;
     ierr = A.SensAction(i_par, 0.0, P, Q);
     ASSERT_FALSE(ierr);

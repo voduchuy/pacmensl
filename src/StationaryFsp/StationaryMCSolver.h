@@ -15,7 +15,7 @@ class StationaryMCSolver {
   explicit StationaryMCSolver(MPI_Comm comm_);
   int SetSolutionVec(Vec* vec);
   int SetMatDiagonal(Vec* diag);
-  int SetMatVec(TIMatvec matvec);
+  int SetMatVec(const TIMatvec &matvec);
   int SetUp();
   int Solve();
   int Clear();
@@ -25,8 +25,9 @@ class StationaryMCSolver {
   Vec* solution_ = nullptr;
   Vec* mat_diagonal_ = nullptr;
   TIMatvec matvec_ = nullptr;
-  Mat inf_generator_ = nullptr;
-  KSP ksp_ = nullptr;
+
+  std::unique_ptr<Petsc<Mat>> inf_generator_;
+  std::unique_ptr<Petsc<KSP>> ksp_;
   int n_local_, n_global_;
   static int ModifiedMatrixAction(Mat A, Vec x, Vec y);
 };

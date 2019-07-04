@@ -1,7 +1,7 @@
 set(STATIONARYFSP_LIBS
         StationaryFspMatrixConstrained
         StationaryMCSolver
-#        StationaryFspSolverMultiSinks
+        StationaryFspSolverMultiSinks
         )
 
 foreach(LIB ${STATIONARYFSP_LIBS})

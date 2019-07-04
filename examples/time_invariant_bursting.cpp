@@ -111,8 +111,8 @@ int main(int argc, char *argv[]) {
 
   Model il1b_model;
   il1b_model.stoichiometry_matrix_ = stoich_mat;
-  il1b_model.prop_ = propensity;
-  il1b_model.t_fun_ = t_fun;
+  il1b_model.prop_x_ = propensity;
+  il1b_model.prop_t_ = t_fun;
 
   // Default options
   PartitioningType fsp_par_type = PartitioningType::GRAPH;
