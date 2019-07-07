@@ -176,6 +176,9 @@ const pacmensl::StateSetBase *pacmensl::SensFspSolverMultiSinks::GetStateSet()
 pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Solve(PetscReal t_final, PetscReal fsp_tol)
 {
   PetscErrorCode ierr;
+
+  if (!set_up_) SetUp();
+
   ierr = VecSet(p_, 0.0); PACMENSLCHKERRTHROW(ierr);
   arma::Row<Int> indices = state_set_->State2Index(init_states_);
   ierr = VecSetValues(p_, PetscInt(init_probs_.n_elem), &indices[0], &init_probs_[0], INSERT_VALUES); PACMENSLCHKERRTHROW(ierr);
@@ -203,6 +206,9 @@ std::vector<pacmensl::SensDiscreteDistribution> pacmensl::SensFspSolverMultiSink
                                                                                               PetscReal fsp_tol)
 {
   PetscErrorCode ierr;
+
+  if (!set_up_) SetUp();
+
   ierr = VecSet(p_, 0.0); PACMENSLCHKERRTHROW(ierr);
   arma::Row<Int> indices = state_set_->State2Index(init_states_);
   ierr = VecSetValues(p_, PetscInt(init_probs_.n_elem), &indices[0], &init_probs_[0], INSERT_VALUES); PACMENSLCHKERRTHROW(ierr);

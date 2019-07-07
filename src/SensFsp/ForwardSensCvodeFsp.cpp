@@ -118,11 +118,14 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::SetUp() {
   CVODECHKERRQ(cvode_stat);
 
   // Define the sensitivity problem
-  cvode_stat = CVodeSensInit1(cvode_mem, num_parameters_, CV_SIMULTANEOUS, cvsens_rhs, &sens_vecs_tmp[0]);
+  cvode_stat = CVodeSensInit1(cvode_mem, num_parameters_, CV_STAGGERED1, cvsens_rhs, &sens_vecs_tmp[0]);
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetSensErrCon(cvode_mem, SUNTRUE);
   CVODECHKERRQ(cvode_stat);
-  cvode_stat = CVodeSensEEtolerances(cvode_mem);
+
+  std::vector<double> abs_tols(sens_vecs_.size(), abs_tol);
+  cvode_stat = CVodeSensSStolerances(cvode_mem, rel_tol, &abs_tols[0]);
+//  cvode_stat = CVodeSensEEtolerances(cvode_mem);
   CVODECHKERRQ(cvode_stat);
   set_up_ = true;
 
@@ -152,7 +155,7 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::FreeWorkspace() {
 }
 
 PetscInt pacmensl::ForwardSensCvodeFsp::Solve() {
-  if (!set_up_) return -1;
+  if (!set_up_) SetUp();
   PetscErrorCode   petsc_err;
   // Advance the temporary solution_ until either reaching final time or Fsp error exceeding tolerance
   int              stop = 0;

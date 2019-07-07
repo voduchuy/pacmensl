@@ -108,7 +108,7 @@ int pacmensl::StationaryFspMatrixConstrained::GenerateValues(const StateSetBase 
   std::vector<PetscReal> d_vals(num_states);
   for (auto i : enable_reactions_)
   {
-    ierr = prop(i, state_list.n_cols, num_states, &state_list[0], &d_vals[0], nullptr); PACMENSLCHKERRQ(ierr);
+    ierr = prop(i, state_list.n_rows, num_states, &state_list[0], &d_vals[0], nullptr); PACMENSLCHKERRQ(ierr);
     for (int j = 0; j < num_states; ++j)
     {
       d_array[j] += (-1.0)*time_coefficients_(i) * d_vals[j];
@@ -150,9 +150,11 @@ int pacmensl::StationaryFspMatrixConstrained::Action(PetscReal t, Vec x, Vec y)
   ierr       = VecRestoreLocalVector(x, xx); CHKERRQ(ierr);
   PetscReal sink_sum;
   ierr = VecSum(sink_entries_, &sink_sum); CHKERRQ(ierr);
+  PetscReal sink_total;
   PetscReal *ylocal;
   ierr = VecGetArray(y, &ylocal); CHKERRQ(ierr);
-  ierr = MPI_Reduce(( void * ) &sink_sum, ( void * ) &ylocal[0], 1, MPIU_REAL, MPIU_SUM, 0, comm_); CHKERRMPI(ierr);
+  ierr = MPI_Reduce(( void * ) &sink_sum, ( void * ) &sink_total, 1, MPIU_REAL, MPIU_SUM, 0, comm_); CHKERRMPI(ierr);
+  ylocal[0] += sink_total;
   ierr = VecRestoreArray(y, &ylocal); CHKERRQ(ierr);
   return 0;
 }

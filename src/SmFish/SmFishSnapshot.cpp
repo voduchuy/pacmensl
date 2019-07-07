@@ -32,7 +32,6 @@ pacmensl::SmFishSnapshot::SmFishSnapshot(const arma::Mat<int> &observations, con
 pacmensl::SmFishSnapshot::SmFishSnapshot(const arma::Mat<int> &observations)
 {
   int unique_count = 0;
-  std::cout << observations.n_rows << " " << observations.n_cols << "\n";
   observations_.set_size(observations.n_rows, observations.n_cols);
   frequencies_.set_size(observations.n_cols);
   frequencies_.fill(0);
@@ -181,4 +180,91 @@ double pacmensl::SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
   }
 
   return ll;
+}
+
+PacmenslErrorCode pacmensl::SmFishSnapshotGradient(const pacmensl::SmFishSnapshot &data,
+                                                   const pacmensl::SensDiscreteDistribution &distribution,
+                                                   std::vector<PetscReal> &gradient,
+                                                   arma::Col<int> measured_species,
+                                                   bool use_base_2)
+{
+  PacmenslErrorCode ierr;
+
+  int num_parameters = distribution.dp_.size();
+  if (gradient.empty()){
+    gradient.resize(num_parameters);
+  }
+
+  if (measured_species.empty())
+  {
+    measured_species = arma::regspace<arma::Col<int>>(0, distribution.states_.n_rows - 1);
+  }
+
+  MPI_Comm comm                             = distribution.comm_;
+  int      num_observations                 = data.GetNumObservations();
+
+  const arma::Row<int> &freq = data.GetFrequencies();
+
+  const PetscReal *p_dat;
+  VecGetArrayRead(distribution.p_, &p_dat);
+
+  arma::Col<double> predicted_probabilities_local(num_observations, arma::fill::zeros);
+  arma::Col<double> predicted_sensitivities_local(num_observations, arma::fill::zeros);
+  arma::Col<double> predicted_probabilities = predicted_probabilities_local;
+  arma::Col<double> predicted_sensitivities = predicted_sensitivities_local;
+
+  // Compute the probabilities of observations
+  for (int i{0}; i < distribution.states_.n_cols; ++i)
+  {
+    arma::Col<int> x(measured_species.n_elem);
+    for (int       j = 0; j < measured_species.n_elem; ++j)
+    {
+      x(j) = distribution.states_(measured_species(j), i);
+    }
+    int            k = data.GetObservationIndex(x);
+    if (k != -1) predicted_probabilities_local(k) += p_dat[i];
+  }
+  VecRestoreArrayRead(distribution.p_, &p_dat);
+  ierr = MPI_Allreduce(&predicted_probabilities_local[0],
+                       &predicted_probabilities[0],
+                       num_observations,
+                       MPIU_REAL,
+                       MPIU_SUM,
+                       comm); CHKERRMPI(ierr);
+
+  // Compute the gradient
+  int ns;
+  for (int par{0}; par < num_parameters; ++par){
+    ierr = VecGetArrayRead(distribution.dp_[par], &p_dat); PACMENSLCHKERRQ(ierr);
+    for (int i{0}; i < distribution.states_.n_cols; ++i)
+    {
+      arma::Col<int> x(measured_species.n_elem);
+      for (int       j = 0; j < measured_species.n_elem; ++j)
+      {
+        x(j) = distribution.states_(measured_species(j), i);
+      }
+      int            k = data.GetObservationIndex(x);
+      if (k != -1) predicted_sensitivities_local(k) += p_dat[i];
+    }
+    ierr = VecRestoreArrayRead(distribution.dp_[par], &p_dat); PACMENSLCHKERRQ(ierr);
+    ierr = MPI_Allreduce(&predicted_sensitivities_local[0],
+                         &predicted_sensitivities[0],
+                         num_observations,
+                         MPIU_REAL,
+                         MPIU_SUM,
+                         comm); CHKERRMPI(ierr);
+
+    gradient[par] = 0.0;
+    for (int i{0}; i < num_observations; ++i)
+    {
+      if (!use_base_2)
+      {
+        gradient[par] += freq(i) * predicted_sensitivities(i)/(std::max(1.0e-16, predicted_probabilities(i)));
+      } else
+      {
+        gradient[par] += freq(i) * predicted_sensitivities(i)/(log(2)*(std::max(1.0e-16, predicted_probabilities(i))));
+      }
+    }
+  }
+  return 0;
 }

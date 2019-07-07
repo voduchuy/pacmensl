@@ -85,7 +85,6 @@ TEST(StateSetExpansion, toggle_state_set_expansion_lb_naive) {
   ASSERT_EQ(state_set.SetStoichiometryMatrix(SM), 0);
   ASSERT_EQ(state_set.SetLoadBalancingScheme(PartitioningType::BLOCK), 0);
   ASSERT_EQ(state_set.SetShape(constr_fun, fsp_size), 0);
-  ASSERT_EQ(state_set.SetUp(), 0);
   ASSERT_EQ(state_set.AddStates(X0), 0);
   ASSERT_EQ(state_set.Expand(), 0);
 
@@ -151,7 +150,6 @@ TEST(StateSetExpansion, toggle_state_set_expansion_lb_graph) {
   arma::Row<int> fsp_size = {3};
   state_set.SetShape(constr_fun, fsp_size);
   state_set.SetLoadBalancingScheme(PartitioningType::GRAPH);
-  state_set.SetUp();
   state_set.AddStates(X0);
   state_set.Expand();
 
@@ -217,7 +215,6 @@ TEST(StateSetExpansion, toggle_state_set_expansion_lb_hypergraph) {
   arma::Row<int> fsp_size = {3};
   state_set.SetLoadBalancingScheme(PartitioningType::HYPERGRAPH);
   state_set.SetShape(constr_fun, fsp_size);
-  state_set.SetUp();
   state_set.AddStates(X0);
   state_set.Expand();
 

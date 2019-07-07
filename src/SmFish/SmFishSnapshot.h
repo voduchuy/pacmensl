@@ -5,9 +5,10 @@
 #ifndef PACMENSL_SMFISHSNAPSHOT_H
 #define PACMENSL_SMFISHSNAPSHOT_H
 
+#include<map>
 #include<armadillo>
 #include"DiscreteDistribution.h"
-#include<map>
+#include"SensDiscreteDistribution.h"
 
 namespace pacmensl {
 class SmFishSnapshot
@@ -36,6 +37,12 @@ double SmFishSnapshotLogLikelihood(const SmFishSnapshot &data,
                                    const DiscreteDistribution &distribution,
                                    arma::Col<int> measured_species = arma::Col<int>({}),
                                    bool use_base_2 = false);
+
+PacmenslErrorCode SmFishSnapshotGradient(const SmFishSnapshot &data,
+                                         const SensDiscreteDistribution &distribution,
+                                         std::vector<PetscReal> &gradient,
+                                         arma::Col<int> measured_species = arma::Col<int>({}),
+                                         bool use_base_2 = false);
 }
 
 #endif //PACMENSL_SMFISHSNAPSHOT_H

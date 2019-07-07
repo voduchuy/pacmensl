@@ -166,25 +166,18 @@ void StateSetBase::load_balance() {
  * \ref local_states_, \ref num_local_states_, \ref num_global_states_, \ref state_layout_, \ref inds_start_, \ref
  * state_directory_.
  *
- * __See also__
- * \ref AddInitialStates.
  */
 PacmenslErrorCode StateSetBase::AddStates(const arma::Mat<int> &X) {
   int zoltan_err;
-  try {
-    if (X.n_rows != num_species_) {
-      throw std::runtime_error(
-          "SetInitialStates: number of rows in input array is not the same as the number of species.\n");
-    }
-  } catch (std::runtime_error &err) {
+  if (num_species_ != 0 && X.n_rows != num_species_){
     return -1;
+  }
+  else if (num_species_ == 0){
+    num_species_ = X.n_rows;
   }
 
   if (!set_up_) {
-    if (my_rank_ == 0) {
-      std::cout << "StateSetBase.SetUp() must be called first!\n";
-    }
-    return -1;
+    SetUp();
   }
 
   PetscLogEventBegin(logger_.add_states_event, 0, 0, 0, 0);
@@ -638,6 +631,12 @@ PacmenslErrorCode StateSetBase::SetLoadBalancingScheme(PartitioningType type, Pa
 PacmenslErrorCode StateSetBase::Clear() {
   if (zoltan_explore_) Zoltan_Destroy(&zoltan_explore_);
   if (state_directory_) Zoltan_DD_Destroy(&state_directory_);
+  return 0;
+}
+
+PacmenslErrorCode StateSetBase::Expand()
+{
+  load_balance();
   return 0;
 }
 
