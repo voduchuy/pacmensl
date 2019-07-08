@@ -11,7 +11,7 @@ static char help[] = "Advance_ CME of signal-activated bursting gene expression 
 #include <Sys.h>
 #include <armadillo>
 #include <cmath>
-#include "FSP/FspSolverMultiSinks.h"
+#include "FspSolverMultiSinks.h"
 
 using arma::dvec;
 using arma::Col;

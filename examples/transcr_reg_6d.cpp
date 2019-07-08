@@ -7,7 +7,7 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <Sys.h>
 #include <armadillo>
 #include <cmath>
-#include "FSP/FspSolverMultiSinks.h"
+#include "FspSolverMultiSinks.h"
 
 namespace six_species_cme {
 // stoichiometric matrix of the toggle switch model
