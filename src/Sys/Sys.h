@@ -14,6 +14,7 @@
 #include <petscsys.h>
 #include <petscconf.h>
 #include <cassert>
+#include <memory>
 #include <mpi.h>
 #include <zoltan.h>
 #include <parmetis.h>
