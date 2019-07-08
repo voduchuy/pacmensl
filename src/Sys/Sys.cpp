@@ -66,11 +66,11 @@ Environment::Environment() {
     PetscErrorCode ierr;
     int mpi_initialized;
     MPI_Initialized(&mpi_initialized);
-    if (mpi_initialized == 0) MPI_Init(0, 0);
-    ierr = PetscInitialize(0, 0, (char *) 0, 0);
+    if (mpi_initialized == 0) MPI_Init(nullptr, nullptr);
+    ierr = PetscInitialize(nullptr, nullptr, (char *) nullptr, nullptr);
     CHKERRABORT(MPI_COMM_WORLD, ierr);
     float ver;
-    ierr = Zoltan_Initialize(0, 0, &ver);
+    ierr = Zoltan_Initialize(0, nullptr, &ver);
     CHKERRABORT(MPI_COMM_WORLD, ierr);
     initialized = true;
   }
