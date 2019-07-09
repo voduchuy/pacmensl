@@ -108,7 +108,7 @@ int pacmensl::StationaryFspMatrixConstrained::GenerateValues(const StateSetBase 
   std::vector<PetscReal> d_vals(num_states);
   for (auto i : enable_reactions_)
   {
-    ierr = prop(i, state_list.n_rows, num_states, &state_list[0], &d_vals[0], nullptr); PACMENSLCHKERRQ(ierr);
+    ierr = prop(i, state_list.n_rows, num_states, &state_list[0], &d_vals[0], prop_args); PACMENSLCHKERRQ(ierr);
     for (int j = 0; j < num_states; ++j)
     {
       d_array[j] += (-1.0)*time_coefficients_(i) * d_vals[j];
