@@ -11,7 +11,12 @@ int PACMENSLInit(int *argc, char ***argv, const char *help) {
   ierr = PetscInitialize(argc, argv, (char *) 0, help);
   CHKERRQ(ierr);
   float ver;
-  ierr = Zoltan_Initialize(*argc, *argv, &ver);
+  if (argc){
+    ierr = Zoltan_Initialize(*argc, *argv, &ver);
+  }
+  else{
+    ierr = Zoltan_Initialize(0, nullptr, &ver);
+  }
   CHKERRQ(ierr);
   return 0;
 }
@@ -63,15 +68,17 @@ double round2digit(double x) {
 
 Environment::Environment() {
   if (~initialized) {
-    PetscErrorCode ierr;
-    int mpi_initialized;
-    MPI_Initialized(&mpi_initialized);
-    if (mpi_initialized == 0) MPI_Init(nullptr, nullptr);
-    ierr = PetscInitialize(nullptr, nullptr, (char *) nullptr, nullptr);
-    CHKERRABORT(MPI_COMM_WORLD, ierr);
-    float ver;
-    ierr = Zoltan_Initialize(0, nullptr, &ver);
-    CHKERRABORT(MPI_COMM_WORLD, ierr);
+    PACMENSLInit(nullptr, nullptr, nullptr);
+//    PetscErrorCode ierr;
+//    int mpi_initialized;
+//    MPI_Initialized(&mpi_initialized);
+//    if (mpi_initialized == 0) MPI_Init(nullptr, nullptr);
+//    int argc = 0;
+//    ierr = PetscInitialize(&argc, nullptr, (char *) nullptr, nullptr);
+//    PACMENSLCHKERRTHROW(ierr);
+//    float ver;
+//    ierr = Zoltan_Initialize(0, nullptr, &ver);
+//    PACMENSLCHKERRTHROW(ierr);
     initialized = true;
   }
 }
