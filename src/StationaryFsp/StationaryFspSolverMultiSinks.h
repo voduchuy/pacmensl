@@ -10,11 +10,12 @@
 #include "StationaryMCSolver.h"
 
 namespace pacmensl {
-class StationaryFspSolverMultiSinks {
+class StationaryFspSolverMultiSinks
+{
  public:
   explicit StationaryFspSolverMultiSinks(MPI_Comm comm);
 
-  PacmenslErrorCode SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr);
+  PacmenslErrorCode SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr, void *args);
 
   PacmenslErrorCode SetInitialBounds(arma::Row<int> &_fsp_size);
 
@@ -38,18 +39,19 @@ class StationaryFspSolverMultiSinks {
 
  protected:
   MPI_Comm comm_ = nullptr;
-  int my_rank_;
-  int comm_size_;
+  int      my_rank_;
+  int      comm_size_;
 
   bool set_up_ = false;
 
-  int  verbosity_               = 0;
+  int verbosity_ = 0;
 
-  PartitioningType partitioning_type_ = PartitioningType::GRAPH;
-  PartitioningApproach repart_approach_ = PartitioningApproach::REPARTITION;
+  PartitioningType     partitioning_type_ = PartitioningType::GRAPH;
+  PartitioningApproach repart_approach_   = PartitioningApproach::REPARTITION;
 
-  bool have_custom_constraints_ = false;
+  bool                have_custom_constraints_ = false;
   fsp_constr_multi_fn fsp_constr_funs_;
+  void                *fsp_constr_args_ = nullptr;
   arma::Row<int>      fsp_bounds_;
   arma::Row<Real>     fsp_expasion_factors_;
 
@@ -63,12 +65,12 @@ class StationaryFspSolverMultiSinks {
 
   Model model_;
 
-  Vec solution_ = nullptr;
-  std::unique_ptr<StateSetConstrained> state_set_;
+  Vec                                             solution_ = nullptr;
+  std::unique_ptr<StateSetConstrained>            state_set_;
   std::unique_ptr<StationaryFspMatrixConstrained> matrix_;
-  std::unique_ptr<StationaryMCSolver> solver_;
+  std::unique_ptr<StationaryMCSolver>             solver_;
 
-  PacmenslErrorCode MakeDiscreteDistribution_(DiscreteDistribution& dist);
+  PacmenslErrorCode MakeDiscreteDistribution_(DiscreteDistribution &dist);
 };
 }
 #endif //PACMENSL_SRC_STATIONARYFSP_STATIONARYFSPSOLVERMULTISINKS_H_

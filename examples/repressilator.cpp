@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
   petsc_err = PetscLogStagePush(stages[0]);
   CHKERRQ(petsc_err);
   // Solve using adaptive custom constraints
-  fsp_solver.SetConstraintFunctions(lhs_constr);
+  fsp_solver.SetConstraintFunctions(lhs_constr, nullptr);
   fsp_solver.SetInitialBounds(rhs_constr);
   fsp_solver.SetExpansionFactors(expansion_factors);
   fsp_solver.SetUp();
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
   petsc_err = PetscLogStagePush(stages[1]);
   CHKERRQ(petsc_err);
   // Solve using fixed custom constraints
-  fsp_solver.SetConstraintFunctions(lhs_constr);
+  fsp_solver.SetConstraintFunctions(lhs_constr, nullptr);
   fsp_solver.SetInitialBounds(final_custom_constr);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol);

@@ -21,7 +21,8 @@
 #include"PetscWrap.h"
 
 namespace pacmensl {
-struct FspSolverComponentTiming {
+struct FspSolverComponentTiming
+{
   PetscReal StatePartitioningTime;
   PetscReal MatrixGenerationTime;
   PetscReal ODESolveTime;
@@ -30,7 +31,8 @@ struct FspSolverComponentTiming {
   PetscReal TotalTime;
 };
 
-class FspSolverMultiSinks {
+class FspSolverMultiSinks
+{
   using Real = PetscReal;
   using Int = PetscInt;
  public:
@@ -40,7 +42,7 @@ class FspSolverMultiSinks {
   explicit FspSolverMultiSinks(MPI_Comm _comm, PartitioningType _part_type = PartitioningType::GRAPH,
                                ODESolverType _solve_type = CVODE_BDF);
 
-  PacmenslErrorCode SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr);
+  PacmenslErrorCode SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr, void *args);
 
   PacmenslErrorCode SetInitialBounds(arma::Row<int> &_fsp_size);
 
@@ -86,12 +88,12 @@ class FspSolverMultiSinks {
   PartitioningApproach repart_approach_   = PartitioningApproach::REPARTITION;
   ODESolverType        odes_type_         = CVODE_BDF;
 
-  std::shared_ptr<StateSetConstrained> state_set_;
+  std::shared_ptr<StateSetConstrained>  state_set_;
   std::shared_ptr<FspMatrixConstrained> A_;
-  std::shared_ptr<OdeSolverBase> ode_solver_;
-  std::shared_ptr<Petsc<Vec>> p_;
+  std::shared_ptr<OdeSolverBase>        ode_solver_;
+  std::shared_ptr<Petsc<Vec>>           p_;
 
-  bool          set_up_      = false;
+  bool set_up_ = false;
 
   Model                                   model_;
 
@@ -100,12 +102,13 @@ class FspSolverMultiSinks {
   arma::Mat<Int>       init_states_;
   arma::Col<PetscReal> init_probs_;
 
-  int  verbosity_               = 0;
+  int verbosity_ = 0;
 
-  bool have_custom_constraints_ = false;
+  bool                have_custom_constraints_ = false;
   fsp_constr_multi_fn fsp_constr_funs_;
-  arma::Row<int>      fsp_bounds_;
-  arma::Row<Real>     fsp_expasion_factors_;
+  void *fsp_constr_args_ = nullptr;
+  arma::Row<int>  fsp_bounds_;
+  arma::Row<Real> fsp_expasion_factors_;
 
   // For error checking and expansion parameters
   int CheckFspTolerance_(PetscReal t, Vec p);

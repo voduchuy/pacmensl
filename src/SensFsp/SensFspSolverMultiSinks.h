@@ -23,7 +23,7 @@ class SensFspSolverMultiSinks
                                    _solve_type = CVODE_BDF
   );
 
-  PacmenslErrorCode SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr);
+  PacmenslErrorCode SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr, void *args);
   PacmenslErrorCode SetInitialBounds(arma::Row<int> &_fsp_size);
   PacmenslErrorCode SetExpansionFactors(arma::Row<PetscReal> &_expansion_factors);
   PacmenslErrorCode SetModel(SensModel &model);
@@ -76,6 +76,7 @@ class SensFspSolverMultiSinks
 
   bool                have_custom_constraints_ = false;
   fsp_constr_multi_fn fsp_constr_funs_;
+  void* fsp_constr_args_ = nullptr;
   arma::Row<int>      fsp_bounds_;
 
   arma::Row<Real> fsp_expasion_factors_;

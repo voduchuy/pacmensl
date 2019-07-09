@@ -13,9 +13,11 @@ pacmensl::SensFspSolverMultiSinks::SensFspSolverMultiSinks(MPI_Comm _comm,
   MPI_Comm_size(_comm, &comm_size_);
 }
 
-PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetConstraintFunctions(const pacmensl::fsp_constr_multi_fn &lhs_constr)
+PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr,
+                                                                            void *args)
 {
   fsp_constr_funs_         = lhs_constr;
+  fsp_constr_args_ = args;
   have_custom_constraints_ = true;
   return 0;
 }
@@ -108,7 +110,7 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetUp()
     state_set_->SetStoichiometryMatrix(model_.stoichiometry_matrix_);
     if (have_custom_constraints_)
     {
-      state_set_->SetShape(fsp_constr_funs_, fsp_bounds_, nullptr);
+      state_set_->SetShape(fsp_constr_funs_, fsp_bounds_, fsp_constr_args_);
     } else
     {
       state_set_->SetShapeBounds(fsp_bounds_);
