@@ -52,6 +52,8 @@ class Environment {
 
  private:
   bool initialized = false;
+  bool init_petsc = false; // If PETSc or MPI were already set, we do not meddle with them
+  bool init_mpi = false;
 };
 }
 

@@ -87,7 +87,7 @@ PacmenslErrorCode pacmensl::StationaryFspSolverMultiSinks::SetUp()
 
   matrix_ = std::unique_ptr<StationaryFspMatrixConstrained>(new StationaryFspMatrixConstrained(comm_));
   ierr    = matrix_->GenerateValues(*state_set_, model_.stoichiometry_matrix_, model_.prop_t_, model_.prop_x_,
-                                    std::vector<int>(), nullptr, nullptr); PACMENSLCHKERRQ(ierr);
+                                    std::vector<int>(), model_.prop_t_args_, model_.prop_x_args_); PACMENSLCHKERRQ(ierr);
 
   matvec_ = [&](Vec x, Vec y) {
     return matrix_->Action(0.0, x, y);
@@ -180,7 +180,7 @@ pacmensl::DiscreteDistribution pacmensl::StationaryFspSolverMultiSinks::Solve(Pe
 
     ierr = matrix_->Destroy(); PACMENSLCHKERRTHROW(ierr);
     ierr = matrix_->GenerateValues(*state_set_, model_.stoichiometry_matrix_, model_.prop_t_, model_.prop_x_,
-                                   std::vector<int>(), nullptr, nullptr); PACMENSLCHKERRTHROW(ierr);
+                                   std::vector<int>(), model_.prop_t_args_, model_.prop_x_args_); PACMENSLCHKERRTHROW(ierr);
 
     ExpandVec(solution_, new_states_locations, matrix_->GetNumLocalRows());
   }
