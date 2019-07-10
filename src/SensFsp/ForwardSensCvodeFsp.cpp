@@ -123,10 +123,11 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::SetUp() {
   cvode_stat = CVodeSetSensErrCon(cvode_mem, SUNTRUE);
   CVODECHKERRQ(cvode_stat);
 
-  std::vector<double> abs_tols(sens_vecs_.size(), abs_tol);
-  cvode_stat = CVodeSensSStolerances(cvode_mem, rel_tol, &abs_tols[0]);
-//  cvode_stat = CVodeSensEEtolerances(cvode_mem);
+  cvode_stat = CVodeSensEEtolerances(cvode_mem);
   CVODECHKERRQ(cvode_stat);
+//  std::vector<double> abs_tols(sens_vecs_.size(), 1.0e-4);
+//  cvode_stat = CVodeSensSStolerances(cvode_mem, rel_tol, &abs_tols[0]);
+//  CVODECHKERRQ(cvode_stat);
   set_up_ = true;
 
   return 0;

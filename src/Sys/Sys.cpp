@@ -3,14 +3,30 @@
 
 namespace pacmensl {
 
+static bool _PACMENSL_INIT_MPI   = false;
+static bool _PACMENSL_INIT_PETSC = false;
+
 int PACMENSLInit(int *argc, char ***argv, const char *help)
 {
   PetscErrorCode ierr;
+
   int            mpi_initialized;
+  PetscBool petsc_initialized;
+
   MPI_Initialized(&mpi_initialized);
-  if (mpi_initialized == 0) MPI_Init(argc, argv);
-  ierr = PetscInitialize(argc, argv, ( char * ) 0, help);
-  CHKERRQ(ierr);
+  if (mpi_initialized == 0) {
+    MPI_Init(argc, argv);
+    _PACMENSL_INIT_MPI = true;
+  }
+
+  PetscInitialized(&petsc_initialized);
+  if (petsc_initialized == PETSC_FALSE)
+  {
+    ierr = PetscInitialize(argc, argv, ( char * ) 0, help);
+    CHKERRQ(ierr);
+    _PACMENSL_INIT_PETSC = true;
+  }
+
   float ver;
   if (argc)
   {
@@ -20,20 +36,26 @@ int PACMENSLInit(int *argc, char ***argv, const char *help)
     ierr = Zoltan_Initialize(0, nullptr, &ver);
   }
   CHKERRQ(ierr);
+
   return 0;
 }
 
 int PACMENSLFinalize()
 {
-  PetscErrorCode ierr;
-  ierr = PetscFinalize();
-  CHKERRQ(ierr);
+  PetscErrorCode ierr = 0;
+  if (_PACMENSL_INIT_PETSC)
+  {
+    ierr = PetscFinalize();
+    CHKERRQ(ierr);
+  }
 
-  int mpi_finalized;
-  MPI_Finalized(&mpi_finalized);
-  if (!mpi_finalized) MPI_Finalize();
+  if (_PACMENSL_INIT_MPI)
+  {
+    int mpi_finalized;
+    MPI_Finalized(&mpi_finalized);
+    if (!mpi_finalized) MPI_Finalize();
+  }
   return ierr;
-  return 0;
 }
 
 void sequential_action(MPI_Comm comm, std::function<void(void *)> action, void *data)
@@ -91,11 +113,11 @@ Environment::Environment()
     PetscInitialized(&petsc_initialized);
     if (petsc_initialized == PETSC_FALSE)
     {
-      ierr = PetscInitialize(nullptr, nullptr, ( char * ) 0, nullptr);
+      ierr       = PetscInitialize(nullptr, nullptr, ( char * ) 0, nullptr);
       init_petsc = true;
     }
     float ver;
-    ierr = Zoltan_Initialize(0, nullptr, &ver);
+    ierr        = Zoltan_Initialize(0, nullptr, &ver);
     initialized = true;
   }
 }

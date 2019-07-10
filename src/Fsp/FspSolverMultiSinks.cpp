@@ -500,9 +500,7 @@ PacmenslErrorCode FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p)
   }
 
   MPI_Datatype scalar_type;
-  ierr = PetscDataTypeToMPIDataType(PETSC_DOUBLE, &scalar_type);
-  PACMENSLCHKERRTHROW(ierr);
-  ierr = MPI_Allreduce(&sinks_of_p[0], &sinks_[0], sinks_of_p.n_elem, scalar_type, MPIU_SUM, comm_);
+  ierr = MPI_Allreduce(&sinks_of_p[0], &sinks_[0], sinks_of_p.n_elem, MPIU_REAL, MPIU_SUM, comm_);
   PACMENSLCHKERRTHROW(ierr);
   for (int i{0}; i < ( int ) sinks_.n_elem; ++i)
   {
