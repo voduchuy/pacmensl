@@ -9,12 +9,14 @@ Compilation and build tools:
 * CMake (3.10 or higher) (https://cmake.org/download/)
 * C, CXX compilers.
 
+An MPI implementation (OpenMPI, MPICH) already installed on your system.
+
 Python:
 * Python 3.6 or higher
 * wget (for using the dowload scripts)
 
 
-PACMENSL requires the following libraries to be installed on your system:
+Additional requirements:
 
 * Armadillo (http://arma.sourceforge.net/download.html)
 * Metis (http://glaros.dtc.umn.edu/gkhome/metis/metis/download)
