@@ -34,11 +34,12 @@ if (BUILD_TESTS)
     find_package(GTest)
     if (NOT GTEST_FOUND)
         message("GoogleTest not found on your system. Tests will not be built.")
-        SET(BUILD_TESTS OFF CACHE OPTION FORCE)
+        SET(BUILD_TESTS OFF)
     else ()
         set(TESTS_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/tests CACHE STRING "Installation directory for tests.")
     endif ()
 endif ()
+
 # Decide whether to build examples
 OPTION(BUILD_EXAMPLES "Build examples" ON)
 if (BUILD_EXAMPLES)
@@ -56,8 +57,6 @@ endif ()
 
 INCLUDE_DIRECTORIES(${PETSC_INCLUDES} ${MPI_C_INCLUDE_DIRS} ${MPI_CXX_INCLUDE_DIRS})
 ADD_DEFINITIONS(${PETSC_DEFINITIONS})
-
-message("${PETSC_DEFINITIONS}")
 
 include_directories(./src)
 include_directories(src/Partitioner)
