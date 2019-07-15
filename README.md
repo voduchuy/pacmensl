@@ -9,7 +9,11 @@ Compilation and build tools:
 * CMake (3.10 or higher) (https://cmake.org/download/)
 * C, CXX compilers.
 
-An MPI implementation (OpenMPI, MPICH) already installed on your system.
+An MPI implementation (OpenMPI, MPICH) already installed on your system. On MacOS you can install OpenMPI via Homebrew:
+```
+brew update
+brew install openmpi
+```
 
 Python:
 * Python 3.6 or higher
