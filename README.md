@@ -35,9 +35,13 @@ You can run our interactive Python scripts in the folder 'ext' that automaticall
 1. cd to the 'ext' directory within PACMENSL's folder.
 1. Type 'python get_ext_libraries.py' if you want to download and install all of the libraries. Otherwise, type 'python ext_<library>.py' to install the individual libraries. Replace 'python' with your preferred python binary.
 1. After installation, make sure to add the paths to the installed headers and library files to your environment variables. In Linux/MacOS you will need to set the following environment variables:
+  ```
   export LD_LIBRARY_PATH=<path_to_your_install_dir>/lib:${LD_LIBRARY_PATH}
+  
   export LIBRARY_PATH=<path_to_your_install_dir>/lib:${LIBRARY_PATH}
+  
   export CPATH=<path_to_your_install_dir>/include:${CPATH}
+  
   export PATH=<path_to_your_install_dir>/bin:${PATH}
-
+```
 ## Installing PACMENSL
