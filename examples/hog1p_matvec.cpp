@@ -99,7 +99,8 @@ int lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, 
 
 arma::Row<int>    rhs_constr_hyperrec{3, 10, 10, 10, 10};
 arma::Row<double> expansion_factors_hyperrec{0.0, 0.25, 0.25, 0.25, 0.25};
-arma::Row<int>    rhs_constr{3, 50, 50, 50, 50, 70, 70};
+
+arma::Row<int>    rhs_constr{3, 50, 50, 30, 30, 50, 50};
 arma::Row<double> expansion_factors{0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25};
 }
 
