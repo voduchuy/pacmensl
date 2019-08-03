@@ -1,6 +1,7 @@
 static char help[] = "Advance_ small CMEs to benchmark intranode performance.\n\n";
 
-#include<iomanip>
+#include <fstream>
+#include <iomanip>
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>

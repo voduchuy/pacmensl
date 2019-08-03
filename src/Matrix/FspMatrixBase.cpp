@@ -259,7 +259,7 @@ PacmenslErrorCode FspMatrixBase::ActionAdvanced(PetscReal t, Vec x, Vec y)
 
   ierr = VecSet(y, 0.0); CHKERRQ(ierr);
 
-  ierr = VecGetLocalVector(x, xx); CHKERRQ(ierr);
+  ierr = VecGetLocalVectorRead(x, xx); CHKERRQ(ierr);
   ierr = VecGetLocalVector(y, yy); CHKERRQ(ierr);
 
   ierr = VecScatterBegin(action_ctx_, x, lvec_, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
@@ -278,7 +278,7 @@ PacmenslErrorCode FspMatrixBase::ActionAdvanced(PetscReal t, Vec x, Vec y)
     ierr = VecAXPY(yy, time_coefficients_[ir], zz); CHKERRQ(ierr);
   }
 
-  ierr = VecRestoreLocalVector(x, xx); CHKERRQ(ierr);
+  ierr = VecRestoreLocalVectorRead(x, xx); CHKERRQ(ierr);
   ierr = VecRestoreLocalVector(y, yy); CHKERRQ(ierr);
   return 0;
 }
@@ -469,11 +469,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValuesBasic(const StateSetBase &fsp,
         d_nnz(i_state, i_reaction) += 1;
       } else if (irnz(i_state, i_reaction) >= 0)
       {
-//        irnz_off(i_state, i_reaction) = irnz(i_state, i_reaction);
-//        irnz(i_state, i_reaction)     = -1;
         o_nnz(i_state, i_reaction) += 1;
-        out_indices(out_count)        = irnz_off(i_state, i_reaction);
-        out_count += 1;
       }
     }
   }
