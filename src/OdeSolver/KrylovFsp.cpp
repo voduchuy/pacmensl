@@ -11,6 +11,7 @@ PetscInt pacmensl::KrylovFsp::Solve() {
   if (solution_ == nullptr) return -1;
   if (rhs_ == nullptr) return -1;
 
+  PacmenslErrorCode ierr;
   PetscInt petsc_err;
 
   // Copy solution_ to the temporary solution variable
@@ -22,13 +23,17 @@ PetscInt pacmensl::KrylovFsp::Solve() {
 
   // Advance the temporary solution_ until either reaching final time or Fsp error exceeding tolerance
   int stop = 0;
+  PetscReal error_excess;
   while (t_now_ < t_final_) {
     krylov_stat_ = AdvanceOneStep(solution_tmp_);
     PACMENSLCHKERRQ(krylov_stat_);
 
     // Check that the temporary solution_ satisfies Fsp tolerance
-    if (stop_check_ != nullptr) stop = stop_check_(t_now_tmp_, solution_tmp_, stop_data_);
-    if (stop == 1) {
+    if (stop_check_ != nullptr) {
+      ierr = stop_check_(t_now_tmp_, solution_tmp_, error_excess, stop_data_);
+    }
+    if (error_excess > 0.0) {
+      stop = 1;
       krylov_stat_ = GetDky(t_now_, 0, solution_tmp_);
       CHKERRQ(petsc_err);
       break;

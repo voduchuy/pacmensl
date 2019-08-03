@@ -5,7 +5,11 @@
 #include "DiscreteDistribution.h"
 
 pacmensl::DiscreteDistribution::~DiscreteDistribution() {
-  if (p_ != PETSC_NULL) VecDestroy(&p_);
+  int ierr;
+  if (p_ != nullptr) {
+    ierr = VecDestroy(&p_);
+    CHKERRABORT(MPI_COMM_SELF, ierr);
+  }
   if (comm_ != nullptr) MPI_Comm_free(&comm_);
   p_    = nullptr;
   comm_ = nullptr;
@@ -75,7 +79,7 @@ pacmensl::DiscreteDistribution::operator=(pacmensl::DiscreteDistribution &&dist)
     p_      = dist.p_;
 
     dist.comm_ = nullptr;
-    dist.p_    = PETSC_NULL;
+    dist.p_    = nullptr;
     dist.states_.clear();
 
   }

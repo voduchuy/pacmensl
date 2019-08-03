@@ -20,7 +20,7 @@ class SensFspSolverMultiSinks
                                    _comm,
                                    PartitioningType _part_type = PartitioningType::GRAPH,
                                    ODESolverType
-                                   _solve_type = CVODE_BDF
+                                   _solve_type = CVODE
   );
 
   PacmenslErrorCode SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr, void *args);

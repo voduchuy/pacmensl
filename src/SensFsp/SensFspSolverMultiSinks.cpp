@@ -4,6 +4,8 @@
 
 #include "SensFspSolverMultiSinks.h"
 
+#include "mpi.h"
+
 pacmensl::SensFspSolverMultiSinks::SensFspSolverMultiSinks(MPI_Comm _comm,
                                                            pacmensl::PartitioningType _part_type,
                                                            pacmensl::ODESolverType _solve_type)

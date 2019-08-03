@@ -88,7 +88,7 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
 {
   PetscErrorCode ierr{0};
 
-  const StateSetConstrained *constrained_fss_ptr = dynamic_cast<const StateSetConstrained *>(&state_set);
+  auto *constrained_fss_ptr = dynamic_cast<const StateSetConstrained *>(&state_set);
   if (!constrained_fss_ptr) ierr = -1; PACMENSLCHKERRQ(ierr);
 
   sinks_rank_ = comm_size_ - 1; // rank of the processor that holds sink states_
@@ -101,7 +101,13 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
   }
 
   // Generate the entries corresponding to usual states_
-  ierr = FspMatrixBase::GenerateValues(state_set, SM, new_prop_t, prop, enable_reactions, prop_t_args, prop_args); PACMENSLCHKERRQ(ierr);
+  ierr = FspMatrixBase::GenerateValues(state_set,
+                                       SM,
+                                       new_prop_t,
+                                       prop,
+                                       enable_reactions,
+                                       prop_t_args,
+                                       prop_args); PACMENSLCHKERRQ(ierr);
 
   // Generate the extra blocks corresponding to sink states_
   const arma::Mat<int> &state_list    = constrained_fss_ptr->GetStatesRef();
@@ -175,7 +181,6 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
     sink_global_indices[i] = constrained_fss_ptr->GetNumGlobalStates() + i;
   }
   IS       sink_is;
-  Vec      tmp;
   ierr = ISCreateGeneral(comm_, n_constraints, sink_global_indices, PETSC_COPY_VALUES, &sink_is); CHKERRQ(ierr);
   ierr = VecScatterCreate(sink_entries_, NULL, work_, sink_is, &sink_scatter_ctx_); CHKERRQ(ierr);
   ierr = ISDestroy(&sink_is); CHKERRQ(ierr);

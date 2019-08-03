@@ -4,6 +4,7 @@
 #include <OdeSolver/CvodeFsp.h>
 #include "OdeSolver/OdeSolverBase.h"
 #include "CvodeFsp.h"
+#include "OdeSolverBase.h"
 
 namespace pacmensl {
 
@@ -12,12 +13,14 @@ CvodeFsp::CvodeFsp(MPI_Comm _comm, int lmm) : OdeSolverBase(_comm) {
 }
 
 PetscInt CvodeFsp::Solve() {
+  PacmenslErrorCode ierr;
   PetscErrorCode petsc_err;
   Vec            solution_tmp_dat = N_VGetVector_Petsc(solution_tmp);
   petsc_err = VecCopy(*solution_, solution_tmp_dat);
   CHKERRQ(petsc_err);
   // Advance the temporary solution_ until either reaching final time or Fsp error exceeding tolerance
   int stop = 0;
+  PetscReal error_excess = 0.0;
   while (t_now_ < t_final_) {
     cvode_stat = CVode(cvode_mem, t_final_, solution_tmp, &t_now_tmp, CV_ONE_STEP);
     CVODECHKERRQ(cvode_stat);
@@ -28,9 +31,12 @@ PetscInt CvodeFsp::Solve() {
       t_now_tmp = t_final_;
     }
     // Check that the temporary solution_ satisfies Fsp tolerance
-    if (stop_check_ != nullptr) stop = stop_check_(t_now_tmp, solution_tmp_dat, stop_data_);
-    if (stop == 1) {
-      cvode_stat = CVodeGetDky(cvode_mem, t_now_, 0, solution_tmp);
+    if (stop_check_ != nullptr) {
+      ierr = stop_check_(t_now_tmp, solution_tmp_dat, error_excess, stop_data_); PACMENSLCHKERRQ(ierr);
+    }
+    if (error_excess > 0.0) {
+      stop = 1;
+      cvode_stat = CVodeGetDky(cvode_mem, t_now_, 0, solution_tmp); CVODECHKERRQ(cvode_stat);
       break;
     } else {
       t_now_ = t_now_tmp;
@@ -78,15 +84,11 @@ int CvodeFsp::FreeWorkspace() {
   int ierr;
   if (cvode_mem) CVodeFree(&cvode_mem);
   if (solution_tmp != nullptr) N_VDestroy(solution_tmp);
+  if (constr_vec_ != nullptr) N_VDestroy(constr_vec_);
   if (linear_solver != nullptr) SUNLinSolFree(linear_solver);
   solution_tmp  = nullptr;
+  constr_vec_ = nullptr;
   linear_solver = nullptr;
-  return 0;
-}
-
-int CvodeFsp::SetCVodeTolerances(PetscReal _r_tol, PetscReal _abs_tol) {
-  rel_tol = _r_tol;
-  abs_tol = _abs_tol;
   return 0;
 }
 
@@ -109,6 +111,10 @@ PacmenslErrorCode CvodeFsp::SetUp() {
   petsc_err = VecCopy(*solution_, solution_tmp_dat);
   CHKERRQ(petsc_err);
 
+//  constr_vec_ = N_VClone(solution_tmp);
+//  petsc_err = VecSet(N_VGetVector_Petsc(constr_vec_), 1.0);
+//  CHKERRQ(petsc_err);
+
   // Set CVODE starting time to the current timepoint
   t_now_tmp = t_now_;
 
@@ -122,7 +128,7 @@ PacmenslErrorCode CvodeFsp::SetUp() {
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetUserData(cvode_mem, ( void * ) this);
   CVODECHKERRQ(cvode_stat);
-  cvode_stat = CVodeSStolerances(cvode_mem, rel_tol, abs_tol);
+  cvode_stat = CVodeSStolerances(cvode_mem, rel_tol_, abs_tol_);
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetMaxNumSteps(cvode_mem, 10000);
   CVODECHKERRQ(cvode_stat);
@@ -130,9 +136,11 @@ PacmenslErrorCode CvodeFsp::SetUp() {
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetMaxNonlinIters(cvode_mem, 10000);
   CVODECHKERRQ(cvode_stat);
+  cvode_stat = CVodeSetConstraints(cvode_mem, constr_vec_);
+  CVODECHKERRQ(cvode_stat);
 
   // Create the linear solver without preconditioning
-  linear_solver = SUNSPBCGS(solution_tmp, PREC_NONE, 0);
+  linear_solver = SUNLinSol_SPGMR(solution_tmp, PREC_NONE, 100);
   cvode_stat    = CVSpilsSetLinearSolver(cvode_mem, linear_solver);
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVSpilsSetJacTimes(cvode_mem, NULL, &cvode_jac);

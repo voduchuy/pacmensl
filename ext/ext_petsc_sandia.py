@@ -9,17 +9,17 @@ import tarfile as tar
 def download(path_to):
     dest_dir = Path(path_to)
     dest_dir = dest_dir.expanduser().resolve()
-    url='http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.8.4.tar.gz'
+    url='http://ftp.mcs.anl.gov/pub/Petsc/release-snapshots/Petsc-3.8.4.tar.gz'
     wget.download(url, str(dest_dir))
-    f = tar.open(dest_dir/Path('petsc-3.8.4.tar.gz'))
+    f = tar.open(dest_dir/Path('Petsc-3.8.4.tar.gz'))
     f.extractall(dest_dir)
-    new_dir=dest_dir/Path('petsc')
-    (dest_dir/Path('petsc-3.8.4')).rename(new_dir)
+    new_dir=dest_dir/Path('Petsc')
+    (dest_dir/Path('Petsc-3.8.4')).rename(new_dir)
 
 
 def install(src_path, build_path, install_path):
-    src_dir = Path(src_path) / Path('petsc')
-    build_dir = Path(build_path) / Path('petsc')
+    src_dir = Path(src_path) / Path('Petsc')
+    build_dir = Path(build_path) / Path('Petsc')
     install_dir = Path(install_path)
     src_dir = src_dir.expanduser().resolve()
     build_dir = build_dir.expanduser().resolve()

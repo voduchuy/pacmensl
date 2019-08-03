@@ -20,7 +20,6 @@ namespace pacmensl {
 class CvodeFsp : public OdeSolverBase {
  public:
   explicit CvodeFsp(MPI_Comm _comm, int lmm = CV_BDF);
-  int SetCVodeTolerances(PetscReal _r_tol, PetscReal _abs_tol);
 
   PacmenslErrorCode SetUp() override ;
 
@@ -30,19 +29,18 @@ class CvodeFsp : public OdeSolverBase {
 
   ~CvodeFsp();
  protected:
-  int lmm_;
+  int lmm_ = CV_BDF;
   void *cvode_mem = nullptr;
   SUNLinearSolver linear_solver = nullptr;
   N_Vector solution_wrapper = nullptr;
   PetscReal t_now_tmp = 0.0;
-  PetscReal rel_tol = 1.0e-6;
-  PetscReal abs_tol = 1.0e-14;
   int cvode_stat = 0;
   static int cvode_rhs(double t, N_Vector u, N_Vector udot, void *solver);
   static int cvode_jac(N_Vector v, N_Vector Jv, realtype t,
                        N_Vector u, N_Vector fu,
                        void *FPS_ptr, N_Vector tmp);
   N_Vector solution_tmp = nullptr;
+  N_Vector constr_vec_ = nullptr;
 };
 }
 

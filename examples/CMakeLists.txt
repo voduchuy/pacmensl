@@ -6,6 +6,7 @@ set(EXAMPLES
         time_invariant_bursting
         repressilator
         transcr_reg_6d
+        hog1p_matvec
         )
 
 set(EXAMPLES ${EXAMPLES} PARENT_SCOPE)

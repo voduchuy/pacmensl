@@ -11,13 +11,13 @@ class StationaryFspMatrixConstrained : public FspMatrixBase
 {
  public:
   explicit StationaryFspMatrixConstrained(MPI_Comm comm);
-  int GenerateValues(const StateSetBase &fsp,
-                     const arma::Mat<int> &SM,
-                     const TcoefFun &new_t_fun,
-                     const PropFun &prop,
-                     const std::vector<int> &enable_reactions,
-                     void *t_fun_args,
-                     void *prop_args) override;
+  PacmenslErrorCode GenerateValues(const StateSetBase &fsp,
+                                   const arma::Mat<Int> &SM,
+                                   const TcoefFun &new_t_fun,
+                                   const PropFun &prop,
+                                   const std::vector<int> &enable_reactions,
+                                   void *t_fun_args,
+                                   void *prop_args) override;
   int Action(PetscReal t, Vec x, Vec y) override;
   int EvaluateOutflows(Vec sfsp_solution, arma::Row<PetscReal> &sinks);
   int Destroy() override;

@@ -7,6 +7,7 @@ static char help[] = "Test interface to CVODE for solving the CME of the toggle 
 #include "pacmensl_all.h"
 #include "FspSolverMultiSinks.h"
 #include "pacmensl_test_env.h"
+#include "OdeSolverBase.h"
 
 namespace toggle_cme {
 /* Stoichiometric matrix of the toggle switch model */
@@ -131,7 +132,7 @@ TEST_F(FspTest, test_handling_t_fun_error) {
   ierr = fsp.SetInitialDistribution(X0, p0);
   ASSERT_FALSE(ierr);
 
-  fsp.SetOdesType(CVODE_BDF);
+  fsp.SetOdesType(CVODE);
   ASSERT_THROW(p_final_bdf = fsp.Solve(t_final, fsp_tol), std::runtime_error);
   fsp.ClearState();
 
@@ -177,8 +178,50 @@ class FspPoissonTest : public ::testing::Test {
   arma::Col<PetscReal> p0                = {1.0};
   arma::Row<int>       fsp_size          = {5};
   arma::Row<PetscReal> expansion_factors = {0.1};
-  PetscReal            t_final{1.0}, fsp_tol{1.0e-6};
+  PetscReal            t_final{10.0}, fsp_tol{1.0e-6};
 };
+
+
+
+TEST_F(FspPoissonTest, test_poisson_petsc) {
+  PetscInt             ierr;
+  PetscReal            stmp;
+  DiscreteDistribution p_final;
+
+  FspSolverMultiSinks fsp(PETSC_COMM_WORLD);
+
+  ierr = fsp.SetModel(poisson_model);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialBounds(fsp_size);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetExpansionFactors(expansion_factors);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialDistribution(x0, p0);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetOdesType(ODESolverType::PETSC);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetUp();
+  ASSERT_FALSE(ierr);
+
+  p_final = fsp.Solve(t_final, fsp_tol);
+  fsp.ClearState();
+
+  // Check that the solution is close to Poisson
+  stmp        = 0.0;
+  PetscReal *p_dat;
+  int num_states;
+  p_final.GetProbView(num_states, p_dat);
+  PetscReal pdf;
+  int       n;
+  for (int  i = 0; i < num_states; ++i) {
+    n   = p_final.states_(0, i);
+    pdf = exp(-lambda * t_final) * pow(lambda * t_final, double(n)) / tgamma(n + 1);
+    stmp += abs(p_dat[i] - pdf);
+  }
+  p_final.RestoreProbView(p_dat);
+  MPI_Allreduce(&stmp, MPI_IN_PLACE, 1, MPIU_REAL, MPIU_SUM, PETSC_COMM_WORLD);
+  ASSERT_LE(stmp, fsp_tol);
+}
 
 TEST_F(FspPoissonTest, test_poisson_cvode) {
   PetscInt             ierr;
@@ -195,6 +238,12 @@ TEST_F(FspPoissonTest, test_poisson_cvode) {
   ASSERT_FALSE(ierr);
   ierr = fsp.SetInitialDistribution(x0, p0);
   ASSERT_FALSE(ierr);
+  ierr = fsp.SetOdesType(ODESolverType::CVODE);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetUp();
+  ASSERT_FALSE(ierr);
+  std::shared_ptr<CvodeFsp> ode_solver = std::dynamic_pointer_cast<CvodeFsp>(fsp.GetOdeSolver());
+  ode_solver->SetTolerances(1.0e-6, 1.0e-14);
 
   p_final = fsp.Solve(t_final, fsp_tol);
   fsp.ClearState();

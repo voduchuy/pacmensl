@@ -85,6 +85,7 @@ int pacmensl::SmFishSnapshot::GetObservationIndex(const arma::Col<int> &x) const
 {
   if (x.n_elem != observations_.n_rows)
   {
+    std::cout << "SmFishSnapshot: requested observation exceeds the data set's dimensionality";
     return -1;
   }
   auto i = ob2ind.find(arma::conv_to<std::vector<int>>::from(x));
