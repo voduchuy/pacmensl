@@ -211,10 +211,10 @@ int main(int argc, char *argv[])
   std::ofstream      ofs;
 
   //====================================================================================================================
-  // Phase 1: Do 1000 matvecs with conventional matrices (no merged scatter context)
+  // Phase 1: Do 100 matvecs with conventional matrices (no merged scatter context)
   //====================================================================================================================
   PetscLogStagePush(stages[0]);
-  for (int i{0}; i < 1000; ++i)
+  for (int i{0}; i < 100; ++i)
   {
     ierr = A1.Action(0.0, x, y);
     PACMENSLCHKERRQ(ierr);
@@ -256,10 +256,10 @@ int main(int argc, char *argv[])
 
   MPI_Barrier(comm);
   //====================================================================================================================
-  // Phase 2: Do 1000 matvecs with non-conventional matrices (with merged scatter context)
+  // Phase 2: Do 100 matvecs with non-conventional matrices (with merged scatter context)
   //====================================================================================================================
   PetscLogStagePush(stages[1]);
-  for (int i{0}; i < 1000; ++i)
+  for (int i{0}; i < 100; ++i)
   {
     ierr = A2.Action(0.0, x, z);
     PACMENSLCHKERRQ(ierr);
