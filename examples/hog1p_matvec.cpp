@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
   if (my_rank == 0)
   {
     ofs.open("hog1p_mv_advanced.txt", std::ofstream::app);
-    ofs << num_procs << ", " << scatter_time << ", " << matmult_time << ", " << len_mess << "\n";
+    ofs << num_procs << ", " << scatter_time << ", " << matmult_time << ", " << len_mes << "\n";
     ofs.close();
   }
 
