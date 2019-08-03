@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 
   PetscEventPerfInfo info_matmult, info_scatter_begin, info_scatter_end;
   PetscLogEvent      matmult_id, scatter_begin_id, scatter_end_id;
-  PetscReal          scatter_time, matmult_time;
+  PetscReal          scatter_time, matmult_time, num_mess, len_mes;
   std::ofstream      ofs;
 
   //====================================================================================================================
@@ -232,20 +232,23 @@ int main(int argc, char *argv[])
 
   scatter_time = info_scatter_begin.time + info_scatter_end.time;
   matmult_time = info_matmult.time;
+  len_mes = info_scatter_begin.messageLength + info_scatter_end.messageLength;
 
   MPI_Allreduce(MPI_IN_PLACE, &scatter_time, 1, MPIU_REAL, MPIU_SUM, comm);
   MPI_Allreduce(MPI_IN_PLACE, &matmult_time, 1, MPIU_REAL, MPIU_SUM, comm);
+  MPI_Allreduce(MPI_IN_PLACE, &len_mes, 1, MPIU_REAL, MPIU_SUM, comm);
 
   scatter_time = scatter_time / num_procs;
   matmult_time = matmult_time / num_procs;
 
   PetscPrintf(comm, "Avg scatter time %.2e \n", scatter_time);
   PetscPrintf(comm, "Avg Matmult time %.2e \n", matmult_time);
+  PetscPrintf(comm, "Total message length %.2e \n", len_mes);
 
   if (my_rank == 0)
   {
     ofs.open("hog1p_mv_conventional.txt", std::ofstream::app);
-    ofs << num_procs << ", " << scatter_time << ", " << matmult_time << "\n";
+    ofs << num_procs << ", " << scatter_time << ", " << matmult_time << ", " << len_mes << "\n";
     ofs.close();
   }
 
@@ -271,20 +274,23 @@ int main(int argc, char *argv[])
 
   scatter_time = info_scatter_begin.time + info_scatter_end.time;
   matmult_time = info_matmult.time + scatter_time;
+  len_mes = info_scatter_begin.messageLength + info_scatter_end.messageLength;
 
   MPI_Allreduce(MPI_IN_PLACE, &scatter_time, 1, MPIU_REAL, MPIU_SUM, comm);
   MPI_Allreduce(MPI_IN_PLACE, &matmult_time, 1, MPIU_REAL, MPIU_SUM, comm);
+  MPI_Allreduce(MPI_IN_PLACE, &len_mes, 1, MPIU_REAL, MPIU_SUM, comm);
 
   scatter_time = scatter_time / num_procs;
   matmult_time = matmult_time / num_procs;
 
   PetscPrintf(comm, "Avg scatter time %.2e \n", scatter_time);
   PetscPrintf(comm, "Avg Matmult time %.2e \n", matmult_time);
+  PetscPrintf(comm, "Total message length %.2e \n", len_mes);
 
   if (my_rank == 0)
   {
     ofs.open("hog1p_mv_advanced.txt", std::ofstream::app);
-    ofs << num_procs << ", " << scatter_time << ", " << matmult_time << "\n";
+    ofs << num_procs << ", " << scatter_time << ", " << matmult_time << ", " << len_mess << "\n";
     ofs.close();
   }
 
