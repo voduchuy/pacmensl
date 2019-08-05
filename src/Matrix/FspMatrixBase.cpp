@@ -479,9 +479,9 @@ PacmenslErrorCode FspMatrixBase::GenerateValuesBasic(const StateSetBase &fsp,
   for (auto            i_reaction: enable_reactions_)
   {
     ierr = MatCreate(comm_, diag_mats_[i_reaction].mem()); CHKERRQ(ierr);
-    ierr = MatSetType(diag_mats_[i_reaction], MATMPIAIJ); CHKERRQ(ierr);
+    ierr = MatSetType(diag_mats_[i_reaction], MATMPISELL); CHKERRQ(ierr);
     ierr = MatSetSizes(diag_mats_[i_reaction], num_rows_local_, num_rows_local_, num_rows_global_, num_rows_global_); CHKERRQ(ierr);
-    ierr = MatMPIAIJSetPreallocation(diag_mats_[i_reaction], PETSC_NULL, d_nnz.colptr(i_reaction), PETSC_NULL, o_nnz.colptr(i_reaction)); CHKERRQ(ierr);
+    ierr = MatMPISELLSetPreallocation(diag_mats_[i_reaction], PETSC_NULL, d_nnz.colptr(i_reaction), PETSC_NULL, o_nnz.colptr(i_reaction)); CHKERRQ(ierr);
 
     new_prop_x(i_reaction, n_species, n_local_states, &state_list[0], &diag_vals[0], prop_x_args);
     for (int i_state{0}; i_state < n_local_states; ++i_state)
@@ -641,14 +641,14 @@ PacmenslErrorCode FspMatrixBase::GenerateValuesAdvanced(const StateSetBase &fsp,
   for (auto            i_reaction: enable_reactions_)
   {
     ierr = MatCreate(PETSC_COMM_SELF, diag_mats_[i_reaction].mem()); CHKERRQ(ierr);
-    ierr = MatSetType(diag_mats_[i_reaction], MATSEQAIJ); CHKERRQ(ierr);
+    ierr = MatSetType(diag_mats_[i_reaction], MATSEQSELL); CHKERRQ(ierr);
     ierr = MatSetSizes(diag_mats_[i_reaction], num_rows_local_, num_rows_local_, num_rows_local_, num_rows_local_); CHKERRQ(ierr);
-    ierr = MatSeqAIJSetPreallocation(diag_mats_[i_reaction], PETSC_NULL, d_nnz.colptr(i_reaction)); CHKERRQ(ierr);
+    ierr = MatSeqSELLSetPreallocation(diag_mats_[i_reaction], PETSC_NULL, d_nnz.colptr(i_reaction)); CHKERRQ(ierr);
 
     ierr = MatCreate(PETSC_COMM_SELF, offdiag_mats_[i_reaction].mem()); CHKERRQ(ierr);
-    ierr = MatSetType(offdiag_mats_[i_reaction], MATSEQAIJ); CHKERRQ(ierr);
+    ierr = MatSetType(offdiag_mats_[i_reaction], MATSEQSELL); CHKERRQ(ierr);
     ierr = MatSetSizes(offdiag_mats_[i_reaction], num_rows_local_, lvec_length_, num_rows_local_, lvec_length_); CHKERRQ(ierr);
-    ierr = MatSeqAIJSetPreallocation(offdiag_mats_[i_reaction], PETSC_NULL, o_nnz.colptr(i_reaction)); CHKERRQ(ierr);
+    ierr = MatSeqSELLSetPreallocation(offdiag_mats_[i_reaction], PETSC_NULL, o_nnz.colptr(i_reaction)); CHKERRQ(ierr);
 
     new_prop_x(i_reaction, n_species, n_local_states, &state_list[0], &diag_vals[0], prop_x_args);
     for (auto i_state{0}; i_state < n_local_states; ++i_state)
