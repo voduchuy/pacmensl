@@ -8,6 +8,7 @@ set(TEST_PROGRAMS
         test_sensfsp_solver
         test_petscwrap
         test_stationaryfsp_solver
+        simple_petsc_program
         )
 
 include_directories(${GTEST_INCLUDE_DIRS})
