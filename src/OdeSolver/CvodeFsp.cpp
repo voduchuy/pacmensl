@@ -136,8 +136,8 @@ PacmenslErrorCode CvodeFsp::SetUp() {
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetMaxNonlinIters(cvode_mem, 10000);
   CVODECHKERRQ(cvode_stat);
-  cvode_stat = CVodeSetConstraints(cvode_mem, constr_vec_);
-  CVODECHKERRQ(cvode_stat);
+//  cvode_stat = CVodeSetConstraints(cvode_mem, constr_vec_);
+//  CVODECHKERRQ(cvode_stat);
 
   // Create the linear solver without preconditioning
   linear_solver = SUNLinSol_SPGMR(solution_tmp, PREC_NONE, 100);

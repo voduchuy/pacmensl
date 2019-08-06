@@ -91,10 +91,10 @@ class FspSolverMultiSinks
   PartitioningApproach repart_approach_   = PartitioningApproach::REPARTITION;
   ODESolverType        odes_type_         = CVODE;
 
-  std::shared_ptr<StateSetConstrained>  state_set_;
-  std::shared_ptr<FspMatrixConstrained> A_;
-  std::shared_ptr<OdeSolverBase>        ode_solver_;
-  std::shared_ptr<Petsc<Vec>>           p_;
+  std::shared_ptr<StateSetConstrained>  state_set_ = nullptr;
+  std::shared_ptr<FspMatrixConstrained> A_ = nullptr;
+  std::shared_ptr<OdeSolverBase>        ode_solver_ = nullptr;
+  std::shared_ptr<Petsc<Vec>>           p_ = nullptr;
 
   bool set_up_ = false;
 

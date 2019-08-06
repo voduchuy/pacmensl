@@ -387,7 +387,7 @@ int FspMatrixBase::CreateRHSJacobian(Mat *A)
   return 0;
 }
 
-int FspMatrixBase::ComputeJacobian(PetscReal t, Mat A)
+int FspMatrixBase::ComputeRHSJacobian(PetscReal t, Mat A)
 {
   int       ierr;
   PetscBool created;
@@ -700,7 +700,5 @@ PacmenslErrorCode FspMatrixBase::SetUseConventionalMats()
   use_conventional_mats_ = true;
   return 0;
 }
-
-
 
 }
