@@ -277,7 +277,7 @@ PacmenslErrorCode StateSetBase::update_layout() {
   num_local_states_ = local_states_.n_cols;
   PetscMPIInt nslocal = num_local_states_;
   PetscMPIInt nsglobal;
-  MPI_Allreduce(&nslocal, &nsglobal, 1, MPI_INT, MPIU_SUM, comm_);
+  MPI_Allreduce(&nslocal, &nsglobal, 1, MPI_INT, MPI_SUM, comm_);
   num_global_states_ = nsglobal;
   return 0;
 }
