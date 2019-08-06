@@ -183,11 +183,9 @@ int main(int argc, char *argv[])
   VecSetUp(x);
   VecSet(x, 1.0);
   VecDuplicate(x, &y);
-  VecDuplicate(x, &z);
 
   FspMatrixBase A1(comm);
-//  A1.SetUseConventionalMats(MatComposite);
-  A1.SetUseConventionalMats(PetscMatFormat::MatArray);
+  A1.SetUseConventionalMats(PetscMatFormat::MatComposite);
   ierr = A1.GenerateValues(state_set,
                            model.stoichiometry_matrix_,
                            model.prop_t_,
@@ -195,16 +193,6 @@ int main(int argc, char *argv[])
                            std::vector<int>(),
                            nullptr,
                            nullptr);
-  PACMENSLCHKERRQ(ierr);
-  FspMatrixBase A2(comm);
-  A2.SetUseConventionalMats(PetscMatFormat::Custom);
-  ierr      = A2.GenerateValues(state_set,
-                                model.stoichiometry_matrix_,
-                                model.prop_t_,
-                                model.prop_x_,
-                                std::vector<int>(),
-                                nullptr,
-                                nullptr);
   PACMENSLCHKERRQ(ierr);
 
   PetscEventPerfInfo info_matmult, info_scatter_begin, info_scatter_end;
@@ -257,56 +245,9 @@ int main(int argc, char *argv[])
   PetscLogStagePop();
 
   MPI_Barrier(comm);
-  //====================================================================================================================
-  // Phase 2: Do 100 matvecs with non-conventional matrices (with merged scatter context)
-  //====================================================================================================================
-  PetscLogStagePush(stages[1]);
-  for (int i{0}; i < 100; ++i)
-  {
-    ierr = A2.Action(0.0, x, z);
-    PACMENSLCHKERRQ(ierr);
-  }
-  // What time did we spend in VecScatter vs MatMult?
-  PetscLogEventGetId("MatMult", &matmult_id);
-  PetscLogEventGetId("VecScatterEnd  ", &scatter_end_id);
-  PetscLogEventGetId("VecScatterBegin", &scatter_begin_id);
-  PetscLogEventGetPerfInfo(stages[1], matmult_id, &info_matmult);
-  PetscLogEventGetPerfInfo(stages[1], scatter_begin_id, &info_scatter_begin);
-  PetscLogEventGetPerfInfo(stages[1], scatter_end_id, &info_scatter_end);
-
-  scatter_time = info_scatter_begin.time + info_scatter_end.time;
-  matmult_time = info_matmult.time + scatter_time;
-  len_mes = info_scatter_begin.messageLength + info_scatter_end.messageLength;
-
-  MPI_Allreduce(MPI_IN_PLACE, &scatter_time, 1, MPIU_REAL, MPIU_SUM, comm);
-  MPI_Allreduce(MPI_IN_PLACE, &matmult_time, 1, MPIU_REAL, MPIU_SUM, comm);
-  MPI_Allreduce(MPI_IN_PLACE, &len_mes, 1, MPIU_REAL, MPIU_SUM, comm);
-
-  scatter_time = scatter_time / num_procs;
-  matmult_time = matmult_time / num_procs;
-
-  PetscPrintf(comm, "Avg scatter time %.2e \n", scatter_time);
-  PetscPrintf(comm, "Avg Matmult time %.2e \n", matmult_time);
-  PetscPrintf(comm, "Total message length %.2e \n", len_mes);
-
-  if (my_rank == 0)
-  {
-    ofs.open("hog1p_mv_advanced.txt", std::ofstream::app);
-    ofs << num_procs << ", " << scatter_time << ", " << matmult_time << ", " << len_mes << "\n";
-    ofs.close();
-  }
-
-  PetscLogStagePop();
-
-  // Make sure matvec results are the same regardless of method
-  VecAXPY(z, -1.0, y);
-  PetscReal error;
-  VecNorm(z, NORM_INFINITY, &error);
-  PetscPrintf(comm, "|y-z| = %.2e \n", error);
 
   VecDestroy(&x);
   VecDestroy(&y);
-  VecDestroy(&z);
   return 0;
 }
 

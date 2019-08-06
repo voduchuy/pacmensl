@@ -212,6 +212,7 @@ FspSolverMultiSinks::~FspSolverMultiSinks()
 PacmenslErrorCode FspSolverMultiSinks::ClearState()
 {
   int ierr;
+  have_custom_constraints_ = false;
   set_up_ = false;
   p_.reset();
   A_.reset();

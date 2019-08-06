@@ -21,6 +21,12 @@ namespace pacmensl {
 using Real = PetscReal;
 using Int = PetscInt;
 
+enum class PetscMatFormat{
+  MatArray,
+  Custom,
+  MatComposite
+};
+
 /**
  * @brief Base class for the time-dependent FSP-truncated CME matrix.
  * @details We currently assume that the CME matrix could be decomposed into the form
@@ -38,7 +44,7 @@ class FspMatrixBase {
   FspMatrixBase &operator=(const FspMatrixBase &A);
   FspMatrixBase &operator=(FspMatrixBase &&A) noexcept;
 
-  PacmenslErrorCode SetUseConventionalMats();
+  PacmenslErrorCode SetUseConventionalMats(PetscMatFormat format);
 
   virtual PacmenslErrorCode
   GenerateValues(const StateSetBase &fsp,
@@ -67,7 +73,8 @@ class FspMatrixBase {
   int      rank_;
   int      comm_size_;
 
-  bool use_conventional_mats_ = false;
+  PetscMatFormat use_format_ = PetscMatFormat::Custom;
+//  bool use_conventional_mats_ = false;
 
   Int num_reactions_   = 0;
   Int num_rows_global_ = 0;
@@ -77,6 +84,7 @@ class FspMatrixBase {
   // Local data of the matrix
   std::vector<Petsc<Mat>> diag_mats_;
   std::vector<Petsc<Mat>> offdiag_mats_;
+  Mat mat_composite_;
 
   // Mapping from local matrices to the global state space
   ISLocalToGlobalMapping local2global_rows_ = nullptr, local2global_lvec_ = nullptr;
@@ -112,8 +120,18 @@ class FspMatrixBase {
                  void *prop_t_args,
                  void *prop_x_args);
 
+  virtual PacmenslErrorCode
+  GenerateValuesMatComposite(const StateSetBase &fsp,
+                         const arma::Mat<Int> &SM,
+                         const TcoefFun &new_prop_t,
+                         const PropFun &new_prop_x,
+                         const std::vector<int> &enable_reactions,
+                         void *prop_t_args,
+                         void *prop_x_args);
+
   virtual PacmenslErrorCode ActionConventional(PetscReal t, Vec x, Vec y);
   virtual PacmenslErrorCode ActionAdvanced(PetscReal t, Vec x, Vec y);
+  virtual PacmenslErrorCode ActionComposite(PetscReal t, Vec x, Vec y);
 };
 
 }

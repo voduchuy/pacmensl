@@ -227,11 +227,14 @@ FspMatrixBase &FspMatrixBase::operator=(FspMatrixBase &&A) noexcept
 
 int FspMatrixBase::Action(PetscReal t, Vec x, Vec y)
 {
-  if (use_conventional_mats_){
+  if (use_format_ == PetscMatFormat::MatArray){
     return ActionConventional(t, x, y);
   }
-  else{
+  else if (use_format_ == PetscMatFormat::Custom){
     return ActionAdvanced(t, x, y);
+  }
+  else{
+    return ActionComposite(t, x, y);
   }
   return 0;
 }
@@ -283,6 +286,27 @@ PacmenslErrorCode FspMatrixBase::ActionAdvanced(PetscReal t, Vec x, Vec y)
   return 0;
 }
 
+
+PacmenslErrorCode FspMatrixBase::ActionComposite(PetscReal t, Vec x, Vec y)
+{
+  PetscInt ierr;
+
+  ierr = t_fun_(t, num_reactions_, time_coefficients_.memptr(), t_fun_args_); PACMENSLCHKERRQ(ierr);
+
+  PetscReal* sc = new PetscReal[enable_reactions_.size()];
+
+  int c = 0;
+  for (auto ir: enable_reactions_){
+    sc[c] = time_coefficients_[ir];
+    c++;
+  }
+
+  MatCompositeSetScalings(mat_composite_, &sc[0]);
+  MatMult(mat_composite_, x, y);
+  delete[] sc;
+  return 0;
+}
+
 PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
                                                 const arma::Mat<Int> &SM,
                                                 const TcoefFun &new_prop_t,
@@ -291,12 +315,15 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
                                                 void *prop_t_args,
                                                 void *prop_x_args)
 {
-  if (!use_conventional_mats_)
-  {
-    return GenerateValuesAdvanced(fsp, SM, new_prop_t, new_prop_x, enable_reactions, prop_t_args, prop_x_args);
-  } else
+  if (use_format_ == PetscMatFormat::MatArray)
   {
     return GenerateValuesBasic(fsp, SM, new_prop_t, new_prop_x, enable_reactions, prop_t_args, prop_x_args);
+  } else if (use_format_ == PetscMatFormat::Custom)
+  {
+    return GenerateValuesAdvanced(fsp, SM, new_prop_t, new_prop_x, enable_reactions, prop_t_args, prop_x_args);
+  }
+  else {
+    return GenerateValuesMatComposite(fsp, SM, new_prop_t, new_prop_x, enable_reactions, prop_t_args, prop_x_args);
   }
 }
 
@@ -695,12 +722,132 @@ PacmenslErrorCode FspMatrixBase::GenerateValuesAdvanced(const StateSetBase &fsp,
   return 0;
 }
 
-PacmenslErrorCode FspMatrixBase::SetUseConventionalMats()
+PacmenslErrorCode FspMatrixBase::GenerateValuesMatComposite(const StateSetBase &fsp,
+                                                            const arma::Mat<Int> &SM,
+                                                            const TcoefFun &new_prop_t,
+                                                            const PropFun &new_prop_x,
+                                                            const std::vector<int> &enable_reactions,
+                                                            void *prop_t_args,
+                                                            void *prop_x_args)
 {
-  use_conventional_mats_ = true;
+  PacmenslErrorCode    ierr;
+  PetscInt             n_species, n_local_states, own_start, own_end;
+  const arma::Mat<Int> &state_list = fsp.GetStatesRef();
+  arma::Mat<Int>       can_reach_my_state(state_list.n_rows, state_list.n_cols);
+
+  ierr = DetermineLayout_(fsp); PACMENSLCHKERRQ(ierr);
+
+  // Get the global number of rows
+  ierr = VecGetSize(work_, &num_rows_global_); CHKERRQ(ierr);
+
+  // arrays for counting nonzero entries on the diagonal and off-diagonal blocks
+  arma::Mat<Int>       d_nnz, o_nnz;
+  // global indices of off-processor entries needed for matrix-vector product
+  arma::Row<Int>       out_indices;
+  // arrays of nonzero column indices
+  arma::Mat<Int>       irnz, irnz_off;
+  // array o fmatrix values
+  arma::Mat<PetscReal> mat_vals;
+
+  n_species      = fsp.GetNumSpecies();
+  n_local_states = fsp.GetNumLocalStates();
+  num_reactions_ = fsp.GetNumReactions();
+  t_fun_         = new_prop_t;
+  t_fun_args_    = prop_t_args;
+  diag_mats_.resize(num_reactions_);
+  time_coefficients_.set_size(num_reactions_);
+  enable_reactions_ = enable_reactions;
+  if (enable_reactions_.empty())
+  {
+    enable_reactions_ = std::vector<int>(num_reactions_);
+    for (int i = 0; i < num_reactions_; ++i)
+    {
+      enable_reactions_[i] = i;
+    }
+  }
+
+  MPI_Comm_rank(comm_, &rank_);
+
+  // Find the nnz per row of diagonal and off-diagonal matrices
+  irnz.set_size(n_local_states, num_reactions_);
+  irnz_off.set_size(n_local_states, num_reactions_);
+  out_indices.set_size(n_local_states * num_reactions_);
+  mat_vals.set_size(n_local_states, num_reactions_);
+
+  d_nnz.set_size(num_rows_local_, num_reactions_);
+  o_nnz.set_size(num_rows_local_, num_reactions_);
+  d_nnz.fill(1);
+  o_nnz.zeros();
+  int out_count = 0;
+  irnz_off.fill(-1);
+
+  ierr = VecGetOwnershipRange(work_, &own_start, &own_end); CHKERRQ(ierr);
+  // Count nnz for matrix rows
+  for (auto i_reaction : enable_reactions_)
+  {
+    can_reach_my_state = state_list - arma::repmat(SM.col(i_reaction), 1, state_list.n_cols);
+    fsp.State2Index(can_reach_my_state, irnz.colptr(i_reaction));
+    new_prop_x(i_reaction, can_reach_my_state.n_rows, can_reach_my_state.n_cols, &can_reach_my_state[0],
+               mat_vals.colptr(i_reaction), prop_x_args);
+
+    for (auto i_state{0}; i_state < n_local_states; ++i_state)
+    {
+      if (irnz(i_state, i_reaction) >= own_start && irnz(i_state, i_reaction) < own_end)
+      {
+        d_nnz(i_state, i_reaction) += 1;
+      } else if (irnz(i_state, i_reaction) >= 0)
+      {
+        o_nnz(i_state, i_reaction) += 1;
+      }
+    }
+  }
+
+  arma::Col<PetscReal> diag_vals(n_local_states);
+  ierr = VecGetOwnershipRange(work_, &own_start, &own_end); CHKERRQ(ierr);
+  MatType mtype;
+  ierr = MatCreate(comm_, &mat_composite_); CHKERRQ(ierr);
+  ierr = MatSetSizes(mat_composite_, num_rows_local_, num_rows_local_, num_rows_global_, num_rows_global_); CHKERRQ(ierr);
+  ierr = MatSetType(mat_composite_, MATCOMPOSITE); CHKERRQ(ierr);
+  ierr = MatCompositeSetType(mat_composite_, MAT_COMPOSITE_ADDITIVE); CHKERRQ(ierr);
+  ierr = MatSetFromOptions(mat_composite_); CHKERRQ(ierr);
+  for (auto            i_reaction: enable_reactions_)
+  {
+    ierr = MatCreate(comm_, diag_mats_[i_reaction].mem()); CHKERRQ(ierr);
+//    ierr = MatSetType(diag_mats_[i_reaction], MATMPISELL); CHKERRQ(ierr);
+    ierr = MatSetFromOptions(diag_mats_[i_reaction]); CHKERRQ(ierr);
+    ierr = MatSetSizes(diag_mats_[i_reaction], num_rows_local_, num_rows_local_, num_rows_global_, num_rows_global_); CHKERRQ(ierr);
+    ierr = MatGetType(diag_mats_[i_reaction], &mtype); CHKERRQ(ierr);
+    if ( (strcmp(mtype, MATSELL) == 0 )|| (strcmp(mtype, MATMPISELL) == 0 ) || (strcmp(mtype, MATSEQSELL) == 0)){
+      ierr = MatMPISELLSetPreallocation(diag_mats_[i_reaction], PETSC_NULL, d_nnz.colptr(i_reaction), PETSC_NULL, o_nnz.colptr(i_reaction)); CHKERRQ(ierr);
+    }
+    else if ((strcmp(mtype, MATAIJ) == 0 )|| (strcmp(mtype, MATMPIAIJ) == 0) || (strcmp(mtype, MATSEQAIJ) == 0)){
+      ierr = MatMPIAIJSetPreallocation(diag_mats_[i_reaction], PETSC_NULL, d_nnz.colptr(i_reaction), PETSC_NULL, o_nnz.colptr(i_reaction)); CHKERRQ(ierr);
+    }
+
+    new_prop_x(i_reaction, n_species, n_local_states, &state_list[0], &diag_vals[0], prop_x_args);
+    for (int i_state{0}; i_state < n_local_states; ++i_state)
+    {
+      // Set values for the diagonal block
+      ierr = MatSetValue(diag_mats_[i_reaction], own_start + i_state, own_start + i_state, -1.0 * diag_vals[i_state],
+                         INSERT_VALUES); CHKERRQ(ierr);
+      ierr = MatSetValue(diag_mats_[i_reaction], own_start + i_state, irnz(i_state, i_reaction),
+                         mat_vals(i_state, i_reaction), INSERT_VALUES); CHKERRQ(ierr);
+    }
+
+    ierr = MatAssemblyBegin(diag_mats_[i_reaction], MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(diag_mats_[i_reaction], MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatCompositeAddMat(mat_composite_, diag_mats_[i_reaction]); CHKERRQ(ierr);
+  }
+  ierr = MatAssemblyBegin(mat_composite_, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(mat_composite_, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
   return 0;
 }
 
+PacmenslErrorCode FspMatrixBase::SetUseConventionalMats(PetscMatFormat format)
+{
+  use_format_ = format;
+  return 0;
+}
 
 
 }

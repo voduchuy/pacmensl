@@ -7,6 +7,7 @@ set(EXAMPLES
         repressilator
         transcr_reg_6d
         hog1p_matvec
+        hog1p_matvec2
         simple_petsc_program
         )
 
