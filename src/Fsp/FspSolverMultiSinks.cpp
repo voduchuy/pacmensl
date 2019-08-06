@@ -2,7 +2,10 @@
 // Created by Huy Vo on 5/29/18.
 //
 
+#include <OdeSolver/TsFsp.h>
+#include <OdeSolver/CvodeFsp.h>
 #include "FspSolverMultiSinks.h"
+//#include "OdeSolverBase.h"
 
 namespace pacmensl {
 FspSolverMultiSinks::FspSolverMultiSinks(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type)
@@ -27,7 +30,7 @@ PacmenslErrorCode FspSolverMultiSinks::SetInitialBounds(arma::Row<int> &_fsp_siz
 PacmenslErrorCode FspSolverMultiSinks::SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr, void *args)
 {
   fsp_constr_funs_         = lhs_constr;
-  fsp_constr_args_          = args;
+  fsp_constr_args_         = args;
   have_custom_constraints_ = true;
   return 0;
 }
@@ -51,6 +54,18 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
   fsp_tol_ = fsp_tol;
   ode_solver_->SetFinalTime(t_final);
 
+  if (fsp_tol_ > 0.0)
+  {
+    ode_solver_->SetRhs(this->tmatvec_);
+    auto error_checking_fp = [&](PetscReal t, Vec p, PetscReal &te, void *data) {
+      return CheckFspTolerance_(t, p, te);
+    };
+    ode_solver_->SetStopCondition(error_checking_fp, nullptr);
+  } else
+  {
+    ode_solver_->SetStopCondition(nullptr, nullptr);
+  }
+
   solver_stat = 1;
   while (solver_stat)
   {
@@ -64,6 +79,8 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
 
     ierr = ode_solver_->SetUp();
     PACMENSLCHKERRTHROW(ierr);
+
+    to_expand_.fill(0);
 
     solver_stat = ode_solver_->Solve();
     if (solver_stat != 0 && solver_stat != 1) PACMENSLCHKERRTHROW(solver_stat);
@@ -164,7 +181,8 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
           new_states_locations,
           new_sinks_locations));
 
-      ExpandVec(*p_, new_locations_vals, A_->GetNumLocalRows());
+      ierr = ExpandVec(*p_, new_locations_vals, A_->GetNumLocalRows());
+      PACMENSLCHKERRTHROW(ierr);
 
       if (logging_enabled)
       {
@@ -180,7 +198,7 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
   }
 
   DiscreteDistribution dist;
-  ierr = Make_Discrete_Distribution(dist);
+  ierr = MakeDiscreteDistribution_(dist);
   PACMENSLCHKERRTHROW(ierr);
   return dist;
 }
@@ -335,18 +353,13 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
   {
     switch (odes_type_)
     {
-      case CVODE_BDF:ode_solver_ = std::make_shared<CvodeFsp>(comm_, CV_BDF);
+      case CVODE:ode_solver_ = std::make_shared<CvodeFsp>(comm_);
         break;
       case KRYLOV:ode_solver_ = std::make_shared<KrylovFsp>(comm_);
         break;
-      default:ode_solver_ = std::make_shared<CvodeFsp>(comm_, CV_BDF);
+      default:ode_solver_ = std::make_shared<TsFsp>(comm_);
     }
 
-    ode_solver_->SetRhs(this->tmatvec_);
-    auto error_checking_fp = [&](PetscReal t, Vec p, void *data) {
-      return CheckFspTolerance_(t, p);
-    };
-    ode_solver_->SetStopCondition(error_checking_fp, nullptr);
     if (logging_enabled)
     {
       ode_solver_->EnableLogging();
@@ -476,10 +489,11 @@ PacmenslErrorCode FspSolverMultiSinks::SetFromOptions()
   return 0;
 }
 
-PacmenslErrorCode FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p)
+PacmenslErrorCode FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p, PetscReal &tol_exceed)
 {
   int ierr;
-  to_expand_.fill(0);
+  tol_exceed = 0.0;
+//  if (fsp_tol_ < 0.0) return 0;
   // Find the sink states_
   arma::Row<PetscReal> sinks_of_p(sinks_.n_elem);
   if (my_rank_ == comm_size_ - 1)
@@ -487,7 +501,8 @@ PacmenslErrorCode FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p)
     const PetscReal *local_p_data;
     ierr = VecGetArrayRead(p, &local_p_data);
     PACMENSLCHKERRTHROW(ierr);
-    int      n_loc = A_->GetNumLocalRows();
+    int      n_loc;
+    VecGetLocalSize(p, &n_loc);
     for (int i{0}; i < sinks_of_p.n_elem; ++i)
     {
       sinks_of_p(i) = local_p_data[n_loc - sinks_.n_elem + i];
@@ -498,15 +513,17 @@ PacmenslErrorCode FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p)
   {
     sinks_of_p.fill(0.0);
   }
-
-  MPI_Datatype scalar_type;
   ierr = MPI_Allreduce(&sinks_of_p[0], &sinks_[0], sinks_of_p.n_elem, MPIU_REAL, MPIU_SUM, comm_);
   PACMENSLCHKERRTHROW(ierr);
   for (int i{0}; i < ( int ) sinks_.n_elem; ++i)
   {
-    if (sinks_(i) / fsp_tol_ > (1.0 / double(sinks_.n_elem)) * (t / t_final_)) to_expand_(i) = 1;
+    if (sinks_(i) / fsp_tol_ >= (1.0 / double(sinks_.n_elem)) * (t / t_final_))
+    {
+      to_expand_(i) = 1;
+      tol_exceed = std::max(tol_exceed, sinks_(i) *double(sinks_.n_elem) - fsp_tol_ * (t / t_final_));
+    }
   }
-  return to_expand_.max();
+  return 0;
 }
 
 PacmenslErrorCode FspSolverMultiSinks::SetModel(Model &model)
@@ -592,30 +609,13 @@ PacmenslErrorCode FspSolverMultiSinks::SetLoadBalancingMethod(PartitioningType p
   return 0;
 }
 
-PacmenslErrorCode FspSolverMultiSinks::SetCvodeTolerances(PetscReal rel_tol, PetscReal abs_tol)
+PacmenslErrorCode FspSolverMultiSinks::SetOdeTolerances(PetscReal rel_tol, PetscReal abs_tol)
 {
-  auto *solver = dynamic_cast<CvodeFsp *>(ode_solver_.get());
-  if (!solver)
-  {
-    std::cout << "Derived class of OdeSolverBase does not have the requested properties.\n";
-    return -1;
-  }
-  solver->SetCVodeTolerances(rel_tol, abs_tol);
+  ode_solver_->SetTolerances(rel_tol, abs_tol);
   return 0;
 }
 
-PacmenslErrorCode FspSolverMultiSinks::SetKrylovTolerances(PetscReal tol)
-{
-  auto *solver = dynamic_cast<KrylovFsp *>(ode_solver_.get());
-  if (!solver)
-  {
-    std::cout << "Derived class of OdeSolverBase does not have the requested properties.\n";
-    return -1;
-  }
-  return solver->SetTolerance(tol);
-}
-
-PacmenslErrorCode FspSolverMultiSinks::Make_Discrete_Distribution(DiscreteDistribution &dist)
+PacmenslErrorCode FspSolverMultiSinks::MakeDiscreteDistribution_(DiscreteDistribution &dist)
 {
   PacmenslErrorCode ierr;
 
@@ -627,8 +627,6 @@ PacmenslErrorCode FspSolverMultiSinks::Make_Discrete_Distribution(DiscreteDistri
   ierr = VecCreate(dist.comm_, &dist.p_);
   CHKERRQ(ierr);
   ierr = VecSetSizes(dist.p_, state_set_->GetNumLocalStates(), PETSC_DECIDE);
-  CHKERRQ(ierr);
-  ierr = VecSetType(dist.p_, VECMPI);
   CHKERRQ(ierr);
   ierr                = VecSetUp(dist.p_);
   CHKERRQ(ierr);
@@ -650,6 +648,11 @@ PacmenslErrorCode FspSolverMultiSinks::Make_Discrete_Distribution(DiscreteDistri
   ISDestroy(&src_loc);
   VecScatterDestroy(&scatter);
   return 0;
+}
+
+std::shared_ptr<OdeSolverBase> FspSolverMultiSinks::GetOdeSolver()
+{
+  return ode_solver_;
 }
 
 }

@@ -10,6 +10,7 @@
 #include <mpi.h>
 #include <petscmat.h>
 #include <petscis.h>
+#include <petsc/private/matimpl.h>
 #include "Model.h"
 #include "Sys.h"
 #include "StateSetBase.h"
@@ -33,10 +34,11 @@ class FspMatrixBase {
   FspMatrixBase(const FspMatrixBase &A); // untested
   FspMatrixBase(FspMatrixBase &&A) noexcept; // untested
 
-  PacmenslErrorCode SetTimeFun(TcoefFun new_t_fun, void *new_t_fun_args);
   /* Assignments */
   FspMatrixBase &operator=(const FspMatrixBase &A);
   FspMatrixBase &operator=(FspMatrixBase &&A) noexcept;
+
+  PacmenslErrorCode SetUseConventionalMats();
 
   virtual PacmenslErrorCode
   GenerateValues(const StateSetBase &fsp,
@@ -47,11 +49,15 @@ class FspMatrixBase {
                  void *prop_t_args,
                  void *prop_x_args);
 
+
+  PacmenslErrorCode SetTimeFun(TcoefFun new_t_fun, void *new_t_fun_args);
+
   virtual int Destroy();
 
-  virtual int Action(PetscReal t, Vec x, Vec y);
+  virtual PacmenslErrorCode Action(PetscReal t, Vec x, Vec y);
 
-  PetscInt GetLocalGhostLength() const;
+  virtual int CreateRHSJacobian(Mat* A);
+  virtual int ComputeJacobian(PetscReal t, Mat A);
 
   int GetNumLocalRows() const { return num_rows_local_; };
 
@@ -61,6 +67,8 @@ class FspMatrixBase {
   int      rank_;
   int      comm_size_;
 
+  bool use_conventional_mats_ = false;
+
   Int num_reactions_   = 0;
   Int num_rows_global_ = 0;
   Int num_rows_local_  = 0;
@@ -69,6 +77,9 @@ class FspMatrixBase {
   // Local data of the matrix
   std::vector<Petsc<Mat>> diag_mats_;
   std::vector<Petsc<Mat>> offdiag_mats_;
+
+  // Mapping from local matrices to the global state space
+  ISLocalToGlobalMapping local2global_rows_ = nullptr, local2global_lvec_ = nullptr;
 
   // Data for computing the matrix action
   Vec        work_        = nullptr; ///< Work vector for computing operator times vector
@@ -82,6 +93,27 @@ class FspMatrixBase {
   arma::Row<Real> time_coefficients_;
 
   virtual int DetermineLayout_(const StateSetBase &fsp);
+
+  virtual PacmenslErrorCode
+  GenerateValuesBasic(const StateSetBase &fsp,
+                         const arma::Mat<Int> &SM,
+                         const TcoefFun &new_prop_t,
+                         const PropFun &new_prop_x,
+                         const std::vector<int> &enable_reactions,
+                         void *prop_t_args,
+                         void *prop_x_args);
+
+  virtual PacmenslErrorCode
+  GenerateValuesAdvanced(const StateSetBase &fsp,
+                 const arma::Mat<Int> &SM,
+                 const TcoefFun &new_prop_t,
+                 const PropFun &new_prop_x,
+                 const std::vector<int> &enable_reactions,
+                 void *prop_t_args,
+                 void *prop_x_args);
+
+  virtual PacmenslErrorCode ActionConventional(PetscReal t, Vec x, Vec y);
+  virtual PacmenslErrorCode ActionAdvanced(PetscReal t, Vec x, Vec y);
 };
 
 }

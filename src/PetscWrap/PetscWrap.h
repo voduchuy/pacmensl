@@ -21,7 +21,7 @@ class Petsc {
   Petsc() {
     static_assert(std::is_convertible<PetscT, Vec>::value || std::is_convertible<PetscT, Mat>::value
                       || std::is_convertible<PetscT, IS>::value || std::is_convertible<PetscT, VecScatter>::value
-                      || std::is_convertible<PetscT, KSP>::value,
+                      || std::is_convertible<PetscT, KSP>::value || std::is_convertible<PetscT, TS>::value,
                   "pacmensl::Petsc can only wrap PETSc objects.");
   }
 
@@ -52,6 +52,9 @@ int Petsc<VecScatter>::Destroy(VecScatter *obj);
 
 template<>
 int Petsc<KSP>::Destroy(KSP *obj);
+
+template<>
+int Petsc<TS>::Destroy(TS *obj);
 
 PacmenslErrorCode ExpandVec(Petsc<Vec> &p, const std::vector<PetscInt> &new_indices, const PetscInt new_local_size);
 PacmenslErrorCode ExpandVec(Vec &p, const std::vector<PetscInt> &new_indices, const PetscInt new_local_size);

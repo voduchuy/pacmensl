@@ -9,16 +9,22 @@ pacmensl::StationaryFspMatrixConstrained::StationaryFspMatrixConstrained(MPI_Com
 
 }
 
-int pacmensl::StationaryFspMatrixConstrained::GenerateValues(const StateSetBase &fsp,
-                                                             const arma::Mat<int> &SM,
-                                                             const TcoefFun &new_t_fun,
-                                                             const PropFun &prop,
-                                                             const std::vector<int> &enable_reactions,
-                                                             void *t_fun_args,
-                                                             void *prop_args)
+PacmenslErrorCode pacmensl::StationaryFspMatrixConstrained::GenerateValues(const StateSetBase &fsp,
+                                                                           const arma::Mat<Int> &SM,
+                                                                           const TcoefFun &new_t_fun,
+                                                                           const PropFun &prop,
+                                                                           const std::vector<int> &enable_reactions,
+                                                                           void *t_fun_args,
+                                                                           void *prop_args)
 {
   int ierr{0};
-  ierr = FspMatrixBase::GenerateValues(fsp, SM, new_t_fun,prop, enable_reactions, t_fun_args, prop_args); PACMENSLCHKERRQ(ierr);
+  ierr = FspMatrixBase::GenerateValues(fsp,
+                                       SM,
+                                       new_t_fun,
+                                       prop,
+                                       enable_reactions,
+                                       t_fun_args,
+                                       prop_args); PACMENSLCHKERRQ(ierr);
 
   // Generate the sink matrices
   auto *constrained_fss_ptr = dynamic_cast<const StateSetConstrained *>(&fsp);

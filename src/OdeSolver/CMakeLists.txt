@@ -2,6 +2,7 @@ set(SOLVER_LIBS
         OdeSolverBase
         CvodeFsp
         KrylovFsp
+        TsFsp
         )
 
 foreach (LIB ${SOLVER_LIBS})

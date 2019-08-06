@@ -1,6 +1,7 @@
 static char help[] = "Advance_ small CMEs to benchmark intranode performance.\n\n";
 
-#include<iomanip>
+#include <fstream>
+#include <iomanip>
 #include <petscmat.h>
 #include <petscvec.h>
 #include <petscviewer.h>
@@ -131,14 +132,10 @@ int main(int argc, char *argv[]) {
 
   // Register PETSc stages
   PetscLogStage stages[4];
-  petsc_err = PetscLogStageRegister("Solve with adaptive custom state set shape", &stages[0]);
-  CHKERRQ(petsc_err);
-  petsc_err = PetscLogStageRegister("Solve with fixed custom state set shape", &stages[1]);
-  CHKERRQ(petsc_err);
-  petsc_err = PetscLogStageRegister("Solve with adaptive default state set shape", &stages[2]);
-  CHKERRQ(petsc_err);
-  petsc_err = PetscLogStageRegister("Solve with fixed default state set shape", &stages[3]);
-  CHKERRQ(petsc_err);
+  petsc_err = PetscLogStageRegister("Solve with adaptive custom state set shape", &stages[0]); CHKERRQ(petsc_err);
+  petsc_err = PetscLogStageRegister("Solve with fixed custom state set shape", &stages[1]); CHKERRQ(petsc_err);
+  petsc_err = PetscLogStageRegister("Solve with adaptive default state set shape", &stages[2]); CHKERRQ(petsc_err);
+  petsc_err = PetscLogStageRegister("Solve with fixed default state set shape", &stages[3]); CHKERRQ(petsc_err);
 
   // Set up CME
   std::string model_name = "hog1p";
@@ -153,19 +150,17 @@ int main(int argc, char *argv[]) {
   // Default options
   PartitioningType fsp_par_type = PartitioningType::GRAPH;
   PartitioningApproach fsp_repart_approach = PartitioningApproach::REPARTITION;
-  ODESolverType fsp_odes_type = CVODE_BDF;
+  ODESolverType fsp_odes_type = CVODE;
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;
 
-  ierr = ParseOptions(comm, fsp_par_type, fsp_repart_approach, output_marginal, fsp_log_events);
-  CHKERRQ(ierr);
+  ierr = ParseOptions(comm, fsp_par_type, fsp_repart_approach, output_marginal, fsp_log_events); CHKERRQ(ierr);
 
-  FspSolverMultiSinks fsp_solver(comm, fsp_par_type, CVODE_BDF);
+  FspSolverMultiSinks fsp_solver(comm, fsp_par_type, CVODE);
   fsp_solver.SetFromOptions();
   DiscreteDistribution solution;
 
-  petsc_err = PetscLogStagePush(stages[0]);
-  CHKERRQ(petsc_err);
+  petsc_err = PetscLogStagePush(stages[0]); CHKERRQ(petsc_err);
   // Solve using adaptive custom constraints
   fsp_solver.SetConstraintFunctions(hog1p_cme::lhs_constr, nullptr);
   fsp_solver.SetModel(hog1p_model);
@@ -187,10 +182,8 @@ int main(int argc, char *argv[]) {
   }
   PetscPrintf(comm, "\n ================ \n");
 
-  petsc_err = PetscLogStagePop();
-  CHKERRQ(petsc_err);
-  petsc_err = PetscLogStagePush(stages[1]);
-  CHKERRQ(petsc_err);
+  petsc_err = PetscLogStagePop(); CHKERRQ(petsc_err);
+  petsc_err = PetscLogStagePush(stages[1]); CHKERRQ(petsc_err);
   // Solve using fixed custom constraints
   fsp_solver.ClearState();
   fsp_solver.SetConstraintFunctions(hog1p_cme::lhs_constr, nullptr);
@@ -208,10 +201,8 @@ int main(int argc, char *argv[]) {
   }
   PetscPrintf(comm, "\n ================ \n");
 
-  petsc_err = PetscLogStagePop();
-  CHKERRQ(petsc_err);
-  petsc_err = PetscLogStagePush(stages[2]);
-  CHKERRQ(petsc_err);
+  petsc_err = PetscLogStagePop(); CHKERRQ(petsc_err);
+  petsc_err = PetscLogStagePush(stages[2]); CHKERRQ(petsc_err);
   // Solve using adaptive default constraints
   fsp_solver.ClearState();
   fsp_solver.SetInitialBounds(rhs_constr_hyperrec);
@@ -233,10 +224,8 @@ int main(int argc, char *argv[]) {
   fsp_solver.ClearState();
   PetscPrintf(comm, "\n ================ \n");
 
-  petsc_err = PetscLogStagePop();
-  CHKERRQ(petsc_err);
-  petsc_err = PetscLogStagePush(stages[3]);
-  CHKERRQ(petsc_err);
+  petsc_err = PetscLogStagePop(); CHKERRQ(petsc_err);
+  petsc_err = PetscLogStagePush(stages[3]); CHKERRQ(petsc_err);
   // Solve using fixed default constraints
   fsp_solver.SetInitialBounds(final_hyperrec_constr);
   solution = fsp_solver.Solve(t_final, fsp_tol);
@@ -266,28 +255,24 @@ int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningAppr
   char opt[100];
   PetscBool opt_set;
   int ierr;
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
-  CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set); CHKERRQ(ierr);
   if (opt_set) {
     fsp_par_type = str2part(std::string(opt));
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
-  CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set); CHKERRQ(ierr);
   if (opt_set) {
     fsp_repart_approach = str2partapproach(std::string(opt));
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_output_marginal", opt, 100, &opt_set);
-  CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_output_marginal", opt, 100, &opt_set); CHKERRQ(ierr);
   if (opt_set) {
     if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
       output_marginal = PETSC_TRUE;
     }
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set);
-  CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set); CHKERRQ(ierr);
   if (opt_set) {
     if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
       fsp_log_events = PETSC_TRUE;

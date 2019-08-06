@@ -140,14 +140,14 @@ int main(int argc, char *argv[]) {
   // Default options
   PartitioningType fsp_par_type = PartitioningType::GRAPH;
   PartitioningApproach fsp_repart_approach = PartitioningApproach::REPARTITION;
-  ODESolverType fsp_odes_type = CVODE_BDF;
+  ODESolverType fsp_odes_type = CVODE;
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;
 
   ierr = ParseOptions(comm, fsp_par_type, fsp_repart_approach, output_marginal, fsp_log_events);
   CHKERRQ(ierr);
 
-  FspSolverMultiSinks fsp_solver(comm, fsp_par_type, CVODE_BDF);
+  FspSolverMultiSinks fsp_solver(comm, fsp_par_type, CVODE);
   fsp_solver.SetFromOptions();
   fsp_solver.SetInitialDistribution(X0, p0);
   fsp_solver.SetModel(model);

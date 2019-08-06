@@ -17,6 +17,7 @@
 #include"StateSetConstrained.h"
 #include"KrylovFsp.h"
 #include"CvodeFsp.h"
+#include"TsFsp.h"
 #include"Sys.h"
 #include"PetscWrap.h"
 
@@ -40,7 +41,7 @@ class FspSolverMultiSinks
   NOT_COPYABLE_NOT_MOVABLE(FspSolverMultiSinks);
 
   explicit FspSolverMultiSinks(MPI_Comm _comm, PartitioningType _part_type = PartitioningType::GRAPH,
-                               ODESolverType _solve_type = CVODE_BDF);
+                               ODESolverType _solve_type = CVODE);
 
   PacmenslErrorCode SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr, void *args);
 
@@ -66,13 +67,15 @@ class FspSolverMultiSinks
 
   std::shared_ptr<const StateSetBase> GetStateSet();
 
+  std::shared_ptr<OdeSolverBase> GetOdeSolver();
+
   FspSolverComponentTiming GetAvgComponentTiming();
 
   FiniteProblemSolverPerfInfo GetSolverPerfInfo();
 
-  DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol);
+  DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol = -1.0);
 
-  std::vector<DiscreteDistribution> SolveTspan(const std::vector<PetscReal> &tspan, PetscReal fsp_tol);
+  std::vector<DiscreteDistribution> SolveTspan(const std::vector<PetscReal> &tspan, PetscReal fsp_tol = -1.0);
 
   PacmenslErrorCode ClearState();
 
@@ -86,7 +89,7 @@ class FspSolverMultiSinks
 
   PartitioningType     partitioning_type_ = PartitioningType::GRAPH;
   PartitioningApproach repart_approach_   = PartitioningApproach::REPARTITION;
-  ODESolverType        odes_type_         = CVODE_BDF;
+  ODESolverType        odes_type_         = CVODE;
 
   std::shared_ptr<StateSetConstrained>  state_set_;
   std::shared_ptr<FspMatrixConstrained> A_;
@@ -111,7 +114,7 @@ class FspSolverMultiSinks
   arma::Row<Real> fsp_expasion_factors_;
 
   // For error checking and expansion parameters
-  int CheckFspTolerance_(PetscReal t, Vec p);
+  PacmenslErrorCode CheckFspTolerance_(PetscReal t, Vec p, PetscReal &tol_exceed);
 
   virtual void set_expansion_parameters_() {};
   Real fsp_tol_ = 1.0;
@@ -122,7 +125,7 @@ class FspSolverMultiSinks
   arma::Row<int>       to_expand_;
 
   DiscreteDistribution Advance_(PetscReal t_final, PetscReal fsp_tol);
-  PacmenslErrorCode Make_Discrete_Distribution(DiscreteDistribution &dist);
+  PacmenslErrorCode MakeDiscreteDistribution_(DiscreteDistribution &dist);
 
   // For logging events using PETSc LogEvent
   PetscBool     logging_enabled = PETSC_FALSE;
@@ -135,8 +138,7 @@ class FspSolverMultiSinks
   PetscLogEvent Solving;
 
  public:
-  PacmenslErrorCode SetCvodeTolerances(PetscReal rel_tol, PetscReal abs_tol);
-  PacmenslErrorCode SetKrylovTolerances(PetscReal tol);
+  PacmenslErrorCode SetOdeTolerances(PetscReal rel_tol, PetscReal abs_tol);
 };
 }
 

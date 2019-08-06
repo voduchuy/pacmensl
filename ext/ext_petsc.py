@@ -10,17 +10,17 @@ def download(path_to):
     dest_dir = Path(path_to)
     dest_dir = dest_dir.expanduser()
 
-    print('downloading petsc... ')
-    url = 'http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.11.2.tar.gz'
+    print('downloading Petsc... ')
+    url = 'http://ftp.mcs.anl.gov/pub/Petsc/release-snapshots/Petsc-3.11.2.tar.gz'
     wget.download(url, str(dest_dir))
-    f = tar.open(str(dest_dir / Path('petsc-3.11.2.tar.gz')))
+    f = tar.open(str(dest_dir / Path('Petsc-3.11.2.tar.gz')))
     f.extractall(dest_dir)
-    (dest_dir/Path('petsc-3.11.2')).rename(dest_dir/Path('petsc'))
+    (dest_dir/Path('Petsc-3.11.2')).rename(dest_dir/Path('Petsc'))
 
 
 def install(src_path, build_path, install_path):
-    src_dir = Path(src_path) / Path('petsc')
-    build_dir = Path(build_path) / Path('petsc')
+    src_dir = Path(src_path) / Path('Petsc')
+    build_dir = Path(build_path) / Path('Petsc')
     install_dir = Path(install_path)
     src_dir = src_dir.expanduser().resolve()
     build_dir = build_dir.expanduser().resolve()

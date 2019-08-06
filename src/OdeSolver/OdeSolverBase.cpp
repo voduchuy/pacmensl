@@ -1,7 +1,16 @@
 //
 // Created by Huy Vo on 12/6/18.
 //
+#include "CvodeFsp.h"
+#include "OdeSolver/OdeSolverBase.h"
+#include <OdeSolver/CvodeFsp.h>
 #include "OdeSolverBase.h"
+
+int pacmensl::OdeSolverBase::SetTolerances(PetscReal _r_tol, PetscReal _abs_tol) {
+  rel_tol_ = _r_tol;
+  abs_tol_ = _abs_tol;
+  return 0;
+}
 
 namespace pacmensl {
 
@@ -101,7 +110,7 @@ FiniteProblemSolverPerfInfo OdeSolverBase::GetAvgPerfInfo() const {
 }
 
 int
-OdeSolverBase::SetStopCondition(const std::function<int(PetscReal, Vec, void *)> &stop_check_, void *stop_data_) {
+OdeSolverBase::SetStopCondition(const std::function<PacmenslErrorCode (PetscReal, Vec, PetscReal&, void *)> &stop_check_, void *stop_data_) {
   OdeSolverBase::stop_check_ = stop_check_;
   OdeSolverBase::stop_data_ = stop_data_;
   return 0;
