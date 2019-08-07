@@ -15,8 +15,8 @@ def download(path_to):
 
 
 def install(src_path, build_path, install_path):
-    src_dir = Path(src_path) / Path('Petsc')
-    build_dir = Path(build_path) / Path('Petsc')
+    src_dir = Path(src_path) / Path('petsc')
+    build_dir = Path(build_path) / Path('petsc')
     install_dir = Path(install_path)
     src_dir = src_dir.expanduser().resolve()
     build_dir = build_dir.expanduser().resolve()
