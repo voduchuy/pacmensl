@@ -230,14 +230,14 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetInitialBounds(final_hyperrec_constr);
   solution = fsp_solver.Solve(t_final, fsp_tol);
   if (fsp_log_events) {
-    output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_hyperrec"),
+    output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_default"),
                 fsp_solver);
     output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("fixed_hyperrec"), fsp_solver);
+                       std::string("fixed_default"), fsp_solver);
   }
   if (output_marginal) {
     output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                     std::string("fixed_hyperrec"), solution, final_hyperrec_constr);
+                     std::string("fixed_default"), solution, final_hyperrec_constr);
   }
   fsp_solver.ClearState();
   PetscPrintf(comm, "\n ================ \n");

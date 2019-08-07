@@ -26,7 +26,7 @@ def install(src_path, build_path, install_path):
     if not build_dir.exists():
         build_dir.mkdir()
     subprocess.call(['cmake', '-DCMAKE_INSTALL_PREFIX=' + str(install_dir.resolve()),
-                    '-CDETECT_HDF5=OFF',
+                    '-DDETECT_HDF5=OFF',
                     str(src_dir.resolve())
                     ],
                     cwd=build_dir)
