@@ -28,6 +28,8 @@ def install(src_path, build_path, install_path):
     subprocess.call(['cmake', '-DCMAKE_INSTALL_PREFIX=' + str(install_dir.resolve()), str(src_dir.resolve()),
                      '-DPETSC_ENABLE=ON',
                      '-DMPI_ENABLE=ON',
+                     '-DPETSC_INCLUDE_DIR=' + str((install_dir/Path('include')).resolve()),
+                     '-DPETSC_LIBRARY_DIR=' + str((install_dir/Path('include')).resolve()),
                      str(src_dir.resolve())], cwd=build_dir)
     subprocess.call(['make'], cwd=build_dir)
     subprocess.call(['make', 'install'], cwd=build_dir)
