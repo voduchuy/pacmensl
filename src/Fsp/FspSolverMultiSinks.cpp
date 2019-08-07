@@ -50,9 +50,10 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
   fsp_tol_ = fsp_tol;
   ode_solver_->SetFinalTime(t_final);
 
+  ode_solver_->SetRhs(this->tmatvec_);
+  ode_solver_->SetJacFuns(jac_init_fun_, jac_comput_fun_);
   if (fsp_tol_ > 0.0)
   {
-    ode_solver_->SetRhs(this->tmatvec_);
     auto error_checking_fp = [&](PetscReal t, Vec p, PetscReal &te, void *data) {
       return CheckFspTolerance_(t, p, te);
     };
@@ -294,6 +295,12 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
         return A_->Action(t, x, y);
       };
     }
+    jac_init_fun_ = [&] (Mat* J){
+      return A_->CreateRHSJacobian(J);
+    };
+    jac_comput_fun_ = [&] (PetscReal t, Mat J){
+      return A_->ComputeRHSJacobian(t, J);
+    };
   }
   A_->SetTimeFun(model_.prop_t_, model_.prop_t_args_);
 

@@ -101,6 +101,8 @@ class FspSolverMultiSinks
   Model                                   model_;
 
   std::function<int(PetscReal, Vec, Vec)> tmatvec_;
+  JacInitFun jac_init_fun_;
+  JacComputFun jac_comput_fun_;
 
   arma::Mat<Int>       init_states_;
   arma::Col<PetscReal> init_probs_;

@@ -41,6 +41,10 @@ class CvodeFsp : public OdeSolverBase {
                        void *FPS_ptr, N_Vector tmp);
   N_Vector solution_tmp = nullptr;
   N_Vector constr_vec_ = nullptr;
+
+  // Stuff for using PETSc preconditioners
+  KSP ksp_;
+  PC pc_;
 };
 }
 

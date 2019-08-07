@@ -5,6 +5,7 @@ set(EXAMPLES
         hog1p
         time_invariant_bursting
         repressilator
+        repressilator_ts
         transcr_reg_6d
         hog1p_matvec
         simple_petsc_program

@@ -115,4 +115,11 @@ OdeSolverBase::SetStopCondition(const std::function<PacmenslErrorCode (PetscReal
   OdeSolverBase::stop_data_ = stop_data_;
   return 0;
 }
+
+PacmenslErrorCode OdeSolverBase::SetJacFuns(JacInitFun jac_init, JacComputFun jac_comput)
+{
+  jac_init_fun_ = jac_init;
+  jac_comput_fun_ = jac_comput;
+  return 0;
+}
 }

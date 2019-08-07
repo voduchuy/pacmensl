@@ -9,8 +9,11 @@
 #include "PetscWrap.h"
 #include "Sys.h"
 
-
 namespace pacmensl {
+
+/**
+ * @brief Solve the FSP system with TS. Currently not working.
+ */
 class TsFsp: public OdeSolverBase {
  public:
   explicit TsFsp(MPI_Comm _comm);
@@ -30,6 +33,7 @@ class TsFsp: public OdeSolverBase {
 
   Vec solution_tmp_;
 
+  static int TSJacobian(TS ts, PetscReal t, Vec u, Mat A, Mat B, void *ctx);
   static int TSRhsFunc(TS ts, PetscReal t, Vec u, Vec F, void* ctx);
   static int TSDetectFspError(TS ts,PetscReal t,Vec U,PetscScalar fvalue[],void* ctx);
 };

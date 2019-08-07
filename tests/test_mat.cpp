@@ -25,7 +25,7 @@ class MatrixTest : public ::testing::Test {
  protected:
 
   void SetUp() override {
-    fsp_size = arma::Row<int>({12});
+    fsp_size = arma::Row<int>({9});
     t_fun    = [&](double t, int num_coefs, double *outputs, void *args) {
       outputs[0] = rate_right;
       outputs[1] = rate_left;
@@ -57,7 +57,7 @@ class MatrixTest : public ::testing::Test {
     // Read options for state_set_
     char             opt[100];
     PetscBool        opt_set;
-    PartitioningType fsp_par_type = PartitioningType::GRAPH;
+    PartitioningType fsp_par_type = PartitioningType::BLOCK;
     ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
     ASSERT_FALSE(ierr);
 
@@ -125,6 +125,22 @@ TEST_F(MatrixTest, mat_base_generation) {
   ASSERT_FALSE(ierr);
 }
 
+
+TEST_F(MatrixTest, mat_base_compute_jacobian) {
+  int ierr;
+
+  FspMatrixBase A(PETSC_COMM_WORLD);
+  A.GenerateValues(*state_set, stoichiometry, t_fun, propensity, std::vector<int>(), nullptr, nullptr);
+
+  Petsc<Mat> J;
+  ierr = A.CreateRHSJacobian(J.mem());
+  ASSERT_FALSE(ierr);
+  ierr = A.ComputeRHSJacobian(0.0, J);
+  ASSERT_FALSE(ierr);
+  MatView(J, PETSC_VIEWER_STDOUT_WORLD);
+  ASSERT_FALSE(ierr);
+}
+
 TEST_F(MatrixTest, mat_constrained_generate_values) {
   int ierr;
 
@@ -157,4 +173,18 @@ TEST_F(MatrixTest, mat_constrained_generate_values) {
   ASSERT_FALSE(ierr);
   ierr = VecDestroy(&Q);
   ASSERT_FALSE(ierr);
+}
+
+TEST_F(MatrixTest, mat_constrained_compute_jacobian) {
+  int ierr;
+
+  FspMatrixConstrained A(PETSC_COMM_WORLD);
+  A.GenerateValues(*state_set, stoichiometry, t_fun, propensity, std::vector<int>(), nullptr, nullptr);
+
+  Petsc<Mat> J;
+  ierr = A.CreateRHSJacobian(J.mem());
+  ASSERT_FALSE(ierr);
+  ierr = A.ComputeRHSJacobian(0.0, J);
+  ASSERT_FALSE(ierr);
+  MatView(J, PETSC_VIEWER_STDOUT_WORLD);
 }

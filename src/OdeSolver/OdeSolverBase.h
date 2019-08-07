@@ -24,6 +24,9 @@ struct FiniteProblemSolverPerfInfo {
   std::vector<PetscReal> model_time;
 };
 
+using JacInitFun = std::function<PacmenslErrorCode (Mat*)>;
+using JacComputFun = std::function<PacmenslErrorCode (PetscReal, Mat)>;
+
 class OdeSolverBase {
  public:
 
@@ -34,6 +37,8 @@ class OdeSolverBase {
   PacmenslErrorCode SetInitialSolution(Vec *_sol);
 
   PacmenslErrorCode SetRhs(std::function<PacmenslErrorCode (PetscReal, Vec, Vec)> _rhs);
+
+  PacmenslErrorCode SetJacFuns(JacInitFun jac_init, JacComputFun jac_comput);
 
   int SetTolerances(PetscReal _r_tol, PetscReal _abs_tol);
 
@@ -55,7 +60,15 @@ class OdeSolverBase {
 
   FiniteProblemSolverPerfInfo GetAvgPerfInfo() const;
 
-  virtual PacmenslErrorCode FreeWorkspace() { solution_ = nullptr; return 0;};
+  virtual PacmenslErrorCode FreeWorkspace()
+  {
+    solution_ = nullptr;
+    if (jac_){
+      MatDestroy(&jac_);
+      jac_ = nullptr;
+    }
+    return 0;
+  };
   virtual ~OdeSolverBase();
  protected:
   MPI_Comm comm_ = MPI_COMM_NULL;
@@ -64,6 +77,10 @@ class OdeSolverBase {
 
   Vec *solution_ = nullptr;
   std::function<int (PetscReal t, Vec x, Vec y)> rhs_;
+
+  Mat jac_ = nullptr;
+  JacInitFun jac_init_fun_ = nullptr;
+  JacComputFun jac_comput_fun_ = nullptr;
 
   PetscReal t_now_ = 0.0;
   PetscReal t_final_ = 0.0;

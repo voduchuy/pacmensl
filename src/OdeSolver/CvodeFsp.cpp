@@ -89,6 +89,9 @@ int CvodeFsp::FreeWorkspace() {
   solution_tmp  = nullptr;
   constr_vec_ = nullptr;
   linear_solver = nullptr;
+
+  PCDestroy(&pc_);
+  KSPDestroy(&ksp_);
   return 0;
 }
 
@@ -101,6 +104,7 @@ PacmenslErrorCode CvodeFsp::SetUp() {
   if (solution_ == nullptr) return -1;
   if (rhs_ == nullptr) return -1;
 
+  PacmenslErrorCode err;
   PetscInt petsc_err;
   // N_Vector wrapper for the solution_
   solution_wrapper = N_VMake_Petsc(*solution_);
@@ -110,10 +114,6 @@ PacmenslErrorCode CvodeFsp::SetUp() {
   Vec solution_tmp_dat = N_VGetVector_Petsc(solution_tmp);
   petsc_err = VecCopy(*solution_, solution_tmp_dat);
   CHKERRQ(petsc_err);
-
-//  constr_vec_ = N_VClone(solution_tmp);
-//  petsc_err = VecSet(N_VGetVector_Petsc(constr_vec_), 1.0);
-//  CHKERRQ(petsc_err);
 
   // Set CVODE starting time to the current timepoint
   t_now_tmp = t_now_;
@@ -136,15 +136,23 @@ PacmenslErrorCode CvodeFsp::SetUp() {
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetMaxNonlinIters(cvode_mem, 10000);
   CVODECHKERRQ(cvode_stat);
-//  cvode_stat = CVodeSetConstraints(cvode_mem, constr_vec_);
-//  CVODECHKERRQ(cvode_stat);
 
-  // Create the linear solver without preconditioning
-  linear_solver = SUNLinSol_SPGMR(solution_tmp, PREC_NONE, 100);
+  // Set up preconditioner
+  err = jac_init_fun_(&jac_); PACMENSLCHKERRQ(err);
+  err = KSPCreate(comm_, &ksp_); CHKERRQ(err);
+  err = KSPSetFromOptions(ksp_); CHKERRQ(err);
+  err = KSPSetUp(ksp_); CHKERRQ(err);
+  err = KSPGetPC(ksp_, &pc_); CHKERRQ(err);
+  err = PCSetFromOptions(pc_); CHKERRQ(err);
+
+// Create the linear solver without preconditioning
+  linear_solver = SUNLinSol_SPGMR(solution_tmp, PREC_LEFT, 100);
   cvode_stat    = CVSpilsSetLinearSolver(cvode_mem, linear_solver);
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVSpilsSetJacTimes(cvode_mem, NULL, &cvode_jac);
   CVODECHKERRQ(cvode_stat);
+
+
   return 0;
 }
 }

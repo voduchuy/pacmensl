@@ -17,9 +17,16 @@ pacmensl::TsFsp::TsFsp(MPI_Comm _comm) : OdeSolverBase(_comm)
 PacmenslErrorCode pacmensl::TsFsp::SetUp()
 {
   PacmenslErrorCode ierr;
+  TSAdapt ts_adapt;
   ierr = TSCreate(comm_, ts_.mem());
   PACMENSLCHKERRQ(ierr);
+  ierr = TSSetProblemType(ts_, TS_LINEAR);
+  PACMENSLCHKERRQ(ierr);
   ierr = TSSetRHSFunction(ts_, NULL, &pacmensl::TsFsp::TSRhsFunc, ( void * ) this);
+  PACMENSLCHKERRQ(ierr);
+  ierr = jac_init_fun_(&jac_);
+  PACMENSLCHKERRQ(ierr);
+  ierr = TSSetRHSJacobian(ts_, jac_, jac_, TSJacobian, ( void * ) this);
   PACMENSLCHKERRQ(ierr);
   ierr = TSSetType(ts_, type_);
   PACMENSLCHKERRQ(ierr);
@@ -29,6 +36,14 @@ PacmenslErrorCode pacmensl::TsFsp::SetUp()
   PACMENSLCHKERRQ(ierr);
   ierr = TSSetMaxTime(ts_, t_final_);
   PACMENSLCHKERRQ(ierr);
+  ierr = TSSetMaxStepRejections(ts_, 1000);
+  CHKERRQ(ierr);
+  ierr = TSSetMaxSNESFailures(ts_, -1);
+  CHKERRQ(ierr); /* unlimited */
+  ierr = TSGetAdapt(ts_, &ts_adapt);
+  CHKERRQ(ierr);
+  ierr = TSAdaptSetType(ts_adapt, TSADAPTBASIC);
+  CHKERRQ(ierr);
   PetscInt  event_direction[1] = {0};
   PetscBool event_terminate[1] = {PETSC_TRUE};
   ierr = TSSetEventHandler(ts_, 1, event_direction, event_terminate, &pacmensl::TsFsp::TSDetectFspError, NULL, this);
@@ -55,26 +70,6 @@ PetscInt pacmensl::TsFsp::Solve()
   CHKERRQ(petsc_err);
   petsc_err = TSGetSolveTime(ts_, &t_now_tmp);
   CHKERRQ(petsc_err);
-//  while (t_now_ < t_final_)
-//  {
-//    petsc_err = TSStep(ts_); CHKERRQ(petsc_err);
-//    petsc_err = TSGetSolveTime(ts_, &t_now_tmp); CHKERRQ(petsc_err);
-//    // Interpolate the solution_ if the last step went over the prescribed final time
-//    if (t_now_tmp > t_final_)
-//    {
-//      petsc_err = TSInterpolate(ts_, t_final_, solution_tmp_); CHKERRQ(petsc_err);
-//      t_now_tmp = t_final_;
-//    }
-//    // Check that the temporary solution_ satisfies Fsp tolerance
-//    if (stop_check_ != nullptr) stop = stop_check_(t_now_tmp, solution_tmp_, stop_data_);
-//
-//    if (stop == 1){
-//      petsc_err = TSInterpolate(ts_, t_now_, solution_tmp_); CHKERRQ(petsc_err);
-//      break;
-//    } else{
-//
-//    }
-//  }
 
   t_now_ = t_now_tmp;
   if (print_intermediate)
@@ -93,6 +88,7 @@ PetscInt pacmensl::TsFsp::Solve()
   // Copy data from temporary vector to solution_ vector
   petsc_err = VecCopy(solution_tmp_, *solution_);
   CHKERRQ(petsc_err);
+  VecView(*solution_, PETSC_VIEWER_STDOUT_WORLD);
   stop = (t_now_ < t_final_);
   return stop;
 }
@@ -118,8 +114,15 @@ int pacmensl::TsFsp::TSDetectFspError(TS ts, PetscReal t, Vec U, PetscScalar *fv
   auto solver = ( TsFsp * ) ctx;
   ierr = solver->stop_check_(t, U, fvalue[0], solver->stop_data_);
   PACMENSLCHKERRQ(ierr);
-//  VecView(U, PETSC_VIEWER_STDOUT_WORLD);
-//  return -1;
+  return 0;
+}
+
+int pacmensl::TsFsp::TSJacobian(TS ts, PetscReal t, Vec u, Mat A, Mat B, void *ctx)
+{
+  int  ierr;
+  auto solver = ( TsFsp * ) ctx;
+  ierr = solver->jac_comput_fun_(t, A);
+  PACMENSLCHKERRQ(ierr);
   return 0;
 }
 

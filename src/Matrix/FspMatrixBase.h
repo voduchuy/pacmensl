@@ -67,12 +67,13 @@ class FspMatrixBase {
   int      rank_;
   int      comm_size_;
 
-  bool use_conventional_mats_ = false;
+  bool use_conventional_mats_ = true;
 
   Int num_reactions_   = 0;
   Int num_rows_global_ = 0;
   Int num_rows_local_  = 0;
   std::vector<int> enable_reactions_;
+  PetscInt own_start, own_end;
 
   // Local data of the matrix
   std::vector<Petsc<Mat>> diag_mats_;
@@ -80,6 +81,13 @@ class FspMatrixBase {
 
   // Mapping from local matrices to the global state space
   ISLocalToGlobalMapping local2global_rows_ = nullptr, local2global_lvec_ = nullptr;
+
+  // arrays for counting nonzero entries on the diagonal and off-diagonal blocks
+  arma::Mat<Int>       d_nnz_, o_nnz_;
+  // global indices of off-processor entries needed for matrix-vector product
+  arma::Row<Int>       out_indices_;
+  // arrays of nonzero column indices
+  arma::Mat<Int>       irnz_, irnz_off_;
 
   // Data for computing the matrix action
   Vec        work_        = nullptr; ///< Work vector for computing operator times vector
@@ -104,16 +112,21 @@ class FspMatrixBase {
                          void *prop_x_args);
 
   virtual PacmenslErrorCode
-  GenerateValuesAdvanced(const StateSetBase &fsp,
-                 const arma::Mat<Int> &SM,
-                 const TcoefFun &new_prop_t,
-                 const PropFun &new_prop_x,
-                 const std::vector<int> &enable_reactions,
-                 void *prop_t_args,
-                 void *prop_x_args);
+  GenerateValuesCustom(const StateSetBase &fsp,
+                       const arma::Mat<Int> &SM,
+                       const TcoefFun &new_prop_t,
+                       const PropFun &new_prop_x,
+                       const std::vector<int> &enable_reactions,
+                       void *prop_t_args,
+                       void *prop_x_args);
 
-  virtual PacmenslErrorCode ActionConventional(PetscReal t, Vec x, Vec y);
-  virtual PacmenslErrorCode ActionAdvanced(PetscReal t, Vec x, Vec y);
+  virtual PacmenslErrorCode ActionBasic(PetscReal t, Vec x, Vec y);
+  virtual PacmenslErrorCode ActionCustom(PetscReal t, Vec x, Vec y);
+
+  virtual int CreateRHSJacobianBasic(Mat* A);
+  virtual int ComputeRHSJacobianBasic(PetscReal t, Mat A);
+  virtual int CreateRHSJacobianCustom(Mat *A);
+  virtual int ComputeRHSJacoianCustom(Mat *A);
 };
 
 }
