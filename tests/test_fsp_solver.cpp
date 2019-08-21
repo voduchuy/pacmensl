@@ -133,12 +133,12 @@ TEST_F(FspTest, test_handling_t_fun_error) {
   ASSERT_FALSE(ierr);
 
   fsp.SetOdesType(CVODE);
-  ASSERT_THROW(p_final_bdf = fsp.Solve(t_final, fsp_tol), std::runtime_error);
+  ASSERT_THROW(p_final_bdf = fsp.Solve(t_final, fsp_tol, 0), std::runtime_error);
   fsp.ClearState();
 
   ierr = fsp.SetUp();
   ASSERT_FALSE(ierr);
-  ASSERT_THROW(p_snapshots_bdf = fsp.SolveTspan(tspan, fsp_tol), std::runtime_error);
+  ASSERT_THROW(p_snapshots_bdf = fsp.SolveTspan(tspan, fsp_tol, 0), std::runtime_error);
 }
 
 class FspPoissonTest : public ::testing::Test {
@@ -203,7 +203,7 @@ TEST_F(FspPoissonTest, test_poisson_petsc) {
   ierr = fsp.SetUp();
   ASSERT_FALSE(ierr);
 
-  p_final = fsp.Solve(t_final, fsp_tol);
+  p_final = fsp.Solve(t_final, fsp_tol, 0);
   fsp.ClearState();
 
   // Check that the solution is close to Poisson
@@ -245,7 +245,7 @@ TEST_F(FspPoissonTest, test_poisson_cvode) {
   std::shared_ptr<CvodeFsp> ode_solver = std::dynamic_pointer_cast<CvodeFsp>(fsp.GetOdeSolver());
   ode_solver->SetTolerances(1.0e-6, 1.0e-14);
 
-  p_final = fsp.Solve(t_final, fsp_tol);
+  p_final = fsp.Solve(t_final, fsp_tol, 0);
   fsp.ClearState();
 
   // Check that the solution is close to Poisson
@@ -283,7 +283,7 @@ TEST_F(FspPoissonTest, test_poisson_krylov) {
 
   ierr = fsp.SetOdesType(KRYLOV);
   ASSERT_FALSE(ierr);
-  p_final = fsp.Solve(t_final, fsp_tol);
+  p_final = fsp.Solve(t_final, fsp_tol, 0);
   fsp.ClearState();
 
   // Check that the solution is close to Poisson

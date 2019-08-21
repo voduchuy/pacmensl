@@ -482,7 +482,7 @@ PacmenslErrorCode FspSolverMultiSinks::SetModel(Model &model)
   return 0;
 }
 
-DiscreteDistribution FspSolverMultiSinks::Solve(PetscReal t_final, PetscReal fsp_tol)
+DiscreteDistribution FspSolverMultiSinks::Solve(PetscReal t_final, PetscReal fsp_tol, PetscReal t_init)
 {
   PetscErrorCode ierr;
   if (!set_up_)
@@ -496,7 +496,7 @@ DiscreteDistribution FspSolverMultiSinks::Solve(PetscReal t_final, PetscReal fsp
   ierr = VecAssemblyBegin(*p_); PACMENSLCHKERRTHROW(ierr);
   ierr = VecAssemblyEnd(*p_); PACMENSLCHKERRTHROW(ierr);
 
-  t_now_   = 0.0;
+  t_now_   = t_init;
   t_final_ = t_final;
   DiscreteDistribution solution = FspSolverMultiSinks::Advance_(t_final, fsp_tol);
 
@@ -504,7 +504,7 @@ DiscreteDistribution FspSolverMultiSinks::Solve(PetscReal t_final, PetscReal fsp
 }
 
 std::vector<DiscreteDistribution>
-FspSolverMultiSinks::SolveTspan(const std::vector<PetscReal> &tspan, PetscReal fsp_tol)
+FspSolverMultiSinks::SolveTspan(const std::vector<PetscReal> &tspan, PetscReal fsp_tol, PetscReal t_init)
 {
   PetscErrorCode ierr;
   if (!set_up_)
@@ -526,7 +526,7 @@ FspSolverMultiSinks::SolveTspan(const std::vector<PetscReal> &tspan, PetscReal f
 
   DiscreteDistribution sol;
 
-  t_now_   = 0.0;
+  t_now_   = t_init;
   t_final_ = t_max;
   for (int i = 0; i < num_time_points; ++i)
   {

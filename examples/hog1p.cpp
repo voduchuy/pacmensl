@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetInitialBounds(hog1p_cme::rhs_constr);
   fsp_solver.SetExpansionFactors(hog1p_cme::expansion_factors);
   fsp_solver.SetInitialDistribution(X0, p0);
-  solution = fsp_solver.Solve(t_final, fsp_tol);
+  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_custom_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.ClearState();
   fsp_solver.SetConstraintFunctions(hog1p_cme::lhs_constr, nullptr);
   fsp_solver.SetInitialBounds(final_custom_constr);
-  solution = fsp_solver.Solve(t_final, fsp_tol);
+  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_custom"),
                 fsp_solver);
@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetInitialBounds(rhs_constr_hyperrec);
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
-  solution = fsp_solver.Solve(t_final, fsp_tol);
+  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
   petsc_err = PetscLogStagePush(stages[3]); CHKERRQ(petsc_err);
   // Solve using fixed default constraints
   fsp_solver.SetInitialBounds(final_hyperrec_constr);
-  solution = fsp_solver.Solve(t_final, fsp_tol);
+  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_default"),
                 fsp_solver);

@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetInitialBounds(rhs_constr);
   fsp_solver.SetExpansionFactors(expansion_factors);
   fsp_solver.SetUp();
-  solution = fsp_solver.Solve(t_final, fsp_tol);
+  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_custom_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetConstraintFunctions(lhs_constr, nullptr);
   fsp_solver.SetInitialBounds(final_custom_constr);
   fsp_solver.SetUp();
-  solution = fsp_solver.Solve(t_final, fsp_tol);
+  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_custom"),
                 fsp_solver);
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
   fsp_solver.SetUp();
-  solution = fsp_solver.Solve(t_final, fsp_tol);
+  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
   fsp_solver.SetUp();
-  solution = fsp_solver.Solve(t_final, fsp_tol);
+  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_default"),
                 fsp_solver);

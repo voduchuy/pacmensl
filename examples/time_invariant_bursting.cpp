@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
   double t1, t2;
   for (int j{0}; j < 2; ++j) {
     PetscTime(&t1);
-    solution = fsp_solver.Solve(t_final, fsp_tol);
+    solution = fsp_solver.Solve(t_final, fsp_tol, 0);
     PetscTime(&t2);
     PetscPrintf(comm, "Elapsed time: %.2f \n", t2 - t1);
   }
