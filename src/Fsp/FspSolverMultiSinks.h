@@ -73,9 +73,11 @@ class FspSolverMultiSinks
 
   FiniteProblemSolverPerfInfo GetSolverPerfInfo();
 
-  DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol = -1.0);
+  DiscreteDistribution Solve(PetscReal t_final, PetscReal fsp_tol = -1.0, PetscReal t_init = 0.0);
 
-  std::vector<DiscreteDistribution> SolveTspan(const std::vector<PetscReal> &tspan, PetscReal fsp_tol = -1.0);
+  std::vector<DiscreteDistribution> SolveTspan(const std::vector<PetscReal> &tspan,
+                                               PetscReal fsp_tol = -1.0,
+                                               PetscReal t_init = 0.0);
 
   PacmenslErrorCode ClearState();
 
