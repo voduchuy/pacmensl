@@ -65,7 +65,7 @@ void lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states,
 arma::Row<int> rhs_constr{10, 6, 1, 2, 1, 1};
 arma::Row<double> expansion_factors{0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
 arma::Row<int> rhs_constr_hyperrec{10, 6, 1, 2, 1, 1};
-arma::Row<double> expansion_factors_hyperrec{0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+arma::Row<double> expansion_factors_hyperrec{0.2, 0.2, 0.2, 0.2, 0.2, 0.2};
 
 // function to compute the time-dependent coefficients of the propensity functions
 int t_fun(PetscReal t, int nc, double *vals, void *args) {

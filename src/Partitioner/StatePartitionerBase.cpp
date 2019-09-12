@@ -65,9 +65,9 @@ namespace pacmensl {
     }
 
     StatePartitionerBase::~StatePartitionerBase() {
+        delete[] ind_starts;
         Zoltan_Destroy(&zoltan_lb_);
         MPI_Comm_free(&comm_);
-        delete[] ind_starts;
     }
 
     void StatePartitionerBase::state2ordering(arma::Mat<PetscInt> &state, PetscInt *indx) {

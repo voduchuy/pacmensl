@@ -254,6 +254,7 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
     {
       state_set_->SetShapeBounds(fsp_bounds_);
     }
+    state_set_->SetLoadBalancingScheme(partitioning_type_);
     state_set_->SetUp();
     state_set_->AddStates(init_states_);
     if (logging_enabled)

@@ -268,7 +268,7 @@ void StateSetBase::init_zoltan_parameters() {
 PacmenslErrorCode StateSetBase::update_layout() {
   int ierr;
   state_layout_[my_rank_] = num_local_states_;
-  ierr = MPI_Allgather(&state_layout_[my_rank_], 1, MPI_INT, &state_layout_[0], 1, MPI_INT, comm_);
+  ierr = MPI_Allgather(&num_local_states_, 1, MPI_INT, &state_layout_[0], 1, MPI_INT, comm_);
   CHKERRMPI(ierr);
   ind_starts_[0]      = 0;
   for (int    i{1}; i < comm_size_; ++i) {

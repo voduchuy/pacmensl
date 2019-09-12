@@ -89,7 +89,7 @@ int lhs_constr(PetscInt num_species, PetscInt num_constrs, PetscInt num_states, 
 arma::Row<int> rhs_constr_hyperrec{3, 10, 10, 10, 10};
 arma::Row<double> expansion_factors_hyperrec{0.0, 0.25, 0.25, 0.25, 0.25};
 arma::Row<int> rhs_constr{3, 10, 10, 10, 10, 10, 10};
-arma::Row<double> expansion_factors{0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25};
+arma::Row<double> expansion_factors{0.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2};
 }
 
 using arma::dvec;
@@ -131,11 +131,9 @@ int main(int argc, char *argv[]) {
   PetscPrintf(comm, "Solving with %d processors.\n", num_procs);
 
   // Register PETSc stages
-  PetscLogStage stages[4];
-  petsc_err = PetscLogStageRegister("Solve with adaptive custom state set shape", &stages[0]); CHKERRQ(petsc_err);
-  petsc_err = PetscLogStageRegister("Solve with fixed custom state set shape", &stages[1]); CHKERRQ(petsc_err);
-  petsc_err = PetscLogStageRegister("Solve with adaptive default state set shape", &stages[2]); CHKERRQ(petsc_err);
-  petsc_err = PetscLogStageRegister("Solve with fixed default state set shape", &stages[3]); CHKERRQ(petsc_err);
+  PetscLogStage stages[2];
+  petsc_err = PetscLogStageRegister("Solve with adaptive default state set shape", &stages[0]); CHKERRQ(petsc_err);
+  petsc_err = PetscLogStageRegister("Solve with fixed default state set shape", &stages[1]); CHKERRQ(petsc_err);
 
   // Set up CME
   std::string model_name = "hog1p";
@@ -157,59 +155,19 @@ int main(int argc, char *argv[]) {
   ierr = ParseOptions(comm, fsp_par_type, fsp_repart_approach, output_marginal, fsp_log_events); CHKERRQ(ierr);
 
   FspSolverMultiSinks fsp_solver(comm, fsp_par_type, CVODE);
+  fsp_solver.SetModel(hog1p_model);
+  fsp_solver.SetInitialDistribution(X0, p0);
   fsp_solver.SetFromOptions();
   DiscreteDistribution solution;
 
   petsc_err = PetscLogStagePush(stages[0]); CHKERRQ(petsc_err);
-  // Solve using adaptive custom constraints
-  fsp_solver.SetConstraintFunctions(hog1p_cme::lhs_constr, nullptr);
-  fsp_solver.SetModel(hog1p_model);
-  fsp_solver.SetInitialBounds(hog1p_cme::rhs_constr);
-  fsp_solver.SetExpansionFactors(hog1p_cme::expansion_factors);
-  fsp_solver.SetInitialDistribution(X0, p0);
-  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
-  std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
-  arma::Row<int> final_custom_constr = fss->GetShapeBounds();
-  if (fsp_log_events) {
-    output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_custom"),
-                fsp_solver);
-    output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("adaptive_custom"), fsp_solver);
-  }
-  if (output_marginal) {
-    output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                     std::string("adaptive_custom"), solution, final_custom_constr);
-  }
-  PetscPrintf(comm, "\n ================ \n");
 
-  petsc_err = PetscLogStagePop(); CHKERRQ(petsc_err);
-  petsc_err = PetscLogStagePush(stages[1]); CHKERRQ(petsc_err);
-  // Solve using fixed custom constraints
-  fsp_solver.ClearState();
-  fsp_solver.SetConstraintFunctions(hog1p_cme::lhs_constr, nullptr);
-  fsp_solver.SetInitialBounds(final_custom_constr);
-  solution = fsp_solver.Solve(t_final, fsp_tol, 0);
-  if (fsp_log_events) {
-    output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_custom"),
-                fsp_solver);
-    output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("fixed_custom"), fsp_solver);
-  }
-  if (output_marginal) {
-    output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                     std::string("fixed_custom"), solution, final_custom_constr);
-  }
-  PetscPrintf(comm, "\n ================ \n");
-
-  petsc_err = PetscLogStagePop(); CHKERRQ(petsc_err);
-  petsc_err = PetscLogStagePush(stages[2]); CHKERRQ(petsc_err);
   // Solve using adaptive default constraints
-  fsp_solver.ClearState();
   fsp_solver.SetInitialBounds(rhs_constr_hyperrec);
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
   solution = fsp_solver.Solve(t_final, fsp_tol, 0);
-  fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
+  std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),
@@ -225,7 +183,7 @@ int main(int argc, char *argv[]) {
   PetscPrintf(comm, "\n ================ \n");
 
   petsc_err = PetscLogStagePop(); CHKERRQ(petsc_err);
-  petsc_err = PetscLogStagePush(stages[3]); CHKERRQ(petsc_err);
+  petsc_err = PetscLogStagePush(stages[1]); CHKERRQ(petsc_err);
   // Solve using fixed default constraints
   fsp_solver.SetInitialBounds(final_hyperrec_constr);
   solution = fsp_solver.Solve(t_final, fsp_tol, 0);
