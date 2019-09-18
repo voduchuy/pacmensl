@@ -86,9 +86,11 @@ int CvodeFsp::FreeWorkspace() {
   if (solution_tmp != nullptr) N_VDestroy(solution_tmp);
   if (constr_vec_ != nullptr) N_VDestroy(constr_vec_);
   if (linear_solver != nullptr) SUNLinSolFree(linear_solver);
+  if (solution_wrapper != nullptr) N_VDestroy(solution_wrapper);
   solution_tmp  = nullptr;
   constr_vec_ = nullptr;
   linear_solver = nullptr;
+  solution_wrapper = nullptr;
   return 0;
 }
 

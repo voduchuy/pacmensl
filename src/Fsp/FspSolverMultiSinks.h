@@ -89,7 +89,7 @@ class FspSolverMultiSinks
   int      my_rank_;
   int      comm_size_;
 
-  PartitioningType     partitioning_type_ = PartitioningType::GRAPH;
+  PartitioningType     partitioning_type_ = PartitioningType::BLOCK;
   PartitioningApproach repart_approach_   = PartitioningApproach::REPARTITION;
   ODESolverType        odes_type_         = CVODE;
 

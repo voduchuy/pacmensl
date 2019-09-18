@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
   double k_on{0.5}, k_off{0.8}, k_rna{1000.0}, gamma{1.0};
 
-//  double k_on{0.1}, k_off{0.1}, k_rna{10.0}, gamma{1.0};
+//  double k_on{0.1}, k_off{0.1}, k_rna{10.0}, deg{1.0};
 
   auto t_fun = [&](double t, int nc, double *vals, void *args) {
     vals[0] = k_on;

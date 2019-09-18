@@ -17,6 +17,9 @@ pacmensl::DiscreteDistribution::~DiscreteDistribution() {
 
 pacmensl::DiscreteDistribution::DiscreteDistribution(const pacmensl::DiscreteDistribution &dist) {
   PetscErrorCode ierr;
+  if (comm_ != nullptr){
+    ierr = MPI_Comm_free(&comm_); CHKERRABORT(comm_, ierr);
+  }
   MPI_Comm_dup(dist.comm_, &comm_);
   t_   = dist.t_;
   if (p_ != PETSC_NULL) {

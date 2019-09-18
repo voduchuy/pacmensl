@@ -1,6 +1,7 @@
 
 
 set(EXAMPLES
+        tnfa_no_drug
         signal_activated_bursting
         hog1p
         time_invariant_bursting

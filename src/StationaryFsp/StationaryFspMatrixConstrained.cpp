@@ -160,7 +160,9 @@ int pacmensl::StationaryFspMatrixConstrained::Action(PetscReal t, Vec x, Vec y)
   PetscReal *ylocal;
   ierr = VecGetArray(y, &ylocal); CHKERRQ(ierr);
   ierr = MPI_Reduce(( void * ) &sink_sum, ( void * ) &sink_total, 1, MPIU_REAL, MPIU_SUM, 0, comm_); CHKERRMPI(ierr);
-  ylocal[0] += sink_total;
+  if (rank_ == 0){
+    ylocal[0] += sink_total;
+  }
   ierr = VecRestoreArray(y, &ylocal); CHKERRQ(ierr);
   return 0;
 }
@@ -171,7 +173,7 @@ int pacmensl::StationaryFspMatrixConstrained::EvaluateOutflows(Vec sfsp_solution
   ierr = t_fun_(0.0, num_reactions_, time_coefficients_.memptr(), t_fun_args_); PACMENSLCHKERRQ(ierr);
   ierr = VecGetLocalVector(sfsp_solution, xx); CHKERRQ(ierr);
   ierr = VecSet(sink_entries_, 0.0); CHKERRQ(ierr);
-  for (int i = 0; i < num_reactions_; ++i)
+  for (int i : enable_reactions_)
   {
     ierr = MatMult(sinks_mat_[i], xx, sink_tmp); CHKERRQ(ierr);
     ierr = VecAXPY(sink_entries_, time_coefficients_[i], sink_tmp); CHKERRQ(ierr);
