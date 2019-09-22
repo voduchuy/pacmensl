@@ -115,9 +115,9 @@ int main(int argc, char *argv[]) {
   il1b_model.prop_t_ = t_fun;
 
   // Default options
-  PartitioningType fsp_par_type = PartitioningType::GRAPH;
+  PartitioningType fsp_par_type = PartitioningType::BLOCK;
   PartitioningApproach fsp_repart_approach = PartitioningApproach::REPARTITION;
-  ODESolverType fsp_odes_type = KRYLOV;
+  ODESolverType fsp_odes_type = CVODE;
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;
   // Read options for fsp
@@ -148,21 +148,26 @@ int main(int argc, char *argv[]) {
   PetscPrintf(comm, "Repartitoning option %s \n", partapproach2str(fsp_repart_approach).c_str());
 
   FspSolverMultiSinks fsp_solver(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
-  fsp_solver.SetModel(il1b_model);
-  fsp_solver.SetExpansionFactors(expansion_factors);
-  fsp_solver.SetInitialDistribution(X0, p0);
-  fsp_solver.SetInitialBounds(bounds);
-  fsp_solver.SetFromOptions();
-  fsp_solver.SetUp();
+
 
   DiscreteDistribution solution;
 
+  PetscLogDouble mem;
   double t1, t2;
-  for (int j{0}; j < 2; ++j) {
+  for (int j{0}; j < 10; ++j) {
+    fsp_solver.SetModel(il1b_model);
+    fsp_solver.SetExpansionFactors(expansion_factors);
+    fsp_solver.SetInitialDistribution(X0, p0);
+    fsp_solver.SetInitialBounds(bounds);
+    fsp_solver.SetFromOptions();
+    fsp_solver.SetUp();
     PetscTime(&t1);
     solution = fsp_solver.Solve(t_final, fsp_tol, 0);
     PetscTime(&t2);
     PetscPrintf(comm, "Elapsed time: %.2f \n", t2 - t1);
+    fsp_solver.ClearState();
+    PetscMemoryGetCurrentUsage(&mem);
+    PetscPrintf(comm, "Memory used: %.2f \n", mem);
   }
   PetscReal Psum;
   VecSum(solution.p_, &Psum);

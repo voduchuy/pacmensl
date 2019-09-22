@@ -15,19 +15,22 @@ class PACMENSLEnvironment : public ::testing::Environment {
   PACMENSLEnvironment(int argc, char* argv[]){
     argc_ = argc;
     argv_ = argv;
+    int  err  = PACMENSLInit(&argc_, &argv_, ( char * ) 0);
+//    ASSERT_FALSE(err);
   }
 
   void SetUp() override {
-    int  err  = PACMENSLInit(&argc_, &argv_, ( char * ) 0);
-    ASSERT_FALSE(err);
+
   }
 
   void TearDown() override {
-    int err = PACMENSLFinalize();
-    ASSERT_FALSE(err);
+
   }
 
-  ~PACMENSLEnvironment() override {}
+  ~PACMENSLEnvironment() override {
+    int err = PACMENSLFinalize();
+//    ASSERT_FALSE(err);
+  }
 
   int argc_;
   char **argv_;
@@ -37,8 +40,8 @@ class PACMENSLEnvironment : public ::testing::Environment {
 
 int main(int argc, char *argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
-//  // Initialize MPI
-  MPI_Init(&argc, &argv);
+  // Initialize MPI
+//  MPI_Init(&argc, &argv);
 
   ::testing::AddGlobalTestEnvironment(new pacmensl::test::PACMENSLEnvironment(argc, argv));
 
@@ -59,7 +62,7 @@ int main(int argc, char *argv[]) {
     if (rank == 0) printf("SUCCESS!\n");
   }
 
-  MPI_Finalize();
+//  MPI_Finalize();
   return ierr;
 }
 

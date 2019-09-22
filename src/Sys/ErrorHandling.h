@@ -4,6 +4,7 @@
 
 #ifndef PACMENSL_SRC_SYS_ERRORHANDLING_H_
 #define PACMENSL_SRC_SYS_ERRORHANDLING_H_
+#include <cstring>
 
 using PacmenslErrorCode = int;
 

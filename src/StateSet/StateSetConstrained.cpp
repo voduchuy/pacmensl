@@ -9,26 +9,26 @@ pacmensl::StateSetConstrained::StateSetConstrained(MPI_Comm new_comm)
     : StateSetBase(new_comm) {
 }
 
-/**
- * Call level: local.
- * @param x
- * @return 0 if x satisfies all constraints; otherwise -1.
- */
-PetscInt pacmensl::StateSetConstrained::check_state(PetscInt *x) {
-  int *fval;
-  int ierr;
-  for (int i1{0}; i1 < num_species_; ++i1) {
-    if (x[i1] < 0) {
-      return -1;
-    }
-  }
-  fval = new int[rhs_constr.n_elem];
-  ierr = lhs_constr(num_species_, rhs_constr.n_elem, 1, x, &fval[0], args_constr);
-  CHKERRABORT(comm_, ierr);
 
-  for (int i{0}; i < rhs_constr.n_elem; ++i) {
-    if (fval[i] > rhs_constr(i)) {
-      return -1;
+PetscInt pacmensl::StateSetConstrained::CheckValidityStates(PetscInt num_states, PetscInt *x, PetscInt *out)
+{
+  int ierr;
+  int *fval;
+  fval = new int[rhs_constr.n_elem];
+  for (int istate{0}; istate < num_states; ++istate){
+    out[istate] = 0;
+    for (int i1{0}; i1 < num_species_; ++i1) {
+      if (x[istate*num_species_ + i1] < 0) {
+        out[istate] = -1;
+      }
+    }
+    ierr = lhs_constr(num_species_, rhs_constr.n_elem, 1, x + num_species_*istate, fval, args_constr);
+    PACMENSLCHKERRQ(ierr);
+
+    for (int i{0}; i < rhs_constr.n_elem; ++i) {
+      if (fval[i] > rhs_constr(i)) {
+        out[istate] = -1;
+      }
     }
   }
   delete[] fval;
@@ -152,17 +152,23 @@ PacmenslErrorCode pacmensl::StateSetConstrained::Expand() {
     arma::Mat<PetscInt> Y(num_species_, frontiers_.n_cols * num_reactions_);
     arma::Row<PetscInt> ystatus(Y.n_cols);
 
-    // TODO : rewrite check_state to check the whole list of states
     for (int i{0}; i < frontiers_.n_cols; i++) {
       for (int j{0}; j < num_reactions_; ++j) {
         Y.col(j * frontiers_.n_cols + i) = frontiers_.col(i) + stoichiometry_matrix_.col(j);
-        ystatus(j * frontiers_.n_cols + i) = check_state(Y.colptr(j * frontiers_.n_cols + i));
+      }
+    }
 
+    ierr = CheckValidityStates(Y.n_cols, Y.colptr(0), &ystatus[0]);
+    PACMENSLCHKERRQ(ierr);
+
+    for (int i{0}; i < frontiers_.n_cols; i++) {
+      for (int j{0}; j < num_reactions_; ++j) {
         if (ystatus(j * frontiers_.n_cols + i) < 0) {
           frontier_status(i) = -1;
         }
       }
     }
+
     Y = Y.cols(find(ystatus == 0));
     Y = unique_columns(Y);
     ierr = AddStates(Y);

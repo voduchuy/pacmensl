@@ -33,14 +33,15 @@ class CvodeFsp : public OdeSolverBase {
   void *cvode_mem = nullptr;
   SUNLinearSolver linear_solver = nullptr;
   N_Vector solution_wrapper = nullptr;
+  N_Vector solution_tmp = nullptr;
+  N_Vector constr_vec_ = nullptr;
+
   PetscReal t_now_tmp = 0.0;
   int cvode_stat = 0;
   static int cvode_rhs(double t, N_Vector u, N_Vector udot, void *solver);
   static int cvode_jac(N_Vector v, N_Vector Jv, realtype t,
                        N_Vector u, N_Vector fu,
                        void *FPS_ptr, N_Vector tmp);
-  N_Vector solution_tmp = nullptr;
-  N_Vector constr_vec_ = nullptr;
 };
 }
 

@@ -41,7 +41,7 @@ class StateSetConstrained : public StateSetBase {
   arma::Row<int> rhs_constr;
   void *args_constr = nullptr;
 
-  inline int check_state(PetscInt *x);
+  inline PetscInt CheckValidityStates(PetscInt num_states, PetscInt *x, PetscInt *out);
 
   static int
   default_constr_fun(int num_species, int num_constr, int n_states, int *states, int *outputs, void *args);

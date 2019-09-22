@@ -12,7 +12,7 @@ StateSetBase::StateSetBase(MPI_Comm new_comm) : partitioner_(new_comm) {
   PACMENSLCHKERRTHROW(ierr);
   ierr = MPI_Comm_rank(comm_, &my_rank_);
   PACMENSLCHKERRTHROW(ierr);
-};
+}
 
 /**
  * @brief Set the stoichiometry matrix using Armadillo's matrix class.
@@ -106,7 +106,6 @@ StateSetBase::~StateSetBase() {
   ierr = Clear();
   CHKERRABORT(comm_, ierr);
   ierr = MPI_Comm_free(&comm_);
-  MPICHKERRABORT(comm_, ierr);
 }
 
 /// Distribute the frontier states to all processors for state space exploration

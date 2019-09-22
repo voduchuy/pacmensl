@@ -50,7 +50,7 @@ pacmensl::DiscreteDistribution::operator=(const pacmensl::DiscreteDistribution &
   if (comm_ != nullptr) {
     ierr = MPI_Comm_free(&comm_); MPICHKERRABORT(comm_, ierr);
   }
-  if (p_ != PETSC_NULL) {
+  if (p_ != PETSC_NULL && p_ != nullptr) {
     ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
   }
   states_.clear();
@@ -71,7 +71,7 @@ pacmensl::DiscreteDistribution::operator=(pacmensl::DiscreteDistribution &&dist)
     if (comm_ != nullptr) {
       ierr = MPI_Comm_free(&comm_); MPICHKERRABORT(comm_, ierr);
     }
-    if (p_ != PETSC_NULL) {
+    if (p_ != PETSC_NULL && p_ != nullptr) {
       ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
     }
     states_.clear();
