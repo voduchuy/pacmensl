@@ -6,7 +6,7 @@
 
 pacmensl::StationaryMCSolver::StationaryMCSolver(MPI_Comm comm) {
   int ierr;
-  ierr = MPI_Comm_dup(comm, &comm_); PACMENSLCHKERRTHROW(ierr);
+  comm_ = comm;
 }
 
 int pacmensl::StationaryMCSolver::SetSolutionVec(Vec *vec) {
@@ -77,7 +77,7 @@ int pacmensl::StationaryMCSolver::Clear() {
 
 pacmensl::StationaryMCSolver::~StationaryMCSolver() {
   Clear();
-  MPI_Comm_free(&comm_);
+  comm_ = nullptr;
 }
 
 int pacmensl::StationaryMCSolver::Solve() {

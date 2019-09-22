@@ -52,8 +52,7 @@ pacmensl::SensFspMatrix<FspMatrixT>::SensFspMatrix(MPI_Comm comm) : A_(comm)
   {
     std::cout << "Null pointer detected.\n";
   }
-  ierr = MPI_Comm_dup(comm, &comm_);
-  PACMENSLCHKERRTHROW(ierr);
+  comm_ = comm;
   ierr = MPI_Comm_rank(comm, &rank_);
   PACMENSLCHKERRTHROW(ierr);
 }
@@ -77,7 +76,7 @@ template<typename FspMatrixT>
 pacmensl::SensFspMatrix<FspMatrixT>::~SensFspMatrix()
 {
   Destroy();
-  if (comm_ != nullptr) MPI_Comm_free(&comm_);
+  comm_ = nullptr;
 }
 
 template<typename FspMatrixT>

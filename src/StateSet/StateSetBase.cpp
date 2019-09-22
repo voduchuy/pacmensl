@@ -6,8 +6,7 @@
 namespace pacmensl {
 StateSetBase::StateSetBase(MPI_Comm new_comm) : partitioner_(new_comm) {
   int ierr;
-  ierr = MPI_Comm_dup(new_comm, &comm_);
-  PACMENSLCHKERRTHROW(ierr);
+  comm_ = new_comm;
   ierr = MPI_Comm_size(comm_, &comm_size_);
   PACMENSLCHKERRTHROW(ierr);
   ierr = MPI_Comm_rank(comm_, &my_rank_);
@@ -105,7 +104,7 @@ StateSetBase::~StateSetBase() {
   int ierr;
   ierr = Clear();
   CHKERRABORT(comm_, ierr);
-  ierr = MPI_Comm_free(&comm_);
+  comm_ = nullptr;
 }
 
 /// Distribute the frontier states to all processors for state space exploration

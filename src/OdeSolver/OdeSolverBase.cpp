@@ -21,7 +21,7 @@ int OdeSolverBase::SetStatusOutput(int iprint) {
 
 OdeSolverBase::OdeSolverBase(MPI_Comm new_comm) {
   int ierr;
-  ierr = MPI_Comm_dup(new_comm, &comm_); PACMENSLCHKERRTHROW(ierr);
+  comm_ = new_comm;
   ierr = MPI_Comm_rank(comm_, &my_rank_); PACMENSLCHKERRTHROW(ierr);
   ierr = MPI_Comm_size(comm_, &comm_size_); PACMENSLCHKERRTHROW(ierr);
 }
@@ -77,7 +77,7 @@ PetscInt OdeSolverBase::Solve() {
 }
 
 OdeSolverBase::~OdeSolverBase() {
-  MPI_Comm_free(&comm_);
+  comm_ = nullptr;
 }
 
 int OdeSolverBase::EnableLogging() {

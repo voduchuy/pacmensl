@@ -11,8 +11,7 @@ namespace pacmensl {
 FspSolverMultiSinks::FspSolverMultiSinks(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type)
 {
   int ierr;
-  ierr = MPI_Comm_dup(_comm, &comm_);
-  PACMENSLCHKERRTHROW(ierr);
+  comm_ = _comm;
   ierr = MPI_Comm_rank(comm_, &my_rank_);
   PACMENSLCHKERRTHROW(ierr);
   ierr = MPI_Comm_size(comm_, &comm_size_);
@@ -204,7 +203,7 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
 FspSolverMultiSinks::~FspSolverMultiSinks()
 {
   ClearState();
-  if (comm_) MPI_Comm_free(&comm_);
+  comm_ = nullptr;
 }
 
 PacmenslErrorCode FspSolverMultiSinks::ClearState()

@@ -7,8 +7,7 @@
 
 pacmensl::ForwardSensSolverBase::ForwardSensSolverBase(MPI_Comm new_comm) {
   int ierr;
-  ierr = MPI_Comm_dup(new_comm, &comm_);
-  MPICHKERRTHROW(ierr);
+  comm_ = new_comm;
   ierr = MPI_Comm_rank(comm_, &my_rank_);
   MPICHKERRTHROW(ierr);
   ierr = MPI_Comm_size(comm_, &comm_size_);
@@ -54,9 +53,7 @@ PacmenslErrorCode pacmensl::ForwardSensSolverBase::SetStopCondition(const std::f
 }
 
 pacmensl::ForwardSensSolverBase::~ForwardSensSolverBase() {
-  if (comm_ != nullptr){
-    MPI_Comm_free(&comm_);
-  }
+  comm_ = nullptr;
 }
 
 PacmenslErrorCode pacmensl::ForwardSensSolverBase::FreeWorkspace() {

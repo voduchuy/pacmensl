@@ -7,7 +7,7 @@
 pacmensl::StationaryFspSolverMultiSinks::StationaryFspSolverMultiSinks(MPI_Comm comm)
 {
   int ierr;
-  ierr = MPI_Comm_dup(comm, &comm_); PACMENSLCHKERRTHROW(ierr);
+  comm_ = comm;
 }
 
 PacmenslErrorCode pacmensl::StationaryFspSolverMultiSinks::SetConstraintFunctions(const fsp_constr_multi_fn &lhs_constr,
@@ -214,7 +214,7 @@ int pacmensl::StationaryFspSolverMultiSinks::ClearState()
 pacmensl::StationaryFspSolverMultiSinks::~StationaryFspSolverMultiSinks()
 {
   ClearState();
-  MPI_Comm_free(&comm_);
+  comm_ = nullptr;
 }
 
 PacmenslErrorCode pacmensl::StationaryFspSolverMultiSinks::MakeDiscreteDistribution_(DiscreteDistribution &dist)

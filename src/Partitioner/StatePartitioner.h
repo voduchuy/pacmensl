@@ -18,7 +18,7 @@ namespace pacmensl {
         MPI_Comm comm = nullptr;
         StatePartitionerBase *data = nullptr;
     public:
-        explicit StatePartitioner(MPI_Comm _comm) { MPI_Comm_dup(_comm, &comm); };
+        explicit StatePartitioner(MPI_Comm _comm) { comm = _comm; };
 
         void SetUp(PartitioningType part_type, PartitioningApproach part_approach = PartitioningApproach::REPARTITION);
 
@@ -27,7 +27,7 @@ namespace pacmensl {
 
         ~StatePartitioner() {
           delete data;
-          MPI_Comm_free(&comm);
+          comm = nullptr;
         }
     };
 }

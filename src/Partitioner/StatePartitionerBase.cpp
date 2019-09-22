@@ -6,7 +6,7 @@
 
 namespace pacmensl {
     StatePartitionerBase::StatePartitionerBase(MPI_Comm _comm) {
-        MPI_Comm_dup(_comm, &comm_);
+        comm_ = _comm;
         zoltan_lb_ = Zoltan_Create(comm_);
         MPI_Comm_rank(comm_, &my_rank_);
         MPI_Comm_size(comm_, &comm_size_);
@@ -67,7 +67,7 @@ namespace pacmensl {
     StatePartitionerBase::~StatePartitionerBase() {
         delete[] ind_starts;
         Zoltan_Destroy(&zoltan_lb_);
-        MPI_Comm_free(&comm_);
+        comm_ = nullptr;
     }
 
     void StatePartitionerBase::state2ordering(arma::Mat<PetscInt> &state, PetscInt *indx) {

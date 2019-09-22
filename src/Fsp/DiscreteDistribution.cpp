@@ -10,17 +10,13 @@ pacmensl::DiscreteDistribution::~DiscreteDistribution() {
     ierr = VecDestroy(&p_);
     CHKERRABORT(MPI_COMM_SELF, ierr);
   }
-  if (comm_ != nullptr) MPI_Comm_free(&comm_);
   p_    = nullptr;
   comm_ = nullptr;
 }
 
 pacmensl::DiscreteDistribution::DiscreteDistribution(const pacmensl::DiscreteDistribution &dist) {
   PetscErrorCode ierr;
-  if (comm_ != nullptr){
-    ierr = MPI_Comm_free(&comm_); CHKERRABORT(comm_, ierr);
-  }
-  MPI_Comm_dup(dist.comm_, &comm_);
+  comm_ = dist.comm_;
   t_   = dist.t_;
   if (p_ != PETSC_NULL) {
     ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
@@ -47,15 +43,12 @@ pacmensl::DiscreteDistribution &
 pacmensl::DiscreteDistribution::operator=(const pacmensl::DiscreteDistribution &dist) {
   PetscErrorCode ierr;
 
-  if (comm_ != nullptr) {
-    ierr = MPI_Comm_free(&comm_); MPICHKERRABORT(comm_, ierr);
-  }
   if (p_ != PETSC_NULL && p_ != nullptr) {
     ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
   }
   states_.clear();
 
-  MPI_Comm_dup(dist.comm_, &comm_);
+  comm_ = dist.comm_;
   t_ = dist.t_;
   VecDuplicate(dist.p_, &p_);
   VecCopy(dist.p_, p_);
@@ -68,9 +61,6 @@ pacmensl::DiscreteDistribution::operator=(pacmensl::DiscreteDistribution &&dist)
   if (this != &dist) {
     PetscErrorCode ierr;
 
-    if (comm_ != nullptr) {
-      ierr = MPI_Comm_free(&comm_); MPICHKERRABORT(comm_, ierr);
-    }
     if (p_ != PETSC_NULL && p_ != nullptr) {
       ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
     }
@@ -94,7 +84,7 @@ pacmensl::DiscreteDistribution::DiscreteDistribution(MPI_Comm comm,
                                                      const pacmensl::StateSetBase *state_set,
                                                      const Vec &p) {
   PetscErrorCode ierr;
-  MPI_Comm_dup(comm, &this->comm_);
+  this->comm_ = comm;
   this->t_      = t;
   this->states_ = state_set->CopyStatesOnProc();
   ierr = VecDuplicate(p, &this->p_);

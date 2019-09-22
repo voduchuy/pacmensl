@@ -5,7 +5,7 @@ namespace pacmensl {
 
 FspMatrixBase::FspMatrixBase(MPI_Comm comm)
 {
-  MPI_Comm_dup(comm, &comm_);
+  comm_ = comm;
   MPI_Comm_rank(comm_, &rank_);
   MPI_Comm_size(comm_, &comm_size_);
 }
@@ -13,7 +13,7 @@ FspMatrixBase::FspMatrixBase(MPI_Comm comm)
 FspMatrixBase::FspMatrixBase(const FspMatrixBase &A)
 {
   int ierr;
-  ierr = MPI_Comm_dup(A.comm_, &comm_); MPICHKERRTHROW(ierr);
+  comm_ = A.comm_;
   rank_      = A.rank_;
   comm_size_ = A.comm_size_;
 
@@ -69,7 +69,7 @@ FspMatrixBase::FspMatrixBase(FspMatrixBase &&A) noexcept
   int ierr;
 
   Destroy();
-  if (comm_) MPI_Comm_free(&comm_);
+  comm_ = A.comm_;
 
   comm_      = A.comm_;
   rank_      = A.rank_;
@@ -117,7 +117,7 @@ FspMatrixBase &FspMatrixBase::operator=(const FspMatrixBase &A)
   int ierr;
 
   Destroy();
-  if (comm_) MPI_Comm_free(&comm_);
+  comm_ = A.comm_;
 
   ierr = MPI_Comm_dup(A.comm_, &comm_); MPICHKERRTHROW(ierr);
   rank_      = A.rank_;
@@ -179,7 +179,7 @@ FspMatrixBase &FspMatrixBase::operator=(FspMatrixBase &&A) noexcept
   if (this != &A)
   {
     Destroy();
-    if (comm_) MPI_Comm_free(&comm_);
+    comm_ = A.comm_;
 
     comm_      = A.comm_;
     rank_      = A.rank_;
@@ -303,7 +303,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
 FspMatrixBase::~FspMatrixBase()
 {
   Destroy();
-  if (comm_ != nullptr) MPI_Comm_free(&comm_);
+  comm_ = nullptr;
 }
 
 int FspMatrixBase::Destroy()

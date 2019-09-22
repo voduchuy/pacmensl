@@ -10,7 +10,7 @@ pacmensl::SensFspSolverMultiSinks::SensFspSolverMultiSinks(MPI_Comm _comm,
                                                            pacmensl::PartitioningType _part_type,
                                                            pacmensl::ODESolverType _solve_type)
 {
-  MPI_Comm_dup(_comm, &comm_);
+  comm_ = _comm;
   MPI_Comm_rank(_comm, &my_rank_);
   MPI_Comm_size(_comm, &comm_size_);
 }
@@ -256,7 +256,7 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::ClearState()
 pacmensl::SensFspSolverMultiSinks::~SensFspSolverMultiSinks()
 {
   ClearState();
-  if (comm_) MPI_Comm_free(&comm_);
+  comm_ = nullptr;
 }
 
 int pacmensl::SensFspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p)
