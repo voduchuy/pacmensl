@@ -49,13 +49,31 @@ namespace pacmensl {
     void StatePartitionerBase::generate_data() {
         states_indices_ = new int[num_local_states_];
         states_weights_ = new float[num_local_states_];
+        auto num_reactions = ( int ) stoich_mat_ptr_->n_cols;
 
-        // Find global indices of local states_
-        state2ordering(*state_ptr_, &states_indices_[0]);
+        arma::Mat< int > RX( num_species_, num_local_states_ ); // states_ connected to local_states_tmp
+        arma::Row< int > irx( num_local_states_ );
 
-        for (auto i = 0; i < num_local_states_; ++i) {
-            states_weights_[i] =
-                    (float) 1.0f;
+        // find indices of the local states_
+        state2ordering( *state_ptr_, &states_indices_[ 0 ] );
+
+        // Initialize graph data
+        for ( auto i = 0; i < num_local_states_; ++i ) {
+            states_weights_[ i ] =
+                ( float ) 2.0f * num_reactions + 1.0f *
+                    num_reactions; // Each state's weight will be added with the number of edges connected to the state in the loop below
+        }
+        // Edges corresponding to the rows of the CME
+        for ( int reaction = 0; reaction < num_reactions; ++reaction ) {
+            RX = *state_ptr_ - arma::repmat(( *stoich_mat_ptr_ ).col( reaction ), 1, num_local_states_ );
+            state2ordering( RX, &irx[ 0 ] );
+
+            for ( int istate = 0; istate < num_local_states_; ++istate ) {
+                if ( irx( istate ) >= 0 ) {
+                    states_weights_[ istate ] +=
+                        1.0f;
+                }
+            }
         }
     };
 
