@@ -11,6 +11,7 @@
 #include "StateSetBase.h"
 
 namespace pacmensl {
+
     struct DiscreteDistribution {
         MPI_Comm comm_ = nullptr;
         double t_ = 0.0;
@@ -29,11 +30,17 @@ namespace pacmensl {
 
         DiscreteDistribution &operator=(DiscreteDistribution &&) noexcept;
 
-        int GetStateView( int &num_states, int &num_species, int *&states);
+        PacmenslErrorCode GetStateView( int &num_states, int &num_species, int *&states);
 
-        int GetProbView( int &num_states, double *&p);
+        PacmenslErrorCode GetProbView( int &num_states, double *&p);
 
-        int RestoreProbView( double *&p);
+        PacmenslErrorCode RestoreProbView( double *&p);
+
+        PacmenslErrorCode WeightedAverage(int nout, PetscReal *fout,
+                                          std::function<PacmenslErrorCode(int num_species, int *x,
+                                                                          int nout, PetscReal *wx,
+                                                                          void *args)> weight_func,
+                                          void *wf_args);
 
         ~DiscreteDistribution();
     };

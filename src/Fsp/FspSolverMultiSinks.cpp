@@ -44,7 +44,7 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
 {
   PetscErrorCode ierr;
   PetscInt       solver_stat;
-  Vec            Pnew;
+
   if (logging_enabled) PACMENSLCHKERRTHROW(PetscLogEventBegin(Solving, 0, 0, 0, 0));
 
   if (verbosity_ > 1) ode_solver_->SetStatusOutput(1);
@@ -622,8 +622,7 @@ PacmenslErrorCode FspSolverMultiSinks::MakeDiscreteDistribution_(DiscreteDistrib
 {
   PacmenslErrorCode ierr;
 
-  ierr = MPI_Comm_dup(comm_, &dist.comm_);
-  CHKERRMPI(ierr);
+  dist.comm_ = comm_;
   dist.t_      = t_now_;
   dist.states_ = state_set_->CopyStatesOnProc();
 

@@ -113,6 +113,41 @@ int pacmensl::DiscreteDistribution::RestoreProbView(double *&p) {
   return 0;
 }
 
+PacmenslErrorCode pacmensl::DiscreteDistribution::WeightedAverage(int nout,
+                                                                  PetscReal *fout,
+                                                                  std::function<PacmenslErrorCode(int num_species, int *x,
+                                                                                                  int nout, PetscReal *fx,
+                                                                                                  void *args)> weight_func,
+                                                                  void *wf_args)
+{
+  PacmenslErrorCode ierr;
+
+  int num_local_states;
+  PetscReal* plocal;
+  ierr = GetProbView(num_local_states, plocal); PACMENSLCHKERRQ(ierr);
+
+  for (int i = 0; i < nout; ++i)
+  {
+    fout[i] = 0.0;
+  }
+
+  PetscReal* wtmp = new PetscReal[nout];
+  for (int j = 0; j < num_local_states; ++j)
+  {
+    ierr = weight_func(states_.n_rows, states_.colptr(j), nout, wtmp, wf_args); PACMENSLCHKERRQ(ierr);
+    for (int i = 0; i < nout; ++i)
+    {
+      fout[i] += wtmp[i]*plocal[j];
+    }
+  }
+
+  ierr = MPI_Allreduce(MPI_IN_PLACE, fout, nout, MPIU_REAL, MPIU_SUM, comm_);
+  PACMENSLCHKERRQ(ierr);
+
+  delete[] wtmp;
+  return 0;
+}
+
 arma::Col<PetscReal> pacmensl::Compute1DMarginal(const DiscreteDistribution &dist, int species) {
   arma::Col<PetscReal> md_on_proc;
   // Find the max molecular count

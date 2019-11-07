@@ -10,7 +10,6 @@
 #include <mpi.h>
 #include <petscmat.h>
 #include <petscis.h>
-#include <petsc/private/matimpl.h>
 #include "Model.h"
 #include "Sys.h"
 #include "StateSetBase.h"

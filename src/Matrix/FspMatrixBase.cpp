@@ -69,7 +69,6 @@ FspMatrixBase::FspMatrixBase(FspMatrixBase &&A) noexcept
   int ierr;
 
   Destroy();
-  comm_ = A.comm_;
 
   comm_      = A.comm_;
   rank_      = A.rank_;
@@ -118,8 +117,6 @@ FspMatrixBase &FspMatrixBase::operator=(const FspMatrixBase &A)
 
   Destroy();
   comm_ = A.comm_;
-
-  ierr = MPI_Comm_dup(A.comm_, &comm_); MPICHKERRTHROW(ierr);
   rank_      = A.rank_;
   comm_size_ = A.comm_size_;
 

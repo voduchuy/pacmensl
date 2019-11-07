@@ -29,6 +29,12 @@ SensDiscreteDistribution &operator=(SensDiscreteDistribution &&dist) noexcept;
 PacmenslErrorCode GetSensView(int is, int &num_states, double *&p);
 PacmenslErrorCode RestoreSensView(int is, double *&p);
 
+PacmenslErrorCode WeightedAverage(int is, int nout, PetscReal *fout,
+                                  std::function<PacmenslErrorCode(int num_species, int *x,
+                                                                  int nout, PetscReal *wx,
+                                                                  void *args)> weight_func,
+                                  void *wf_args);
+
   ~SensDiscreteDistribution();
 };
 

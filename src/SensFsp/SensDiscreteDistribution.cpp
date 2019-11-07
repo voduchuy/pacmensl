@@ -108,6 +108,48 @@ pacmensl::SensDiscreteDistribution::~SensDiscreteDistribution()
   }
 }
 
+PacmenslErrorCode pacmensl::SensDiscreteDistribution::WeightedAverage(int is, int nout,
+                                                                      PetscReal *fout,
+                                                                      std::function<PacmenslErrorCode(int,
+                                                                                                      int *,
+                                                                                                      int,
+                                                                                                      PetscReal *,
+                                                                                                      void *)> weight_func,
+                                                                      void *wf_args)
+{
+  PacmenslErrorCode ierr;
+
+  int num_local_states;
+  PetscReal* plocal;
+  if (is >= 0){
+    ierr = GetSensView(is, num_local_states, plocal); PACMENSLCHKERRQ(ierr);
+  }
+  else{
+    ierr = GetProbView(num_local_states, plocal); PACMENSLCHKERRQ(ierr);
+  }
+
+  for (int i = 0; i < nout; ++i)
+  {
+    fout[i] = 0.0;
+  }
+
+  PetscReal* wtmp = new PetscReal[nout];
+  for (int j = 0; j < num_local_states; ++j)
+  {
+    ierr = weight_func(states_.n_rows, states_.colptr(j), nout, wtmp, wf_args); PACMENSLCHKERRQ(ierr);
+    for (int i = 0; i < nout; ++i)
+    {
+      fout[i] += wtmp[i]*plocal[j];
+    }
+  }
+
+  ierr = MPI_Allreduce(MPI_IN_PLACE, fout, nout, MPIU_REAL, MPIU_SUM, comm_);
+  PACMENSLCHKERRQ(ierr);
+
+  delete[] wtmp;
+  return 0;
+}
+
 PacmenslErrorCode pacmensl::Compute1DSensMarginal(const pacmensl::SensDiscreteDistribution &dist,
                                                   int is,
                                                   int species,

@@ -396,7 +396,7 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::MakeSensDiscreteDistributio
 {
   PacmenslErrorCode ierr;
 
-  ierr = MPI_Comm_dup(comm_, &dist.comm_); CHKERRMPI(ierr);
+  dist.comm_ = comm_;
   dist.t_      = t_now_;
   dist.states_ = state_set_->CopyStatesOnProc();
 

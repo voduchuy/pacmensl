@@ -221,7 +221,7 @@ PacmenslErrorCode pacmensl::StationaryFspSolverMultiSinks::MakeDiscreteDistribut
 {
   PacmenslErrorCode ierr;
 
-  ierr = MPI_Comm_dup(comm_, &dist.comm_); CHKERRMPI(ierr);
+  dist.comm_ = comm_;
   dist.t_      = 0.0;
   dist.states_ = state_set_->CopyStatesOnProc();
 
