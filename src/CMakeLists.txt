@@ -3,9 +3,15 @@ set(EXT_LIBRARIES
         -lsundials_cvodes
         -lsundials_nvecpetsc
         -lzoltan
-        -lparmetis
         ${PETSC_LIBRARIES}
         )
+
+if (ENABLE_PARMETIS)
+    list(APPEND EXT_LIBRARIES -lparmetis)
+else()
+    add_definitions(-DNUSEPARMETIS)
+endif()
+
 #
 add_subdirectory(Sys)
 add_subdirectory(Models)

@@ -14,13 +14,17 @@
             Zoltan_Set_Edge_List_Multi_Fn( zoltan_lb_, &StatePartitionerGraph::zoltan_edge_list, ( void * ) this );
             Zoltan_Set_Param( zoltan_lb_, "LB_METHOD", "GRAPH" );
             Zoltan_Set_Param( zoltan_lb_, "GRAPH_BUILD_TYPE", "FAST_NO_DUP" );
+#ifndef NUSEPARMETIS
             Zoltan_Set_Param( zoltan_lb_, "GRAPH_PACKAGE", "Parmetis" );
+            Zoltan_Set_Param( zoltan_lb_, "PARMETIS_ITR", "100" );
+#else
+            Zoltan_Set_Param( zoltan_lb_, "GRAPH_PACKAGE", "PHG" );
+#endif
             Zoltan_Set_Param( zoltan_lb_, "OBJ_WEIGHT_DIM", "1" );
             Zoltan_Set_Param( zoltan_lb_, "EDGE_WEIGHT_DIM", "1" );
-            Zoltan_Set_Param( zoltan_lb_, "CHECK_GRAPH", "0" );
+            Zoltan_Set_Param( zoltan_lb_, "CHECK_GRAPH", "1" );
             Zoltan_Set_Param( zoltan_lb_, "GRAPH_SYMMETRIZE", "NONE");
             Zoltan_Set_Param( zoltan_lb_, "GRAPH_SYM_WEIGHT", "ADD" );
-            Zoltan_Set_Param( zoltan_lb_, "PARMETIS_ITR", "100" );
         }
 
         void StatePartitionerGraph::generate_data( ) {

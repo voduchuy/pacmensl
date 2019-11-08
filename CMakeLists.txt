@@ -46,6 +46,12 @@ if (BUILD_EXAMPLES)
     set(EXAMPLES_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/examples CACHE STRING "Installation directory for examples.")
 endif ()
 
+# Decide whether to use PARMETIS instead of Zoltan's native Graph partitioner
+OPTION(ENABLE_PARMETIS "Enable Parmetis use" ON)
+if (NOT ENABLE_PARMETIS)
+    add_definitions(-DNUSEPARMETIS)
+endif()
+
 FIND_PACKAGE(MPI REQUIRED)
 FIND_PACKAGE(PETSc)
 
