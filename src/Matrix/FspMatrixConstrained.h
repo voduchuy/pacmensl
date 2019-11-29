@@ -8,19 +8,14 @@
 #include "FspMatrixBase.h"
 
 namespace pacmensl {
-class FspMatrixConstrained : public FspMatrixBase {
+class FspMatrixConstrained : public FspMatrixBase
+{
  public:
   explicit FspMatrixConstrained(MPI_Comm comm);
 
-  FspMatrixConstrained(const FspMatrixConstrained &A); // untested
-  FspMatrixConstrained(FspMatrixConstrained &&A) noexcept; // untested
-
-  /* Assignments */
-  FspMatrixConstrained& operator=(const FspMatrixConstrained &A);
-  FspMatrixConstrained& operator=(FspMatrixConstrained &&A) noexcept;
-
   PacmenslErrorCode GenerateValues(const StateSetBase &state_set,
                                    const arma::Mat<Int> &SM,
+                                   std::vector<int> time_vayring,
                                    const TcoefFun &new_prop_t,
                                    const PropFun &prop,
                                    const std::vector<int> &enable_reactions,
@@ -36,10 +31,13 @@ class FspMatrixConstrained : public FspMatrixBase {
  protected:
   int              num_constraints_ = 0;
   int              sinks_rank_      = 0; ///< rank of the processor that stores sink states
-  std::vector<Mat> sinks_mat_; ///< local matrix to evaluate sink states
+  std::vector<Mat> tv_sinks_mat_; ///< local matrix to evaluate sink states
+  Mat              ti_sinks_mat_ = nullptr;
   Vec              sink_entries_    = nullptr, sink_tmp = nullptr;
 
   VecScatter sink_scatter_ctx_ = nullptr;
+
+  Vec xx = nullptr;
 
   PacmenslErrorCode DetermineLayout_(const StateSetBase &fsp) override;
 };

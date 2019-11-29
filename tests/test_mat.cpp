@@ -27,8 +27,8 @@ class MatrixTest : public ::testing::Test {
   void SetUp() override {
     fsp_size = arma::Row<int>({12});
     t_fun    = [&](double t, int num_coefs, double *outputs, void *args) {
-      outputs[0] = rate_right;
-      outputs[1] = rate_left;
+      outputs[0] = 0.0;
+      outputs[1] = 0.0;
       return 0;
     };
 
@@ -37,12 +37,12 @@ class MatrixTest : public ::testing::Test {
       switch (reaction) {
         case 0:
           for (int i{0}; i < num_states; ++i) {
-            outputs[i] = 1.0;
+            outputs[i] = rate_right*1.0;
           }
           break;
         case 1:
           for (int i{0}; i < num_states; ++i) {
-            outputs[i] = (X[i] > 0);
+            outputs[i] = rate_left*(X[i] > 0);
           }
           break;
         default:return -1;
@@ -95,7 +95,14 @@ TEST_F(MatrixTest, mat_base_generation) {
   double Q_sum;
 
   FspMatrixBase A(PETSC_COMM_WORLD);
-  ierr = A.GenerateValues(*state_set, stoichiometry, t_fun, propensity, std::vector<int>(), nullptr, nullptr);
+  ierr = A.GenerateValues(*state_set,
+                          stoichiometry,
+                          std::vector<int>(),
+                          t_fun,
+                          propensity,
+                          std::vector<int>(),
+                          nullptr,
+                          nullptr);
   ASSERT_FALSE(ierr);
 
   Vec P, Q;
@@ -129,7 +136,14 @@ TEST_F(MatrixTest, mat_constrained_generate_values) {
   int ierr;
 
   FspMatrixConstrained A(PETSC_COMM_WORLD);
-  A.GenerateValues(*state_set, stoichiometry, t_fun, propensity, std::vector<int>(), nullptr, nullptr);
+  A.GenerateValues(*state_set,
+                   stoichiometry,
+                   std::vector<int>(),
+                   t_fun,
+                   propensity,
+                   std::vector<int>(),
+                   nullptr,
+                   nullptr);
 
   double Q_sum;
   Vec    P, Q;

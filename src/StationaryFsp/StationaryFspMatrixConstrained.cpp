@@ -11,6 +11,7 @@ pacmensl::StationaryFspMatrixConstrained::StationaryFspMatrixConstrained(MPI_Com
 
 PacmenslErrorCode pacmensl::StationaryFspMatrixConstrained::GenerateValues(const StateSetBase &fsp,
                                                                            const arma::Mat<Int> &SM,
+                                                                           std::vector<int> time_vayring,
                                                                            const TcoefFun &new_t_fun,
                                                                            const PropFun &prop,
                                                                            const std::vector<int> &enable_reactions,
@@ -19,7 +20,7 @@ PacmenslErrorCode pacmensl::StationaryFspMatrixConstrained::GenerateValues(const
 {
   int ierr{0};
   ierr = FspMatrixBase::GenerateValues(fsp,
-                                       SM,
+                                       SM, std::vector<int>(),
                                        new_t_fun,
                                        prop,
                                        enable_reactions,

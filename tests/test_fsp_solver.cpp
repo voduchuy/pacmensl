@@ -39,23 +39,23 @@ int propensity(const int reaction, const int num_species, const int num_states, 
                void *args) {
   int (*X_view)[2] = ( int (*)[2] ) X;
   switch (reaction) {
-    case 0:for (int i{0}; i < num_states; ++i) { outputs[i] = 1.0; }
+    case 0:for (int i{0}; i < num_states; ++i) { outputs[i] = kx0; }
       break;
     case 1:
       for (int i{0}; i < num_states; ++i) {
-        outputs[i] = 1.0 / (1.0 + ayx * pow(PetscReal(X_view[i][1]), nyx));
+        outputs[i] = kx / (1.0 + ayx * pow(PetscReal(X_view[i][1]), nyx));
       }
       break;
-    case 2:for (int i{0}; i < num_states; ++i) { outputs[i] = PetscReal(X_view[i][0]); }
+    case 2:for (int i{0}; i < num_states; ++i) { outputs[i] = dx*PetscReal(X_view[i][0]); }
       break;
-    case 3:for (int i{0}; i < num_states; ++i) { outputs[i] = 1.0; }
+    case 3:for (int i{0}; i < num_states; ++i) { outputs[i] = ky0; }
       break;
     case 4:
       for (int i{0}; i < num_states; ++i) {
-        outputs[i] = 1.0 / (1.0 + axy * pow(PetscReal(X_view[i][0]), nxy));
+        outputs[i] = ky / (1.0 + axy * pow(PetscReal(X_view[i][0]), nxy));
       }
       break;
-    case 5:for (int i{0}; i < num_states; ++i) { outputs[i] = PetscReal(X_view[i][1]); }
+    case 5:for (int i{0}; i < num_states; ++i) { outputs[i] = dy*PetscReal(X_view[i][1]); }
       break;
     default:return -1;
   }
@@ -83,7 +83,12 @@ class FspTest : public ::testing::Test {
     t_final      = 100.0;
     fsp_tol      = 1.0e-6;
     X0           = X0.t();
-    toggle_model = Model(toggle_cme::SM, toggle_cme::t_fun, toggle_cme::propensity, nullptr, nullptr);
+    toggle_model = Model(toggle_cme::SM,
+                         toggle_cme::t_fun,
+                         toggle_cme::propensity,
+                         nullptr,
+                         nullptr,
+                         std::vector<int>());
   }
 
   void TearDown() override {
@@ -120,6 +125,7 @@ TEST_F(FspTest, test_handling_t_fun_error) {
   bad_model.prop_t_ = [&](double t, int n, double *vals, void *args) {
     return -1;
   };
+  bad_model.tv_reactions_ = std::vector<int>({0, 1});
 
   ierr = fsp.SetModel(bad_model);
   ASSERT_FALSE(ierr);
@@ -136,6 +142,15 @@ TEST_F(FspTest, test_handling_t_fun_error) {
   ASSERT_THROW(p_final_bdf = fsp.Solve(t_final, fsp_tol, 0), std::runtime_error);
   fsp.ClearState();
 
+
+  ierr = fsp.SetInitialBounds(fsp_size);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetExpansionFactors(expansion_factors);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetVerbosity(0);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetInitialDistribution(X0, p0);
+  ASSERT_FALSE(ierr);
   ierr = fsp.SetUp();
   ASSERT_FALSE(ierr);
   ASSERT_THROW(p_snapshots_bdf = fsp.SolveTspan(tspan, fsp_tol, 0), std::runtime_error);
@@ -149,20 +164,16 @@ class FspPoissonTest : public ::testing::Test {
     auto propensity =
              [&](int reaction, int num_species, int num_states, const int *state, PetscReal *output, void *args) {
                for (int i{0}; i < num_states; ++i) {
-                 output[i] = 1.0;
+                 output[i] = lambda;
                }
                return 0;
              };
-    auto t_fun      = [&](double t, int num_coefs, double *outputs, void *args) {
-      outputs[0] = lambda;
-      return 0;
-    };
 
     poisson_model = Model(stoich_matrix,
-                          t_fun,
+                          nullptr,
                           propensity,
                           nullptr,
-                          nullptr);
+                          nullptr, std::vector<int>());
   }
 
   void TearDown() override {
@@ -199,6 +210,8 @@ TEST_F(FspPoissonTest, test_poisson_petsc) {
   ierr = fsp.SetInitialDistribution(x0, p0);
   ASSERT_FALSE(ierr);
   ierr = fsp.SetOdesType(ODESolverType::PETSC);
+  ASSERT_FALSE(ierr);
+  ierr = fsp.SetOdeTolerances(1.0e-6, 1.0e-16);
   ASSERT_FALSE(ierr);
   ierr = fsp.SetUp();
   ASSERT_FALSE(ierr);
@@ -243,7 +256,7 @@ TEST_F(FspPoissonTest, test_poisson_cvode) {
   ierr = fsp.SetUp();
   ASSERT_FALSE(ierr);
   std::shared_ptr<CvodeFsp> ode_solver = std::dynamic_pointer_cast<CvodeFsp>(fsp.GetOdeSolver());
-  ode_solver->SetTolerances(1.0e-6, 1.0e-14);
+  ode_solver->SetTolerances(1.0e-6, 1.0e-16);
 
   p_final = fsp.Solve(t_final, fsp_tol, 0);
   fsp.ClearState();

@@ -46,12 +46,12 @@ arma::Row<double> expansion_factors_hyperrec{0.2, 0.2, 0.2};
 // propensity function
 inline PetscReal propensity_rep(const PetscInt *X, const PetscInt k) {
   switch (k) {
-    case 0:return 1.0 / (1.0 + ka * pow(1.0 * PetscReal(X[1]), ket));
-    case 1:return 1.0 * PetscReal(X[0]);
-    case 2:return 1.0 / (1.0 + ka * pow(1.0 * PetscReal(X[2]), ket));
-    case 3:return 1.0 * PetscReal(X[1]);
-    case 4:return 1.0 / (1.0 + ka * pow(1.0 * PetscReal(X[0]), ket));
-    case 5:return 1.0 * PetscReal(X[2]);
+    case 0:return k1 / (1.0 + ka * pow(1.0 * PetscReal(X[1]), ket));
+    case 1:return kg * PetscReal(X[0]);
+    case 2:return k1 / (1.0 + ka * pow(1.0 * PetscReal(X[2]), ket));
+    case 3:return kg * PetscReal(X[1]);
+    case 4:return k1 / (1.0 + ka * pow(1.0 * PetscReal(X[0]), ket));
+    case 5:return kg * PetscReal(X[2]);
     default:return 0.0;
   }
 }
@@ -66,17 +66,6 @@ int propensity(const int reaction,
   for (int i = 0; i < num_states; ++i) {
     outputs[i] = propensity_rep(X[i], reaction);
   }
-  return 0;
-}
-
-// function to compute the time-dependent coefficients of the propensity functions
-int t_fun(double t, int num_coefs, PetscReal *outputs, void *args) {
-  outputs[0] = k1;
-  outputs[1] = kg;
-  outputs[2] = k1;
-  outputs[3] = kg;
-  outputs[4] = k1;
-  outputs[5] = kg;
   return 0;
 }
 
@@ -136,7 +125,7 @@ int main(int argc, char *argv[]) {
   PetscReal t_final = 10.0;
   PetscReal fsp_tol = 1.0e-4;
   std::string model_name = "repressilator";
-  Model repressilator_model(SM, t_fun, propensity, nullptr, nullptr);
+  Model repressilator_model(SM, nullptr, propensity, nullptr, nullptr, std::vector<int>());
   arma::Mat<PetscInt> X0 = {21, 0, 0};
   X0 = X0.t();
   arma::Col<PetscReal> p0 = {1.0};

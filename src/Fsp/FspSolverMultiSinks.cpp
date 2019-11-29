@@ -51,6 +51,7 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
 
   fsp_tol_ = fsp_tol;
   ode_solver_->SetFinalTime(t_final);
+  ode_solver_->SetTolerances(ode_rtol_, ode_atol_);
 
   if (fsp_tol_ > 0.0)
   {
@@ -136,7 +137,7 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
       {
         PACMENSLCHKERRTHROW(PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
       }
-      A_->GenerateValues(*state_set_, model_.stoichiometry_matrix_, model_.prop_t_,
+      A_->GenerateValues(*state_set_, model_.stoichiometry_matrix_, model_.tv_reactions_, model_.prop_t_,
                          model_.prop_x_, std::vector<int>(), model_.prop_t_args_, model_.prop_x_args_);
       if (logging_enabled)
       {
@@ -209,14 +210,17 @@ FspSolverMultiSinks::~FspSolverMultiSinks()
 PacmenslErrorCode FspSolverMultiSinks::ClearState()
 {
   int ierr;
+
   set_up_ = false;
   ode_solver_.reset();
   p_.reset();
   A_.reset();
   state_set_.reset();
-
+  sinks_.clear();
+  to_expand_.clear();
 
   have_custom_constraints_ = false;
+  fsp_constr_args_ = nullptr;
   fsp_constr_funs_         = nullptr;
   tmatvec_                 = nullptr;
   return 0;
@@ -228,9 +232,9 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
   // Make sure all the necessary parameters have been set
   try
   {
-    if (model_.prop_t_ == nullptr)
+    if ( (model_.prop_t_ == nullptr) && (!model_.tv_reactions_.empty()))
     {
-      throw std::runtime_error("Temporal signal was not set before calling FspSolver.SetUp().");
+      throw std::runtime_error("Model has time-varying propensitites but temporal signals were not set before calling FspSolver.SetUp().");
     }
     if (model_.prop_x_ == nullptr)
     {
@@ -311,9 +315,9 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
     }
     ierr = A_
         ->GenerateValues(*state_set_,
-                         model_.stoichiometry_matrix_,
+                         model_.stoichiometry_matrix_, std::vector<int>(),
                          model_.prop_t_,
-                         model_.prop_x_, std::vector<int>(),
+                         model_.prop_x_, model_.tv_reactions_,
                          model_.prop_t_args_,
                          model_.prop_x_args_);
     PACMENSLCHKERRQ(ierr);
@@ -614,7 +618,8 @@ PacmenslErrorCode FspSolverMultiSinks::SetLoadBalancingMethod(PartitioningType p
 
 PacmenslErrorCode FspSolverMultiSinks::SetOdeTolerances(PetscReal rel_tol, PetscReal abs_tol)
 {
-  ode_solver_->SetTolerances(rel_tol, abs_tol);
+  ode_rtol_ = rel_tol;
+  ode_atol_ = abs_tol;
   return 0;
 }
 

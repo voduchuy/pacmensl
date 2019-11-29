@@ -13,6 +13,7 @@ class StationaryFspMatrixConstrained : public FspMatrixBase
   explicit StationaryFspMatrixConstrained(MPI_Comm comm);
   PacmenslErrorCode GenerateValues(const StateSetBase &fsp,
                                    const arma::Mat<Int> &SM,
+                                   std::vector<int> time_vayring,
                                    const TcoefFun &new_t_fun,
                                    const PropFun &prop,
                                    const std::vector<int> &enable_reactions,

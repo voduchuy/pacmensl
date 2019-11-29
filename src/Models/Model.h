@@ -23,6 +23,7 @@ class Model {
   void           *prop_t_args_;
   PropFun        prop_x_;
   void           *prop_x_args_;
+  std::vector<int> tv_reactions_;
 
   Model();
 
@@ -30,7 +31,8 @@ class Model {
                  TcoefFun prop_t,
                  PropFun prop_x,
                  void *prop_t_args = nullptr,
-                 void *prop_x_args = nullptr);
+                 void *prop_x_args = nullptr,
+                 const std::vector<int> &tv_reactions_ = std::vector<int>());
 
   Model(const Model &model);
 

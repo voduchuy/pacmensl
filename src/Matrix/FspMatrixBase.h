@@ -30,18 +30,11 @@ class FspMatrixBase {
  public:
   /* constructors */
   explicit FspMatrixBase(MPI_Comm comm);
-  FspMatrixBase(const FspMatrixBase &A); // untested
-  FspMatrixBase(FspMatrixBase &&A) noexcept; // untested
-
-  /* Assignments */
-  FspMatrixBase &operator=(const FspMatrixBase &A);
-  FspMatrixBase &operator=(FspMatrixBase &&A) noexcept;
-
-  PacmenslErrorCode SetUseConventionalMats();
 
   virtual PacmenslErrorCode
   GenerateValues(const StateSetBase &fsp,
                  const arma::Mat<Int> &SM,
+                 std::vector<int> time_vayring,
                  const TcoefFun &new_prop_t,
                  const PropFun &new_prop_x,
                  const std::vector<int> &enable_reactions,
@@ -66,53 +59,25 @@ class FspMatrixBase {
   int      rank_;
   int      comm_size_;
 
-  bool use_conventional_mats_ = false;
-
   Int num_reactions_   = 0;
   Int num_rows_global_ = 0;
   Int num_rows_local_  = 0;
   std::vector<int> enable_reactions_;
+  std::vector<int> tv_reactions_;
+  std::vector<int> ti_reactions_;
 
   // Local data of the matrix
-  std::vector<Petsc<Mat>> diag_mats_;
-  std::vector<Petsc<Mat>> offdiag_mats_;
-
-  // Mapping from local matrices to the global state space
-  ISLocalToGlobalMapping local2global_rows_ = nullptr, local2global_lvec_ = nullptr;
+  std::vector<Petsc<Mat>> tv_mats_;
+  Petsc<Mat> ti_mat_;
 
   // Data for computing the matrix action
-  Vec        work_        = nullptr; ///< Work vector for computing operator times vector
-  Vec        lvec_        = nullptr; ///< Local vector to receive scattered data from the input vec
-  Vec        xx           = nullptr, yy = nullptr, zz = nullptr; ///< Local portion of the vectors
-  PetscInt   lvec_length_ = 0; ///< Number of ghost entries owned by the local process
-  VecScatter action_ctx_  = nullptr; ///< Scatter context for computing matrix action
+  Petsc<Vec>        work_; ///< Work vector for computing operator times vector
 
   TcoefFun        t_fun_       = nullptr;
   void            *t_fun_args_ = nullptr;
   arma::Row<Real> time_coefficients_;
 
   virtual int DetermineLayout_(const StateSetBase &fsp);
-
-  virtual PacmenslErrorCode
-  GenerateValuesBasic(const StateSetBase &fsp,
-                         const arma::Mat<Int> &SM,
-                         const TcoefFun &new_prop_t,
-                         const PropFun &new_prop_x,
-                         const std::vector<int> &enable_reactions,
-                         void *prop_t_args,
-                         void *prop_x_args);
-
-  virtual PacmenslErrorCode
-  GenerateValuesAdvanced(const StateSetBase &fsp,
-                 const arma::Mat<Int> &SM,
-                 const TcoefFun &new_prop_t,
-                 const PropFun &new_prop_x,
-                 const std::vector<int> &enable_reactions,
-                 void *prop_t_args,
-                 void *prop_x_args);
-
-  virtual PacmenslErrorCode ActionConventional(PetscReal t, Vec x, Vec y);
-  virtual PacmenslErrorCode ActionAdvanced(PetscReal t, Vec x, Vec y);
 };
 
 }

@@ -123,6 +123,9 @@ class FspSolverMultiSinks
   Real t_final_ = 0.0;
   Real t_now_   = 0.0;
 
+  Real ode_rtol_ = 1.0e-4;
+  Real ode_atol_ = 1.0e-14;
+
   arma::Row<PetscReal> sinks_;
   arma::Row<int>       to_expand_;
 

@@ -6,6 +6,7 @@
 
 pacmensl::StateSet::StateSet( MPI_Comm comm, pacmensl::StateSetType type, int num_species,
                               pacmensl::PartitioningType part, pacmensl::PartitioningApproach repart ) {
+    type_ = type;
     switch ( type ) {
         case BASE:
             state_set_ = new StateSetBase(comm);

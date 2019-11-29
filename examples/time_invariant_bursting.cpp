@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
   // Default problem
   std::string model_name = "time_invariant_bursting";
-  PetscReal t_final = 10.0;
+  PetscReal t_final = 1.0;
   PetscReal fsp_tol = 1.0e-04;
 
   arma::Mat<PetscInt> X0(3, 1, arma::fill::zeros);
@@ -147,14 +147,13 @@ int main(int argc, char *argv[]) {
   PetscPrintf(comm, "Partitiniong option %s \n", part2str(fsp_par_type).c_str());
   PetscPrintf(comm, "Repartitoning option %s \n", partapproach2str(fsp_repart_approach).c_str());
 
-  FspSolverMultiSinks fsp_solver(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
-
 
   DiscreteDistribution solution;
 
   PetscLogDouble mem;
   double t1, t2;
   for (int j{0}; j < 10; ++j) {
+    FspSolverMultiSinks fsp_solver(PETSC_COMM_WORLD, fsp_par_type, fsp_odes_type);
     fsp_solver.SetModel(il1b_model);
     fsp_solver.SetExpansionFactors(expansion_factors);
     fsp_solver.SetInitialDistribution(X0, p0);
@@ -169,24 +168,24 @@ int main(int argc, char *argv[]) {
     PetscMemoryGetCurrentUsage(&mem);
     PetscPrintf(comm, "Memory used: %.2f \n", mem);
   }
-  PetscReal Psum;
-  VecSum(solution.p_, &Psum);
-  PetscPrintf(comm, "Psum = %.2e\n", Psum);
+//  PetscReal Psum;
+//  VecSum(solution.p_, &Psum);
+//  PetscPrintf(comm, "Psum = %.2e\n", Psum);
 
-  if (fsp_log_events) {
-    output_time(PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string("adaptive_custom"), fsp_solver);
-    output_performance(PETSC_COMM_WORLD,
-                       model_name,
-                       part_type,
-                       part_approach,
-                       std::string("adaptive_custom"),
-                       fsp_solver);
-  }
-  if (output_marginal) {
-    output_marginals(PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string("adaptive_custom"), solution);
-  }
+//  if (fsp_log_events) {
+//    output_time(PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string("adaptive_custom"), fsp_solver);
+//    output_performance(PETSC_COMM_WORLD,
+//                       model_name,
+//                       part_type,
+//                       part_approach,
+//                       std::string("adaptive_custom"),
+//                       fsp_solver);
+//  }
+//  if (output_marginal) {
+//    output_marginals(PETSC_COMM_WORLD, model_name, part_type, part_approach, std::string("adaptive_custom"), solution);
+//  }
 
-  fsp_solver.ClearState();
+//  fsp_solver.ClearState();
 
   return ierr;
 }

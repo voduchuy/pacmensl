@@ -121,6 +121,7 @@ int main(int argc, char *argv[]) {
     il1b_model.stoichiometry_matrix_ = stoich_mat;
     il1b_model.prop_x_ = propensity;
     il1b_model.prop_t_ = t_fun;
+    il1b_model.tv_reactions_ = std::vector<int>({0, 2});
 
     // Default options
     PartitioningType fsp_par_type = PartitioningType::GRAPH;

@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
   FspMatrixBase A1(comm);
   A1.SetUseConventionalMats();
   ierr = A1.GenerateValues(state_set,
-                           model.stoichiometry_matrix_,
+                           model.stoichiometry_matrix_, std::vector<int>(),
                            model.prop_t_,
                            model.prop_x_,
                            std::vector<int>(),
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
   PACMENSLCHKERRQ(ierr);
   FspMatrixBase A2(comm);
   ierr      = A2.GenerateValues(state_set,
-                                model.stoichiometry_matrix_,
+                                model.stoichiometry_matrix_, std::vector<int>(),
                                 model.prop_t_,
                                 model.prop_x_,
                                 std::vector<int>(),

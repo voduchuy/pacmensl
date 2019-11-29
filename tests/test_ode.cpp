@@ -46,17 +46,17 @@ int propensity(const int reaction,
                void *args) {
   int (*X_view)[2] = ( int (*)[2] ) X;
   switch (reaction) {
-    case 0:for (int i{0}; i < num_states; ++i) { outputs[i] = 1.0; }
+    case 0:for (int i{0}; i < num_states; ++i) { outputs[i] = kx0; }
       break;
-    case 1:for (int i{0}; i < num_states; ++i) { outputs[i] = 1.0 / (1.0 + ayx * pow(PetscReal(X_view[i][1]), nyx)); }
+    case 1:for (int i{0}; i < num_states; ++i) { outputs[i] = kx / (1.0 + ayx * pow(PetscReal(X_view[i][1]), nyx)); }
       break;
-    case 2:for (int i{0}; i < num_states; ++i) { outputs[i] = PetscReal(X_view[i][0]); }
+    case 2:for (int i{0}; i < num_states; ++i) { outputs[i] = dx*PetscReal(X_view[i][0]); }
       break;
-    case 3:for (int i{0}; i < num_states; ++i) { outputs[i] = 1.0; }
+    case 3:for (int i{0}; i < num_states; ++i) { outputs[i] = ky0; }
       break;
-    case 4:for (int i{0}; i < num_states; ++i) { outputs[i] = 1.0 / (1.0 + axy * pow(PetscReal(X_view[i][0]), nxy)); }
+    case 4:for (int i{0}; i < num_states; ++i) { outputs[i] = ky / (1.0 + axy * pow(PetscReal(X_view[i][0]), nxy)); }
       break;
-    case 5:for (int i{0}; i < num_states; ++i) { outputs[i] = PetscReal(X_view[i][1]); }
+    case 5:for (int i{0}; i < num_states; ++i) { outputs[i] = dy*PetscReal(X_view[i][1]); }
       break;
     default:return -1;
   }
@@ -64,12 +64,6 @@ int propensity(const int reaction,
 }
 
 int t_fun(PetscReal t, int n_coefs, double *outputs, void *args) {
-  outputs[0] = kx0;
-  outputs[1] = kx;
-  outputs[2] = dx;
-  outputs[3] = ky0;
-  outputs[4] = ky;
-  outputs[5] = dy;
   return 0;
 }
 }
@@ -92,7 +86,7 @@ class OdeTest : public ::testing::Test {
 
     A = new FspMatrixConstrained(PETSC_COMM_WORLD);
     A->GenerateValues(fsp,
-                      toggle_cme::SM,
+                      toggle_cme::SM, std::vector<int>(),
                       toggle_cme::t_fun,
                       toggle_cme::propensity,
                       std::vector<int>(),
