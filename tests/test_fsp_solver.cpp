@@ -164,17 +164,17 @@ class FspPoissonTest : public ::testing::Test {
     auto propensity =
              [&](int reaction, int num_species, int num_states, const int *state, PetscReal *output, void *args) {
                for (int i{0}; i < num_states; ++i) {
-                 output[i] = 1.0;
+                 output[i] = lambda;
                }
                return 0;
              };
 
     auto t_fun = [&](PetscReal t, int n_coefs, double *outputs, void *args) {
-      outputs[0] = lambda;
+      outputs[0] = 1.0;
       return 0;
     };
 
-    auto tv_reactions = std::vector<int>({0});
+    auto tv_reactions = std::vector<int>();
 
     poisson_model = Model(stoich_matrix,
                           t_fun,
@@ -218,7 +218,7 @@ TEST_F(FspPoissonTest, test_poisson_petsc) {
   ASSERT_FALSE(ierr);
   ierr = fsp.SetOdesType(ODESolverType::PETSC);
   ASSERT_FALSE(ierr);
-  ierr = fsp.SetOdeTolerances(1.0e-6, 1.0e-14);
+  ierr = fsp.SetOdeTolerances(1.0e-8, 1.0e-15);
   ASSERT_FALSE(ierr);
   ierr = fsp.SetUp();
   ASSERT_FALSE(ierr);

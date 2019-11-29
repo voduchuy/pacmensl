@@ -5,6 +5,7 @@
 #include "SensModel.h"
 
 pacmensl::SensModel::SensModel(const arma::Mat<int> &stoichiometry_matrix,
+                               const std::vector<int> &tv_reactions,
                                const TcoefFun &prop_t,
                                const PropFun &prop_x,
                                const std::vector<TcoefFun> &dprop_t,
@@ -14,7 +15,8 @@ pacmensl::SensModel::SensModel(const arma::Mat<int> &stoichiometry_matrix,
                                void *prop_t_args,
                                void *prop_x_args,
                                const std::vector<void *> &dprop_t_args,
-                               const std::vector<void *> &dprop_x_args) {
+                               const std::vector<void *> &dprop_x_args)
+{
   num_reactions_        = stoichiometry_matrix.n_cols;
   num_parameters_       = dprop_x.size();
   stoichiometry_matrix_ = stoichiometry_matrix;
@@ -38,6 +40,8 @@ pacmensl::SensModel::SensModel(const arma::Mat<int> &stoichiometry_matrix,
   } else {
     dprop_x_args_ = dprop_x_args;
   }
+
+  tv_reactions_ = tv_reactions;
 }
 
 pacmensl::SensModel::SensModel(const pacmensl::SensModel &model) {
@@ -54,6 +58,7 @@ pacmensl::SensModel::SensModel(const pacmensl::SensModel &model) {
   dprop_x_args_         = model.dprop_x_args_;
   dpropensity_ic_       = model.dpropensity_ic_;
   dpropensity_rowptr_   = model.dpropensity_rowptr_;
+  tv_reactions_ = model.tv_reactions_;
 }
 
 pacmensl::SensModel &pacmensl::SensModel::operator=(const pacmensl::SensModel &model) noexcept {
@@ -80,6 +85,8 @@ pacmensl::SensModel &pacmensl::SensModel::operator=(const pacmensl::SensModel &m
   dprop_x_args_         = model.dprop_x_args_;
   dpropensity_ic_       = model.dpropensity_ic_;
   dpropensity_rowptr_   = model.dpropensity_rowptr_;
+
+  tv_reactions_ = model.tv_reactions_;
   return *this;
 }
 
@@ -108,6 +115,7 @@ pacmensl::SensModel &pacmensl::SensModel::operator=(pacmensl::SensModel &&model)
   dprop_x_args_         = std::move(model.dprop_x_args_);
   dpropensity_ic_       = model.dpropensity_ic_;
   dpropensity_rowptr_   = model.dpropensity_rowptr_;
+  tv_reactions_ = std::move(model.tv_reactions_);
 
   return *this;
 }

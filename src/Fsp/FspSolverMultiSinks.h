@@ -119,12 +119,12 @@ class FspSolverMultiSinks
   PacmenslErrorCode CheckFspTolerance_(PetscReal t, Vec p, PetscReal &tol_exceed);
 
   virtual void set_expansion_parameters_() {};
-  Real fsp_tol_ = 1.0;
-  Real t_final_ = 0.0;
-  Real t_now_   = 0.0;
+  PetscReal fsp_tol_ = 1.0;
+  PetscReal t_final_ = 0.0;
+  PetscReal t_now_   = 0.0;
 
-  Real ode_rtol_ = 1.0e-4;
-  Real ode_atol_ = 1.0e-14;
+  PetscReal ode_rtol_ = 1.0e-6;
+  PetscReal ode_atol_ = 1.0e-14;
 
   arma::Row<PetscReal> sinks_;
   arma::Row<int>       to_expand_;

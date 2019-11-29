@@ -11,7 +11,7 @@ pacmensl::StationaryFspMatrixConstrained::StationaryFspMatrixConstrained(MPI_Com
 
 PacmenslErrorCode pacmensl::StationaryFspMatrixConstrained::GenerateValues(const StateSetBase &fsp,
                                                                            const arma::Mat<Int> &SM,
-                                                                           std::vector<int> time_vayring,
+                                                                           std::vector<int> time_varying,
                                                                            const TcoefFun &new_t_fun,
                                                                            const PropFun &prop,
                                                                            const std::vector<int> &enable_reactions,
@@ -20,7 +20,7 @@ PacmenslErrorCode pacmensl::StationaryFspMatrixConstrained::GenerateValues(const
 {
   int ierr{0};
   ierr = FspMatrixBase::GenerateValues(fsp,
-                                       SM, std::vector<int>(),
+                                       SM, time_varying,
                                        new_t_fun,
                                        prop,
                                        enable_reactions,
@@ -103,6 +103,9 @@ PacmenslErrorCode pacmensl::StationaryFspMatrixConstrained::GenerateValues(const
   ierr = VecDuplicate(sink_entries_, &sink_tmp); CHKERRQ(ierr);
   ierr = VecSetUp(sink_tmp); CHKERRQ(ierr);
 
+  ierr = VecCreateSeq(PETSC_COMM_SELF, num_rows_local_, &xx); CHKERRQ(ierr);
+  ierr = VecSetUp(xx); CHKERRQ(ierr);
+
   // Generate the diagonal
   ierr = new_t_fun(0.0, num_reactions_, &time_coefficients_[0], t_fun_args_); PACMENSLCHKERRQ(ierr);
   ierr = VecCreate(comm_, &diagonal_); CHKERRQ(ierr);
@@ -132,6 +135,7 @@ int pacmensl::StationaryFspMatrixConstrained::Destroy()
   ierr = VecDestroy(&diagonal_); CHKERRQ(ierr);
   ierr = VecDestroy(&sink_entries_); CHKERRQ(ierr);
   ierr = VecDestroy(&sink_tmp); CHKERRQ(ierr);
+  ierr = VecDestroy(&xx); CHKERRQ(ierr);
   ierr = FspMatrixBase::Destroy(); PACMENSLCHKERRQ(ierr);
   return 0;
 }
@@ -147,14 +151,14 @@ int pacmensl::StationaryFspMatrixConstrained::Action(PetscReal t, Vec x, Vec y)
   // Compute the 'usual' part of the matmult operation
   ierr = FspMatrixBase::Action(t, x, y); PACMENSLCHKERRQ(ierr);
   // Compute the sinks and direct them to the designated state
-  ierr = VecGetLocalVector(x, xx); CHKERRQ(ierr);
+  ierr = VecGetLocalVectorRead(x, xx); CHKERRQ(ierr);
   ierr = VecSet(sink_entries_, 0.0); CHKERRQ(ierr);
   for (int i : enable_reactions_)
   {
     ierr = MatMult(sinks_mat_[i], xx, sink_tmp); CHKERRQ(ierr);
     ierr = VecAXPY(sink_entries_, time_coefficients_[i], sink_tmp); CHKERRQ(ierr);
   }
-  ierr       = VecRestoreLocalVector(x, xx); CHKERRQ(ierr);
+  ierr       = VecRestoreLocalVectorRead(x, xx); CHKERRQ(ierr);
   PetscReal sink_sum;
   ierr = VecSum(sink_entries_, &sink_sum); CHKERRQ(ierr);
   PetscReal sink_total;

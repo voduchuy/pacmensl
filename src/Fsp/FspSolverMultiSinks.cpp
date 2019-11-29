@@ -76,6 +76,8 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
     ierr = ode_solver_->SetCurrentTime(t_now_);
     PACMENSLCHKERRTHROW(ierr);
 
+    ode_solver_->SetTolerances(ode_rtol_, ode_atol_);
+
     ierr = ode_solver_->SetUp();
     PACMENSLCHKERRTHROW(ierr);
 

@@ -12,7 +12,7 @@ namespace pacmensl {
 template<typename PetscT>
 class Petsc {
  protected:
-  PetscT dat = PETSC_NULL;
+  PetscT dat = nullptr;
 
   int Destroy(PetscT *obj);
 

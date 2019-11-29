@@ -20,6 +20,8 @@ class SensModel
   int                   num_reactions_  = 0;
   int                   num_parameters_ = 0;
   arma::Mat<int>        stoichiometry_matrix_;
+  // Which reactions have time-varying propensities?
+  std::vector<int> tv_reactions_;
   // propensities
   PropFun               prop_x_;
   void                  *prop_x_args_;
@@ -36,6 +38,7 @@ class SensModel
   SensModel() {};
 
   explicit SensModel(const arma::Mat<int> &stoichiometry_matrix,
+                     const std::vector<int> &tv_reactions,
                      const TcoefFun &prop_t,
                      const PropFun &prop_x,
                      const std::vector<TcoefFun> &dprop_t,

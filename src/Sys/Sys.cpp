@@ -99,7 +99,7 @@ double round2digit(double x)
 
 Environment::Environment()
 {
-  if (~initialized)
+  if (!initialized)
   {
     PetscErrorCode ierr;
     int            mpi_initialized;
@@ -124,7 +124,7 @@ Environment::Environment()
 
 Environment::Environment(int *argc, char ***argv, const char *help)
 {
-  if (~initialized)
+  if (!initialized)
   {
     PetscErrorCode ierr;
     int            mpi_initialized;

@@ -84,10 +84,11 @@ PacmenslErrorCode pacmensl::SensFspMatrix<FspMatrixT>::GenerateValues(const pacm
                                                                       const pacmensl::SensModel &model)
 {
   PacmenslErrorCode ierr;
-  ierr = A_.GenerateValues(state_set, model.stoichiometry_matrix_, model.prop_t_, model.prop_x_,
+  ierr = A_.GenerateValues(state_set, model.stoichiometry_matrix_, model.tv_reactions_, model.prop_t_, model.prop_x_,
                            std::vector<int>(), model.prop_t_args_, model.prop_x_args_);
   PACMENSLCHKERRQ(ierr);
   num_parameters_ = model.num_parameters_;
+  dA_.reserve(num_parameters_);
   if (!model.dpropensity_ic_.empty())
   {
     for (int i{0}; i < num_parameters_; ++i)
@@ -95,9 +96,11 @@ PacmenslErrorCode pacmensl::SensFspMatrix<FspMatrixT>::GenerateValues(const pacm
       auto             first = model.dpropensity_ic_.begin() + model.dpropensity_rowptr_[i];
       auto             last  = model.dpropensity_ic_.begin() + model.dpropensity_rowptr_[i + 1];
       std::vector<int> enable_reactions(first, last);
+
       dA_.emplace_back(FspMatrixT(comm_));
       ierr                   = dA_[i].GenerateValues(state_set,
                                                      model.stoichiometry_matrix_,
+                                                     model.tv_reactions_,
                                                      model.dprop_t_[i],
                                                      model.dprop_x_[i],
                                                      enable_reactions,
@@ -112,6 +115,7 @@ PacmenslErrorCode pacmensl::SensFspMatrix<FspMatrixT>::GenerateValues(const pacm
       dA_.emplace_back(FspMatrixT(comm_));
       ierr = dA_[i].GenerateValues(state_set,
                                    model.stoichiometry_matrix_,
+                                   model.tv_reactions_,
                                    model.dprop_t_[i],
                                    model.dprop_x_[i],
                                    std::vector<int>(),

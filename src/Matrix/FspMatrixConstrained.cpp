@@ -67,7 +67,7 @@ int FspMatrixConstrained::Destroy()
   if (xx != nullptr){
     ierr = VecDestroy(&xx); CHKERRQ(ierr);
   }
-  if (ti_sinks_mat_){
+  if (ti_sinks_mat_ != nullptr){
     ierr = MatDestroy(&ti_sinks_mat_); CHKERRQ(ierr);
   }
   if (sink_scatter_ctx_ != nullptr)
@@ -188,7 +188,7 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
   }
 
   // Fill values for the time-invariant matrix
-  if (~ti_reactions_.empty()){
+  if (!ti_reactions_.empty()){
     ierr = MatCreate(PETSC_COMM_SELF, &ti_sinks_mat_); CHKERRQ(ierr);
     ierr = MatSetType(ti_sinks_mat_, MATSELL); CHKERRQ(ierr);
     ierr = MatSetSizes(ti_sinks_mat_, n_constraints, num_rows_local_, n_constraints, num_rows_local_); CHKERRQ(ierr);

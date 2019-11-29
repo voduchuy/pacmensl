@@ -13,7 +13,7 @@ class StationaryFspMatrixConstrained : public FspMatrixBase
   explicit StationaryFspMatrixConstrained(MPI_Comm comm);
   PacmenslErrorCode GenerateValues(const StateSetBase &fsp,
                                    const arma::Mat<Int> &SM,
-                                   std::vector<int> time_vayring,
+                                   std::vector<int> time_varying,
                                    const TcoefFun &new_t_fun,
                                    const PropFun &prop,
                                    const std::vector<int> &enable_reactions,
@@ -26,6 +26,7 @@ class StationaryFspMatrixConstrained : public FspMatrixBase
   friend class StationaryMCSolver;
   friend class StationaryFspSolverMultiSinks;
  protected:
+  Vec xx;
   Vec              diagonal_;
   int              num_constraints_;
   std::vector<Petsc<Mat>> sinks_mat_; ///< local matrix to evaluate sink states

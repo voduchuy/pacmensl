@@ -47,7 +47,8 @@ class BirthDeathTest : public ::testing::Test
                      t_fun,
                      propensity,
                      nullptr,
-                     nullptr);
+                     nullptr,
+                     std::vector<int>({0,1}));
   }
 
   void TearDown() override
@@ -65,7 +66,7 @@ class BirthDeathTest : public ::testing::Test
   arma::Col<PetscReal> p0                = {1.0};
   arma::Row<int>       fsp_size          = {5};
   arma::Row<PetscReal> expansion_factors = {0.1};
-  PetscReal            fsp_tol{1.0e-10};
+  PetscReal            fsp_tol{1.0e-14};
 };
 
 TEST_F(BirthDeathTest, test_solve)

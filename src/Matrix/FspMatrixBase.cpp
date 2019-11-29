@@ -24,7 +24,7 @@ int FspMatrixBase::Action(PetscReal t, Vec x, Vec y)
     }
   }
 
-  if (ti_mat_.mem() != nullptr)
+  if (*ti_mat_.mem() != nullptr)
   {
     ierr = MatMult(ti_mat_, x, work_); CHKERRQ(ierr);
     ierr = VecAXPY(y, 1.0, work_); CHKERRQ(ierr);
@@ -154,7 +154,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   }
 
   // Fill values for the time-invariant part
-  if (~ti_reactions_.empty()){
+  if (!ti_reactions_.empty()){
     // Determine the number of nonzeros on diagonal and offdiagonal blocks
     arma::Col<int> dnnz_ti(num_rows_local_), onnz_ti(num_rows_local_);
     dnnz_ti.fill(1 - (int) ti_reactions_.size());
@@ -207,7 +207,9 @@ int FspMatrixBase::Destroy()
   PetscErrorCode ierr;
   tv_mats_.clear();
   enable_reactions_.clear();
-  MatDestroy(ti_mat_.mem());
+  if (*ti_mat_.mem() != nullptr){
+    ierr = MatDestroy(ti_mat_.mem()); CHKERRQ(ierr);
+  }
   tv_reactions_.clear();
   ti_reactions_.clear();
   if (work_ != nullptr)

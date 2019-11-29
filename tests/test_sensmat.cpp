@@ -58,10 +58,6 @@ class SensMatrixTest : public ::testing::Test {
       return 0;
     };
 
-    smodel                        = pacmensl::SensModel(stoichiometry, t_fun, propensity,
-                                                        std::vector<pacmensl::TcoefFun>({d_t_fun1, d_t_fun2}),
-                                                        std::vector<pacmensl::PropFun>({propensity, propensity}),
-                                                        std::vector<int>({0,1}), std::vector<int>({0,1,2}));
 
     int rank;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
@@ -88,6 +84,16 @@ class SensMatrixTest : public ::testing::Test {
     ASSERT_FALSE(ierr);
     ierr = state_set->Expand();
     ASSERT_FALSE(ierr);
+
+    smodel = pacmensl::SensModel(stoichiometry,
+        std::vector<int>({0,1}),
+        t_fun,
+        propensity,
+        std::vector<pacmensl::TcoefFun>({d_t_fun1, d_t_fun2}),
+        std::vector<pacmensl::PropFun>({propensity, propensity}),
+        std::vector<int>({0,1}),
+        std::vector<int>({0,1,2})
+        );
   };
 
   void TearDown() override {
