@@ -315,9 +315,9 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
     }
     ierr = A_
         ->GenerateValues(*state_set_,
-                         model_.stoichiometry_matrix_, std::vector<int>(),
+                         model_.stoichiometry_matrix_, model_.tv_reactions_,
                          model_.prop_t_,
-                         model_.prop_x_, model_.tv_reactions_,
+                         model_.prop_x_, std::vector<int>(),
                          model_.prop_t_args_,
                          model_.prop_x_args_);
     PACMENSLCHKERRQ(ierr);

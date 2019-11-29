@@ -8,49 +8,59 @@
 
 namespace pacmensl {
 
-CvodeFsp::CvodeFsp(MPI_Comm _comm, int lmm) : OdeSolverBase(_comm) {
+CvodeFsp::CvodeFsp(MPI_Comm _comm, int lmm) : OdeSolverBase(_comm)
+{
   lmm_ = lmm;
 }
 
-PetscInt CvodeFsp::Solve() {
+PetscInt CvodeFsp::Solve()
+{
   PacmenslErrorCode ierr;
-  PetscErrorCode petsc_err;
-  Vec            solution_tmp_dat = N_VGetVector_Petsc(solution_tmp);
+  PetscErrorCode    petsc_err;
+  Vec               solution_tmp_dat = N_VGetVector_Petsc(solution_tmp);
   petsc_err = VecCopy(*solution_, solution_tmp_dat);
   CHKERRQ(petsc_err);
   // Advance the temporary solution_ until either reaching final time or Fsp error exceeding tolerance
-  int stop = 0;
+  int       stop         = 0;
   PetscReal error_excess = 0.0;
-  while (t_now_ < t_final_) {
+  while (t_now_ < t_final_)
+  {
     cvode_stat = CVode(cvode_mem, t_final_, solution_tmp, &t_now_tmp, CV_ONE_STEP);
     CVODECHKERRQ(cvode_stat);
     // Interpolate the solution_ if the last step went over the prescribed final time
-    if (t_now_tmp > t_final_) {
+    if (t_now_tmp > t_final_)
+    {
       cvode_stat = CVodeGetDky(cvode_mem, t_final_, 0, solution_tmp);
       CVODECHKERRQ(cvode_stat);
       t_now_tmp = t_final_;
     }
     // Check that the temporary solution_ satisfies Fsp tolerance
-    if (stop_check_ != nullptr) {
-      ierr = stop_check_(t_now_tmp, solution_tmp_dat, error_excess, stop_data_); PACMENSLCHKERRQ(ierr);
+    if (stop_check_ != nullptr)
+    {
+      ierr = stop_check_(t_now_tmp, solution_tmp_dat, error_excess, stop_data_);
+      PACMENSLCHKERRQ(ierr);
+      if (error_excess > 0.0)
+      {
+        stop       = 1;
+        cvode_stat = CVodeGetDky(cvode_mem, t_now_, 0, solution_tmp);
+        CVODECHKERRQ(cvode_stat);
+        break;
+      }
     }
-    if (error_excess > 0.0) {
-      stop = 1;
-      cvode_stat = CVodeGetDky(cvode_mem, t_now_, 0, solution_tmp); CVODECHKERRQ(cvode_stat);
-      break;
-    } else {
-      t_now_ = t_now_tmp;
-      if (print_intermediate) {
-        PetscPrintf(comm_, "t_now_ = %.2e \n", t_now_);
-      }
-      if (logging_enabled) {
-        perf_info.model_time[perf_info.n_step] = t_now_;
-        petsc_err = VecGetSize(*solution_, &perf_info.n_eqs[size_t(perf_info.n_step)]);
-        CHKERRQ(petsc_err);
-        petsc_err = PetscTime(&perf_info.cpu_time[perf_info.n_step]);
-        CHKERRQ(petsc_err);
-        perf_info.n_step += 1;
-      }
+
+    t_now_ = t_now_tmp;
+    if (print_intermediate)
+    {
+      PetscPrintf(comm_, "t_now_ = %.2e \n", t_now_);
+    }
+    if (logging_enabled)
+    {
+      perf_info.model_time[perf_info.n_step] = t_now_;
+      petsc_err = VecGetSize(*solution_, &perf_info.n_eqs[size_t(perf_info.n_step)]);
+      CHKERRQ(petsc_err);
+      petsc_err = PetscTime(&perf_info.cpu_time[perf_info.n_step]);
+      CHKERRQ(petsc_err);
+      perf_info.n_step += 1;
     }
   }
   // Copy data from temporary vector to solution_ vector
@@ -59,7 +69,8 @@ PetscInt CvodeFsp::Solve() {
   return stop;
 }
 
-int CvodeFsp::cvode_rhs(double t, N_Vector u, N_Vector udot, void *solver) {
+int CvodeFsp::cvode_rhs(double t, N_Vector u, N_Vector udot, void *solver)
+{
   int ierr{0};
   Vec udata    = N_VGetVector_Petsc(u);
   Vec udotdata = N_VGetVector_Petsc(udot);
@@ -70,7 +81,8 @@ int CvodeFsp::cvode_rhs(double t, N_Vector u, N_Vector udot, void *solver) {
 
 int
 CvodeFsp::cvode_jac(N_Vector v, N_Vector Jv, realtype t, N_Vector u, N_Vector fu, void *FPS_ptr,
-                    N_Vector tmp) {
+                    N_Vector tmp)
+{
   int ierr{0};
   Vec vdata  = N_VGetVector_Petsc(v);
   Vec Jvdata = N_VGetVector_Petsc(Jv);
@@ -79,7 +91,8 @@ CvodeFsp::cvode_jac(N_Vector v, N_Vector Jv, realtype t, N_Vector u, N_Vector fu
   return ierr;
 }
 
-int CvodeFsp::FreeWorkspace() {
+int CvodeFsp::FreeWorkspace()
+{
   OdeSolverBase::FreeWorkspace();
   int ierr;
   if (cvode_mem) CVodeFree(&cvode_mem);
@@ -87,18 +100,20 @@ int CvodeFsp::FreeWorkspace() {
   if (constr_vec_ != nullptr) N_VDestroy(constr_vec_);
   if (linear_solver != nullptr) SUNLinSolFree(linear_solver);
   if (solution_wrapper != nullptr) N_VDestroy(solution_wrapper);
-  solution_tmp  = nullptr;
-  constr_vec_ = nullptr;
-  linear_solver = nullptr;
+  solution_tmp     = nullptr;
+  constr_vec_      = nullptr;
+  linear_solver    = nullptr;
   solution_wrapper = nullptr;
   return 0;
 }
 
-CvodeFsp::~CvodeFsp() {
+CvodeFsp::~CvodeFsp()
+{
   FreeWorkspace();
 }
 
-PacmenslErrorCode CvodeFsp::SetUp() {
+PacmenslErrorCode CvodeFsp::SetUp()
+{
   // Make sure the necessary data has been set
   if (solution_ == nullptr) return -1;
   if (rhs_ == nullptr) return -1;
@@ -122,7 +137,8 @@ PacmenslErrorCode CvodeFsp::SetUp() {
 
   // Initialize cvode
   cvode_mem = CVodeCreate(lmm_);
-  if (cvode_mem == nullptr) {
+  if (cvode_mem == nullptr)
+  {
     PetscPrintf(comm_, "CVODE failed to initialize memory.\n");
     return -1;
   }

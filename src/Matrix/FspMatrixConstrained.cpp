@@ -23,11 +23,14 @@ int FspMatrixConstrained::Action(PetscReal t, Vec x, Vec y)
   ierr = FspMatrixBase::Action(t, x, y); PACMENSLCHKERRQ(ierr);
   ierr = VecGetLocalVector(x, xx); CHKERRQ(ierr);
   ierr = VecSet(sink_entries_, 0.0); CHKERRQ(ierr);
-  for (int i : tv_reactions_)
-  {
-    ierr = MatMult(tv_sinks_mat_[i], xx, sink_tmp); CHKERRQ(ierr);
-    ierr = VecAXPY(sink_entries_, time_coefficients_[i], sink_tmp); CHKERRQ(ierr);
+  if (!tv_reactions_.empty()){
+    for (int i : tv_reactions_)
+    {
+      ierr = MatMult(tv_sinks_mat_[i], xx, sink_tmp); CHKERRQ(ierr);
+      ierr = VecAXPY(sink_entries_, time_coefficients_[i], sink_tmp); CHKERRQ(ierr);
+    }
   }
+
   if (ti_sinks_mat_ != nullptr){
     ierr = MatMult(ti_sinks_mat_, xx, sink_tmp); CHKERRQ(ierr);
     ierr = VecAXPY(sink_entries_, 1.0, sink_tmp); CHKERRQ(ierr);

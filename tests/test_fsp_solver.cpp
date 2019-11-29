@@ -164,16 +164,23 @@ class FspPoissonTest : public ::testing::Test {
     auto propensity =
              [&](int reaction, int num_species, int num_states, const int *state, PetscReal *output, void *args) {
                for (int i{0}; i < num_states; ++i) {
-                 output[i] = lambda;
+                 output[i] = 1.0;
                }
                return 0;
              };
 
+    auto t_fun = [&](PetscReal t, int n_coefs, double *outputs, void *args) {
+      outputs[0] = lambda;
+      return 0;
+    };
+
+    auto tv_reactions = std::vector<int>({0});
+
     poisson_model = Model(stoich_matrix,
-                          nullptr,
+                          t_fun,
                           propensity,
                           nullptr,
-                          nullptr, std::vector<int>());
+                          nullptr, tv_reactions);
   }
 
   void TearDown() override {
@@ -211,7 +218,7 @@ TEST_F(FspPoissonTest, test_poisson_petsc) {
   ASSERT_FALSE(ierr);
   ierr = fsp.SetOdesType(ODESolverType::PETSC);
   ASSERT_FALSE(ierr);
-  ierr = fsp.SetOdeTolerances(1.0e-6, 1.0e-16);
+  ierr = fsp.SetOdeTolerances(1.0e-6, 1.0e-14);
   ASSERT_FALSE(ierr);
   ierr = fsp.SetUp();
   ASSERT_FALSE(ierr);
@@ -256,7 +263,7 @@ TEST_F(FspPoissonTest, test_poisson_cvode) {
   ierr = fsp.SetUp();
   ASSERT_FALSE(ierr);
   std::shared_ptr<CvodeFsp> ode_solver = std::dynamic_pointer_cast<CvodeFsp>(fsp.GetOdeSolver());
-  ode_solver->SetTolerances(1.0e-6, 1.0e-16);
+  ode_solver->SetTolerances(1.0e-6, 1.0e-14);
 
   p_final = fsp.Solve(t_final, fsp_tol, 0);
   fsp.ClearState();
