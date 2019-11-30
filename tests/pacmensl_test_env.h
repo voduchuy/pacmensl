@@ -39,9 +39,11 @@ class PACMENSLEnvironment : public ::testing::Environment {
 }
 
 int main(int argc, char *argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
   // Initialize MPI
-//  MPI_Init(&argc, &argv);
+  MPI_Init(&argc, &argv);
+  PetscInitialize(&argc, &argv, NULL, NULL);
+
+  ::testing::InitGoogleTest(&argc, argv);
 
   ::testing::AddGlobalTestEnvironment(new pacmensl::test::PACMENSLEnvironment(argc, argv));
 
@@ -62,7 +64,8 @@ int main(int argc, char *argv[]) {
     if (rank == 0) printf("SUCCESS!\n");
   }
 
-//  MPI_Finalize();
+  PetscFinalize();
+  MPI_Finalize();
   return ierr;
 }
 

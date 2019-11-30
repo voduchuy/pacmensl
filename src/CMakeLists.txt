@@ -3,6 +3,7 @@ set(EXT_LIBRARIES
         -lsundials_cvodes
         -lsundials_nvecpetsc
         -lzoltan
+        -lepic1.0.0
         ${PETSC_LIBRARIES}
         )
 

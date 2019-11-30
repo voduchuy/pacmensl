@@ -128,10 +128,6 @@ PacmenslErrorCode CvodeFsp::SetUp()
   petsc_err = VecCopy(*solution_, solution_tmp_dat);
   CHKERRQ(petsc_err);
 
-//  constr_vec_ = N_VClone(solution_tmp);
-//  petsc_err = VecSet(N_VGetVector_Petsc(constr_vec_), 1.0);
-//  CHKERRQ(petsc_err);
-
   // Set CVODE starting time to the current timepoint
   t_now_tmp = t_now_;
 
@@ -154,8 +150,6 @@ PacmenslErrorCode CvodeFsp::SetUp()
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetMaxNonlinIters(cvode_mem, 10000);
   CVODECHKERRQ(cvode_stat);
-//  cvode_stat = CVodeSetConstraints(cvode_mem, constr_vec_);
-//  CVODECHKERRQ(cvode_stat);
 
   // Create the linear solver without preconditioning
   linear_solver = SUNLinSol_SPGMR(solution_tmp, PREC_NONE, 100);

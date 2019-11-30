@@ -8,6 +8,7 @@ static char help[] = "Test interface to CVODE for solving the CME of the toggle 
 #include "FspMatrixConstrained.h"
 #include "CvodeFsp.h"
 #include "KrylovFsp.h"
+#include "EpicFsp.h"
 #include"pacmensl_test_env.h"
 
 using namespace pacmensl;
@@ -122,6 +123,39 @@ TEST_F(OdeTest, use_cvode_bdf) {
   ierr = cvode_solver.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
   ierr = cvode_solver.SetUp(); ASSERT_EQ(ierr, 0);
   PetscInt solver_stat = cvode_solver.Solve();
+  ASSERT_FALSE(solver_stat);
+
+  PetscReal Psum;
+  VecSum(P, &Psum);
+  ASSERT_LE(Psum, 1.0 + 1.0e-8);
+  ASSERT_GE(Psum, 1.0 - 1.0e-8);
+  VecDestroy(&P);
+}
+
+TEST_F(OdeTest, use_epic) {
+  PacmenslErrorCode ierr;
+  auto AV = [&](PetscReal t, Vec x, Vec y) {
+    return A->Action(t, x, y);
+  };
+
+  Vec P;
+  VecCreate(PETSC_COMM_WORLD, &P);
+  VecSetSizes(P, A->GetNumLocalRows(), PETSC_DECIDE);
+  VecSetFromOptions(P);
+  VecSetValue(P, 0, 1.0, INSERT_VALUES);
+  VecSetUp(P);
+  VecAssemblyBegin(P);
+  VecAssemblyEnd(P);
+
+  PetscReal fsp_tol = 1.0e-2, t_final = 100.0;
+
+  EpicFsp  hero(PETSC_COMM_WORLD, 5);
+  ierr = hero.SetFinalTime(t_final); ASSERT_EQ(ierr, 0);
+  ierr = hero.SetInitialSolution(&P); ASSERT_EQ(ierr, 0);
+  ierr = hero.SetRhs(AV); ASSERT_EQ(ierr, 0);
+  ierr = hero.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
+  ierr = hero.SetUp(); ASSERT_EQ(ierr, 0);
+  PetscInt solver_stat = hero.Solve();
   ASSERT_FALSE(solver_stat);
 
   PetscReal Psum;

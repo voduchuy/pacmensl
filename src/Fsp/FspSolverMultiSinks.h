@@ -18,6 +18,7 @@
 #include"KrylovFsp.h"
 #include"CvodeFsp.h"
 #include"TsFsp.h"
+#include"EpicFsp.h"
 #include"Sys.h"
 #include"PetscWrap.h"
 

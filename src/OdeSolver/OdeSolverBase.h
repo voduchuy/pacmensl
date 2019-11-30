@@ -15,7 +15,7 @@
 #include "StateSetConstrained.h"
 
 namespace pacmensl {
-enum ODESolverType { KRYLOV, CVODE, PETSC };
+enum ODESolverType { KRYLOV, CVODE, PETSC, EPIC };
 
 struct FiniteProblemSolverPerfInfo {
   PetscInt n_step;
