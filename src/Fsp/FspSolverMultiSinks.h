@@ -66,6 +66,8 @@ class FspSolverMultiSinks
 
   PacmenslErrorCode SetOdesType(ODESolverType odes_type);
 
+  PacmenslErrorCode SetOdesPetscType(std::string ts_type);
+
   std::shared_ptr<const StateSetBase> GetStateSet();
 
   std::shared_ptr<OdeSolverBase> GetOdeSolver();
@@ -142,6 +144,9 @@ class FspSolverMultiSinks
   PetscLogEvent RHSEvaluation;
   PetscLogEvent SettingUp;
   PetscLogEvent Solving;
+
+  bool custom_ts_type = false;
+  std::string ts_type_ = "";
 
  public:
   PacmenslErrorCode SetOdeTolerances(PetscReal rel_tol, PetscReal abs_tol);

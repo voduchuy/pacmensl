@@ -14,8 +14,12 @@ using PacmenslErrorCode = int;
         int rank;\
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);\
         printf("PACMENSL Error: function %s line %d file %s on rank %d \n.", __func__, __LINE__, __FILE__, rank);\
-        if (!std::strcmp(__func__, "main")) MPI_Abort(MPI_COMM_WORLD, ierr);\
-        return ierr;\
+        if (!std::strcmp(__func__, "main")) {\
+          MPI_Abort(MPI_COMM_WORLD, ierr);\
+        }\
+        else{\
+          return ierr;\
+        }\
     }\
 }
 

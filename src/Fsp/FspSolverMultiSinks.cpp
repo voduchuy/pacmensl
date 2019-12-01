@@ -159,6 +159,7 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
       }
       catch (...)
       {
+        ierr = -1;
         PACMENSLCHKERRTHROW(ierr);
       }
 
@@ -369,8 +370,9 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
       case EPIC:ode_solver_ = std::make_shared<EpicFsp>(comm_, model_.stoichiometry_matrix_.n_cols);
         break;
       default:ode_solver_ = std::make_shared<TsFsp>(comm_);
+        if (custom_ts_type) ((TsFsp*) ode_solver_.get())->SetTsType(ts_type_.c_str());
     }
-
+    ode_solver_->SetFspMatPtr(A_.get());
     if (logging_enabled)
     {
       ode_solver_->EnableLogging();
@@ -664,6 +666,21 @@ PacmenslErrorCode FspSolverMultiSinks::MakeDiscreteDistribution_(DiscreteDistrib
 std::shared_ptr<OdeSolverBase> FspSolverMultiSinks::GetOdeSolver()
 {
   return ode_solver_;
+}
+
+PacmenslErrorCode FspSolverMultiSinks::SetOdesPetscType(std::string ts_type)
+{
+  if (odes_type_ != PETSC){
+    return 0;
+  }
+  if (ode_solver_ != nullptr){
+    ((TsFsp*) ode_solver_.get())->SetTsType(ts_type);
+  }
+  else{
+    custom_ts_type = true;
+    ts_type_ = std::string(ts_type);
+  }
+  return 0;
 }
 
 }

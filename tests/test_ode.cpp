@@ -9,6 +9,7 @@ static char help[] = "Test interface to CVODE for solving the CME of the toggle 
 #include "CvodeFsp.h"
 #include "KrylovFsp.h"
 #include "EpicFsp.h"
+#include "TsFsp.h"
 #include"pacmensl_test_env.h"
 
 using namespace pacmensl;
@@ -267,5 +268,40 @@ TEST_F(OdeTest, krylov_handling_bad_mat_vec) {
   PetscInt solver_stat = krylov_solver.Solve();
   ASSERT_EQ(solver_stat, -1);
 
+  VecDestroy(&P);
+}
+
+TEST_F(OdeTest, use_petsc) {
+  PacmenslErrorCode ierr;
+  auto AV = [&](PetscReal t, Vec x, Vec y) {
+    return A->Action(t, x, y);
+  };
+
+  Vec P;
+  VecCreate(PETSC_COMM_WORLD, &P);
+  VecSetSizes(P, A->GetNumLocalRows(), PETSC_DECIDE);
+  VecSetFromOptions(P);
+  VecSetValue(P, 0, 1.0, INSERT_VALUES);
+  VecSetUp(P);
+  VecAssemblyBegin(P);
+  VecAssemblyEnd(P);
+
+  PetscReal fsp_tol = 1.0e-2, t_final = 100.0;
+
+  TsFsp  ts(PETSC_COMM_WORLD);
+  ierr = ts.SetFinalTime(t_final); ASSERT_EQ(ierr, 0);
+  ierr = ts.SetInitialSolution(&P); ASSERT_EQ(ierr, 0);
+  ierr = ts.SetRhs(AV); ASSERT_EQ(ierr, 0);
+  ierr = ts.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
+  ierr = ts.SetFspMatPtr(A); ASSERT_EQ(ierr, 0);
+  ierr = ts.SetStatusOutput(1); ASSERT_EQ(ierr, 0);
+  ierr = ts.SetUp(); ASSERT_EQ(ierr, 0);
+  PetscInt solver_stat = ts.Solve();
+  ASSERT_FALSE(solver_stat);
+
+  PetscReal Psum;
+  VecSum(P, &Psum);
+  ASSERT_LE(Psum, 1.0 + 1.0e-8);
+  ASSERT_GE(Psum, 1.0 - 1.0e-8);
   VecDestroy(&P);
 }

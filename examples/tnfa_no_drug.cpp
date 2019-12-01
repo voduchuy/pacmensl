@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
 
   // Set up CME
   std::string model_name = "tnfalpha_no_drug";
-  Model tnfa_model(SM, t_fun, propensity, nullptr, nullptr);
+  Model tnfa_model(SM, t_fun, propensity, nullptr, nullptr, std::vector<int>({0, 1, 2,3, 4, 5,6}));
   PetscReal t_final = T0 + 4*3600;
   PetscReal fsp_tol = 1.0e-4;
   arma::Mat<PetscInt> X0 = {2, 0, 0, 0};
@@ -155,6 +155,8 @@ int main(int argc, char *argv[]) {
   FspSolverMultiSinks fsp_solver(comm, fsp_par_type, CVODE);
   fsp_solver.SetModel(tnfa_model);
   fsp_solver.SetInitialDistribution(X0, p0);
+  fsp_solver.SetOdesType(PETSC);
+  fsp_solver.SetOdeTolerances(1.0e-3, 1.0e-8);
   fsp_solver.SetFromOptions();
   DiscreteDistribution solution;
 

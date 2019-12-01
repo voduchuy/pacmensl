@@ -71,8 +71,8 @@ PetscInt EpicFsp::Solve()
     }
     // Copy data from temporary vector to solution_ vector
     petsc_err = VecCopy(solution_tmp_dat,*solution_);
+    CHKERRQ(petsc_err);
   }
-  CHKERRQ(petsc_err);
   return stop;
 }
 
@@ -196,6 +196,7 @@ PacmenslErrorCode EpiRK4SVInterface::Step(const realtype hStart,
   if (t0 + hNew >= tFinal)
   {
     hNew = tFinal - t0;
+    h = hNew;
   }
 
 
@@ -314,19 +315,15 @@ PacmenslErrorCode EpiRK4SVInterface::Step(const realtype hStart,
       printf("There is possible singularity in the solution\n");
       exit(EXIT_FAILURE);
     }
-    //printf("err = %f, hNew = %f\n", err, hNew);
+//    printf("err = %.2e, hNew = %f\n", err, hNew);
   }
 
-  if (t + hNew >= tFinal)
-  {
-    hNew = tFinal - t;
-  }
   *hnew = hNew;
   // Copy tentative y (scratchVec1) to y.
   N_VLinearSum(1.0,scratchVec1,0.0,y,y);
   // y is now new y, i.e., u_{n+1} = y
 
-  *tnew = t + h;
+  tnew[0] = t + h;
 
   return 0;
 }

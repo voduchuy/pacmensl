@@ -19,19 +19,30 @@ class TsFsp: public OdeSolverBase {
 
   PetscInt Solve() override;
 
+  PacmenslErrorCode SetTsType(std::string type);
+
   int FreeWorkspace() override;
 
   ~TsFsp() override;
 
  protected:
-  TSType type_ = TSRK;
+  std::string type_ = std::string(TSROSW);
   Petsc<TS> ts_;
   PetscReal t_now_tmp = 0.0;
-
+  PetscInt fsp_stop_ = 0;
   Vec solution_tmp_;
 
+  bool jac_update = false;
+  int njac = 0, nstep = 0;
+
+  Mat J = nullptr;
   static int TSRhsFunc(TS ts, PetscReal t, Vec u, Vec F, void* ctx);
-  static int TSDetectFspError(TS ts,PetscReal t,Vec U,PetscScalar fvalue[],void* ctx);
+  static int TSJacFunc(TS ts,PetscReal t,Vec u,Mat A,Mat B,void *ctx);
+  static int TSIFunc(TS ts, PetscReal t, Vec u, Vec u_t, Vec F, void*ctx);
+  static int TSIJacFunc(TS ts, PetscReal t, Vec u, Vec u_t, PetscReal a, Mat A, Mat P, void*ctx);
+  static int TSCheckFspError(TS ts);
+
+  static int CheckImplicitType(TSType type, int* implicit);
 };
 }
 

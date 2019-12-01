@@ -27,8 +27,8 @@ class MatrixTest : public ::testing::Test {
   void SetUp() override {
     fsp_size = arma::Row<int>({12});
     t_fun    = [&](double t, int num_coefs, double *outputs, void *args) {
-      outputs[0] = 0.0;
-      outputs[1] = 0.0;
+      outputs[0] = 1.0+t;
+      outputs[1] = 1.0 + 0.5*t;
       return 0;
     };
 
@@ -132,6 +132,52 @@ TEST_F(MatrixTest, mat_base_generation) {
   ASSERT_FALSE(ierr);
 }
 
+TEST_F(MatrixTest, mat_base_jacobian) {
+  int ierr;
+
+  double Q_sum;
+
+  FspMatrixBase A(PETSC_COMM_WORLD);
+  ierr = A.GenerateValues(*state_set,
+                          stoichiometry,
+                          std::vector<int>(),
+                          t_fun,
+                          propensity,
+                          std::vector<int>(),
+                          nullptr,
+                          nullptr);
+  ASSERT_FALSE(ierr);
+
+  Vec P, Q;
+  ierr = VecCreate(PETSC_COMM_WORLD, &P);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetSizes(P, state_set->GetNumLocalStates(), PETSC_DECIDE);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetFromOptions(P);
+  ASSERT_FALSE(ierr);
+  ierr = VecSet(P, 1.0);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetUp(P);
+  ASSERT_FALSE(ierr);
+  ierr = VecDuplicate(P, &Q);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetUp(Q);
+  ASSERT_FALSE(ierr);
+
+  Mat J;
+  A.CreateRHSJacobian(&J);
+  A.ComputeRHSJacobian(0.0,J,false);
+  MatMult(J, P, Q);
+
+  ierr = VecSum(Q, &Q_sum);
+  ASSERT_FALSE(ierr);
+  ASSERT_DOUBLE_EQ(Q_sum, -1.0 * rate_right);
+  ierr = VecDestroy(&P);
+  ASSERT_FALSE(ierr);
+  ierr = VecDestroy(&Q);
+  ASSERT_FALSE(ierr);
+}
+
 TEST_F(MatrixTest, mat_constrained_generate_values) {
   int ierr;
 
@@ -171,4 +217,108 @@ TEST_F(MatrixTest, mat_constrained_generate_values) {
   ASSERT_FALSE(ierr);
   ierr = VecDestroy(&Q);
   ASSERT_FALSE(ierr);
+}
+
+TEST_F(MatrixTest, mat_constrained_jacobian1) {
+  int ierr;
+
+  double Q_sum;
+
+  FspMatrixConstrained A(PETSC_COMM_WORLD);
+  ierr = A.GenerateValues(*state_set,
+                          stoichiometry,
+                          std::vector<int>(),
+                          t_fun,
+                          propensity,
+                          std::vector<int>(),
+                          nullptr,
+                          nullptr);
+  ASSERT_FALSE(ierr);
+
+  Vec P, Q;
+  ierr = VecCreate(PETSC_COMM_WORLD, &P);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetSizes(P, A.GetNumLocalRows(), PETSC_DECIDE);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetFromOptions(P);
+  ASSERT_FALSE(ierr);
+  ierr = VecSet(P, 1.0);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetUp(P);
+  ASSERT_FALSE(ierr);
+  ierr = VecDuplicate(P, &Q);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetUp(Q);
+  ASSERT_FALSE(ierr);
+
+  Mat J;
+  ierr = A.CreateRHSJacobian(&J);
+  ASSERT_FALSE(ierr);
+  ierr = A.ComputeRHSJacobian(0.0,J,false);
+  ASSERT_FALSE(ierr);
+  ierr = MatMult(J, P, Q);
+  ASSERT_FALSE(ierr);
+
+  ierr = VecSum(Q, &Q_sum);
+  ASSERT_FALSE(ierr);
+  ASSERT_DOUBLE_EQ(Q_sum, 0.0);
+  ierr = VecDestroy(&P);
+  ASSERT_FALSE(ierr);
+  ierr = VecDestroy(&Q);
+  ASSERT_FALSE(ierr);
+}
+
+TEST_F(MatrixTest, mat_constrained_jacobian2) {
+  int ierr;
+
+  PetscReal gap, maxerr;
+  Vec x, y, z;
+
+  PetscRandom prand;
+  ierr = PetscRandomCreate(PETSC_COMM_WORLD, &prand); ASSERT_FALSE(ierr);
+  ierr = PetscRandomSetType(prand, PETSCRAND); ASSERT_FALSE(ierr);
+
+  FspMatrixConstrained A(PETSC_COMM_WORLD);
+  ierr = A.GenerateValues(*state_set,
+                          stoichiometry,
+                          std::vector<int>({0, 1}),
+                          t_fun,
+                          propensity,
+                          std::vector<int>(),
+                          nullptr,
+                          nullptr);
+  ASSERT_FALSE(ierr);
+
+  ierr = VecCreate(PETSC_COMM_WORLD, &x);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetSizes(x, A.GetNumLocalRows(), PETSC_DECIDE);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetFromOptions(x);
+  ASSERT_FALSE(ierr);
+  ierr = VecSet(x, 1.0);
+  ASSERT_FALSE(ierr);
+  ierr = VecSetUp(x);
+  ASSERT_FALSE(ierr);
+  ierr = VecDuplicate(x, &y);
+  ASSERT_FALSE(ierr);
+  ierr = VecDuplicate(x, &z);
+  ASSERT_FALSE(ierr);
+
+
+  std::vector<PetscReal> t_test({0.0, 0.1, 0.2, 1.0, 10.0});
+
+  Mat J;
+  ierr = A.CreateRHSJacobian(&J);
+  ASSERT_FALSE(ierr);
+  maxerr = 0.0;
+  for (auto t: t_test){
+    VecSetRandom(x, prand);
+    A.ComputeRHSJacobian(t,J,false);
+    MatMult(J, x, y);
+    A.Action(t, x, z);
+    VecAXPY(z, -1.0, y);
+    VecNorm(z, NORM_2, &gap);
+    if (maxerr > gap) maxerr = gap;
+  }
+  ASSERT_LE(maxerr, 1.0e-14);
 }

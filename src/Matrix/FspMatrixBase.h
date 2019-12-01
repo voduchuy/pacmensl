@@ -49,7 +49,7 @@ class FspMatrixBase {
   virtual PacmenslErrorCode Action(PetscReal t, Vec x, Vec y);
 
   virtual int CreateRHSJacobian(Mat* A);
-  virtual int ComputeRHSJacobian(PetscReal t, Mat A);
+  virtual int ComputeRHSJacobian(PetscReal t,Mat A,bool update_mode = false);
 
   int GetNumLocalRows() const { return num_rows_local_; };
 
@@ -62,9 +62,9 @@ class FspMatrixBase {
   Int num_reactions_   = 0;
   Int num_rows_global_ = 0;
   Int num_rows_local_  = 0;
-  std::vector<int> enable_reactions_;
-  std::vector<int> tv_reactions_;
-  std::vector<int> ti_reactions_;
+  std::vector<int> enable_reactions_ = std::vector<int>();
+  std::vector<int> tv_reactions_= std::vector<int>();
+  std::vector<int> ti_reactions_= std::vector<int>();
 
   // Local data of the matrix
   std::vector<Petsc<Mat>> tv_mats_;
@@ -78,6 +78,17 @@ class FspMatrixBase {
   arma::Row<Real> time_coefficients_;
 
   virtual int DetermineLayout_(const StateSetBase &fsp);
+
+  // arrays for counting nonzero entries on the diagonal and off-diagonal blocks
+  arma::Mat<Int>       dblock_nz_, oblock_nz_;
+  arma::Col<Int> ti_dblock_nz_, ti_oblock_nz_;
+  // arrays of nonzero column indices
+  arma::Mat<Int>       offdiag_col_idxs_;
+  // array o fmatrix values
+  arma::Mat<PetscReal> offdiag_vals_;
+  arma::Mat<PetscReal> diag_vals_;
+
+  // Data for computing the Jacobian in the form of MatShell
 };
 
 }

@@ -40,7 +40,7 @@ class PACMENSLEnvironment : public ::testing::Environment {
 
 int main(int argc, char *argv[]) {
   // Initialize MPI
-  MPI_Init(&argc, &argv);
+//  MPI_Init(&argc, &argv);
   PetscInitialize(&argc, &argv, NULL, NULL);
 
   ::testing::InitGoogleTest(&argc, argv);
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
   }
 
   PetscFinalize();
-  MPI_Finalize();
+//  MPI_Finalize();
   return ierr;
 }
 

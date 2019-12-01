@@ -26,6 +26,9 @@ class FspMatrixConstrained : public FspMatrixBase
 
   int Action(PetscReal t, Vec x, Vec y) override;
 
+  int CreateRHSJacobian(Mat* A) override;
+  int ComputeRHSJacobian(PetscReal t,Mat A,bool update_mode) override;
+
   ~FspMatrixConstrained() override;
 
  protected:
@@ -40,6 +43,10 @@ class FspMatrixConstrained : public FspMatrixBase
   Vec xx = nullptr;
 
   PacmenslErrorCode DetermineLayout_(const StateSetBase &fsp) override;
+
+  arma::Mat<int>                    sinkmat_nnz;
+  std::vector<arma::Row<int>>       sinkmat_inz;
+  std::vector<arma::Row<PetscReal>> sinkmat_entries;
 };
 }
 

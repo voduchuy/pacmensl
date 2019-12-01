@@ -115,4 +115,10 @@ OdeSolverBase::SetStopCondition(const std::function<PacmenslErrorCode (PetscReal
   OdeSolverBase::stop_data_ = stop_data_;
   return 0;
 }
+
+PacmenslErrorCode OdeSolverBase::SetFspMatPtr(FspMatrixBase* mat)
+{
+  fspmat_ = mat;
+  return 0;
+}
 }

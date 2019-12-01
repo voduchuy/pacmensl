@@ -13,6 +13,7 @@
 #include<nvector/nvector_petsc.h>
 #include "Sys.h"
 #include "StateSetConstrained.h"
+#include "FspMatrixBase.h"
 
 namespace pacmensl {
 enum ODESolverType { KRYLOV, CVODE, PETSC, EPIC };
@@ -32,6 +33,8 @@ class OdeSolverBase {
   PacmenslErrorCode SetFinalTime(PetscReal _t_final);
 
   PacmenslErrorCode SetInitialSolution(Vec *_sol);
+
+  PacmenslErrorCode SetFspMatPtr(FspMatrixBase* mat);
 
   PacmenslErrorCode SetRhs(std::function<PacmenslErrorCode (PetscReal, Vec, Vec)> _rhs);
 
@@ -64,6 +67,8 @@ class OdeSolverBase {
 
   Vec *solution_ = nullptr;
   std::function<int (PetscReal t, Vec x, Vec y)> rhs_;
+
+  FspMatrixBase* fspmat_;
 
   PetscReal t_now_ = 0.0;
   PetscReal t_final_ = 0.0;
