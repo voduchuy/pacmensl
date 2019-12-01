@@ -181,6 +181,8 @@ int pacmensl::TsFsp::TSJacFunc(TS ts,PetscReal t,Vec u,Mat A,Mat B,void *ctx)
     MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(B,MAT_FINAL_ASSEMBLY);
   }
+
+  solver->njac += 1;
   return 0;
 }
 

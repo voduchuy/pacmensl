@@ -94,6 +94,10 @@ int FspMatrixConstrained::Destroy()
     ierr = VecScatterDestroy(&sink_scatter_ctx_);
     CHKERRQ(ierr);
   }
+  sinkmat_nnz.clear();
+  sinkmat_inz.clear();
+  sinkmat_entries.clear();
+
   return 0;
 }
 
@@ -392,11 +396,10 @@ int FspMatrixConstrained::CreateRHSJacobian(Mat *A)
   {
     for (int i_constr{0}; i_constr < num_constraints_; i_constr++)
     {
-      sinkmat_inz.at(i_reaction * num_constraints_ + i_constr) += own_start;
       for (int j{0}; j < sinkmat_nnz(i_constr,i_reaction); j++)
       {
         itmp = num_rows_global_ - num_constraints_ + i_constr;
-        ierr = MatSetValue(*A,itmp,*(sinkmat_inz.at(i_reaction * num_constraints_ + i_constr).memptr() + j),
+        ierr = MatSetValue(*A,itmp,*(sinkmat_inz.at(i_reaction * num_constraints_ + i_constr).memptr() + j)+own_start,
                            0.0,INSERT_VALUES);
         CHKERRQ(ierr);
       }
@@ -406,9 +409,6 @@ int FspMatrixConstrained::CreateRHSJacobian(Mat *A)
   MatAssemblyBegin(*A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(*A,MAT_FINAL_ASSEMBLY);
 
-  ierr = MatSetOption(*A, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
-  CHKERRQ(ierr);
-
   return 0;
 }
 
@@ -416,9 +416,13 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A)
 {
   int      ierr = 0;
   PetscInt itmp,jtmp;
+  PetscInt own_start, own_end;
 
   ierr = FspMatrixBase::ComputeRHSJacobian(t,A);
   PACMENSLCHKERRQ(ierr);
+
+  ierr = VecGetOwnershipRange(work_, &own_start,&own_end);
+  CHKERRQ(ierr);
 
   PetscReal atmp;
   if (!tv_reactions_.empty())
@@ -432,7 +436,7 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A)
         {
           itmp = num_rows_global_ - num_constraints_ + i_constr;
           atmp = time_coefficients_(i_reaction) * sinkmat_entries.at(i_reaction * num_constraints_ + i_constr)(j);
-          jtmp = sinkmat_inz.at(i_reaction * num_constraints_ + i_constr)(j);
+          jtmp = sinkmat_inz.at(i_reaction * num_constraints_ + i_constr)(j) + own_start;
 
           ierr = MatSetValue(A,itmp,jtmp,atmp,ADD_VALUES);
           CHKERRQ(ierr);
@@ -451,7 +455,8 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A)
         itmp = num_rows_global_ - num_constraints_ + i_constr;
         ierr = MatSetValues(A,1,&itmp,sinkmat_nnz(i_constr,i_reaction),
                             sinkmat_inz.at(i_reaction * num_constraints_ + i_constr).memptr(),
-                            sinkmat_entries.at(i_reaction * num_constraints_ + i_constr).memptr(),ADD_VALUES);
+                            sinkmat_entries.at(i_reaction * num_constraints_ + i_constr).memptr() + own_start,
+                            ADD_VALUES);
         CHKERRQ(ierr);
       }
     }

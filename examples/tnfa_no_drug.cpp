@@ -16,9 +16,9 @@ arma::Mat<PetscInt> SM{{-1,1, 0,  0, 0, 0, 0},
                        {0, 0, 0,  0, 1, 1, -1}};
 
 
-PetscReal theta[] = {7.07971801e-03, 4.91966023e-03, 1.23079692e-03, 1.03392425e-03,
-                     8.21417668e-02, 1.46751443e-03, 1.48062835e+05, 1.61462518e-05,
-                     1.57951615e-01, 1.11115778e-04};
+PetscReal theta[] = {3.98634865e-03, 1.00000000e-02, 8.64980068e-04, 1.02280560e-01,
+3.71705981e+02, 7.88810222e-04, 2.24254520e-03, 1.75909361e-02,
+2.27393435e-01, 1.35198833e-04};
 // reaction parameters
 const PetscReal     r1 = theta[0],
                     r2 = theta[1],
@@ -138,7 +138,8 @@ int main(int argc, char *argv[]) {
   std::string model_name = "tnfalpha_no_drug";
   Model tnfa_model(SM, t_fun, propensity, nullptr, nullptr, std::vector<int>({0, 1, 2,3, 4, 5,6}));
   PetscReal t_final = T0 + 4*3600;
-  PetscReal fsp_tol = 1.0e-4;
+
+  PetscReal fsp_tol = 1.0e-6;
   arma::Mat<PetscInt> X0 = {2, 0, 0, 0};
   X0 = X0.t();
   arma::Col<PetscReal> p0 = {1.0};
@@ -156,7 +157,6 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetModel(tnfa_model);
   fsp_solver.SetInitialDistribution(X0, p0);
   fsp_solver.SetOdesType(PETSC);
-  fsp_solver.SetOdeTolerances(1.0e-3, 1.0e-8);
   fsp_solver.SetFromOptions();
   DiscreteDistribution solution;
 
