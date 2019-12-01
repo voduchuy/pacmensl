@@ -90,7 +90,6 @@ PacmenslErrorCode pacmensl::TsFsp::FreeWorkspace()
     MatDestroy(&J);
     J = nullptr;
   }
-  jac_update             = false;
   njac                   = 0;
   nstep                  = 0;
   TSDestroy(ts_.mem());
@@ -172,11 +171,10 @@ int pacmensl::TsFsp::TSJacFunc(TS ts,PetscReal t,Vec u,Mat A,Mat B,void *ctx)
   int  ierr;
   auto solver = ( TsFsp * ) ctx;
 
-  ierr = solver->fspmat_->ComputeRHSJacobian(t,A,solver->jac_update);
+  ierr = solver->fspmat_->ComputeRHSJacobian(t,A);
   PACMENSLCHKERRQ(ierr);
 
   // Turn on update mode for subsequent Jacobian evaluations
-  solver->jac_update = true;
 
   if (B != A)
   {
@@ -203,11 +201,10 @@ int pacmensl::TsFsp::TSIJacFunc(TS ts,PetscReal t,Vec u,Vec u_t,PetscReal a,Mat 
   int  ierr;
   auto solver = ( TsFsp * ) ctx;
 
-  ierr = solver->fspmat_->ComputeRHSJacobian(t,A,solver->jac_update);
+  ierr = solver->fspmat_->ComputeRHSJacobian(t,A);
   PACMENSLCHKERRQ(ierr);
 
   // Turn on update mode for subsequent Jacobian evaluations
-  solver->jac_update = true;
 
   ierr = MatShift(A,-1.0 * a);
   CHKERRQ(ierr);

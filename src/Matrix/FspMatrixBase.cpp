@@ -357,7 +357,7 @@ int FspMatrixBase::CreateRHSJacobian(Mat *A)
 
 // If not in update mode, enter all values, if in update mode, only change the diagonal entries and the entries corresponding to
 // time-varying reactions
-int FspMatrixBase::ComputeRHSJacobian(PetscReal t,Mat A,bool update_mode)
+int FspMatrixBase::ComputeRHSJacobian(PetscReal t,Mat A)
 {
   int      ierr{0};
   PetscInt own_start,own_end,num_local_states;
@@ -366,23 +366,9 @@ int FspMatrixBase::ComputeRHSJacobian(PetscReal t,Mat A,bool update_mode)
   ierr = VecGetOwnershipRange(work_,&own_start,&own_end);
   PACMENSLCHKERRQ(ierr);
 
-  if (!update_mode)
-  {
-    ierr = MatZeroEntries(A);
-    PACMENSLCHKERRQ(ierr);
-  } else
-  {
-    // Only zero out the diagonal
-    for (int i{0}; i < num_local_states; ++i)
-    {
-      ierr = MatSetValue(A,
-                         own_start + i,
-                         own_start + i,
-                         0.0,
-                         INSERT_VALUES);
-      PACMENSLCHKERRQ(ierr);
-    }
-  }
+  ierr = MatZeroEntries(A);
+  PACMENSLCHKERRQ(ierr);
+
 
   // Update off-diagonal entries
   if (!tv_reactions_.empty())
@@ -397,32 +383,25 @@ int FspMatrixBase::ComputeRHSJacobian(PetscReal t,Mat A,bool update_mode)
                            own_start + i,
                            offdiag_col_idxs_(i,ir),
                            time_coefficients_[ir] * offdiag_vals_(i,ir),
-                           INSERT_VALUES);
+                           ADD_VALUES);
         PACMENSLCHKERRQ(ierr);
       }
     }
   }
 
-  if (!update_mode)
+  if (!ti_reactions_.empty())
   {
-    if (!ti_reactions_.empty())
+    for (auto ir: ti_reactions_)
     {
-      for (auto ir: ti_reactions_)
-      {
 
-        for (int i{0}; i < num_local_states; ++i)
-        {
-          ierr = MatSetValue(A,own_start + i,offdiag_col_idxs_(i,ir),offdiag_vals_(i,ir),INSERT_VALUES);
-          PACMENSLCHKERRQ(ierr);
-        }
+      for (int i{0}; i < num_local_states; ++i)
+      {
+        ierr = MatSetValue(A,own_start + i,offdiag_col_idxs_(i,ir),offdiag_vals_(i,ir),ADD_VALUES);
+        PACMENSLCHKERRQ(ierr);
       }
     }
   }
 
-  ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
-  PACMENSLCHKERRQ(ierr);
-  ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
-  PACMENSLCHKERRQ(ierr);
 
   // Update the diagonal entries
   if (!tv_reactions_.empty())

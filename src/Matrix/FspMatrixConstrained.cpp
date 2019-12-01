@@ -406,34 +406,19 @@ int FspMatrixConstrained::CreateRHSJacobian(Mat *A)
   MatAssemblyBegin(*A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(*A,MAT_FINAL_ASSEMBLY);
 
+  ierr = MatSetOption(*A, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);
+  CHKERRQ(ierr);
+
   return 0;
 }
 
-int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A,bool update_mode)
+int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A)
 {
   int      ierr = 0;
   PetscInt itmp,jtmp;
 
-  ierr = FspMatrixBase::ComputeRHSJacobian(t,A,false);
+  ierr = FspMatrixBase::ComputeRHSJacobian(t,A);
   PACMENSLCHKERRQ(ierr);
-
-  if (update_mode)
-  {
-    if (rank_ == sinks_rank_)
-    {
-      for (int i_constr{0}; i_constr < num_constraints_; i_constr++)
-      {
-
-        itmp = num_rows_global_ - num_constraints_ + i_constr;
-        ierr = MatSetValue(A,itmp,itmp,0.0,INSERT_VALUES);
-        CHKERRQ(ierr);
-
-      }
-    }
-  }
-
-  MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
 
   PetscReal atmp;
   if (!tv_reactions_.empty())

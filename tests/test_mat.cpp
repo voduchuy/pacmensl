@@ -166,7 +166,7 @@ TEST_F(MatrixTest, mat_base_jacobian) {
 
   Mat J;
   A.CreateRHSJacobian(&J);
-  A.ComputeRHSJacobian(0.0,J,false);
+  A.ComputeRHSJacobian(0.0,J);
   MatMult(J, P, Q);
 
   ierr = VecSum(Q, &Q_sum);
@@ -254,7 +254,7 @@ TEST_F(MatrixTest, mat_constrained_jacobian1) {
   Mat J;
   ierr = A.CreateRHSJacobian(&J);
   ASSERT_FALSE(ierr);
-  ierr = A.ComputeRHSJacobian(0.0,J,false);
+  ierr = A.ComputeRHSJacobian(0.0,J);
   ASSERT_FALSE(ierr);
   ierr = MatMult(J, P, Q);
   ASSERT_FALSE(ierr);
@@ -313,7 +313,7 @@ TEST_F(MatrixTest, mat_constrained_jacobian2) {
   maxerr = 0.0;
   for (auto t: t_test){
     VecSetRandom(x, prand);
-    A.ComputeRHSJacobian(t,J,false);
+    A.ComputeRHSJacobian(t,J);
     MatMult(J, x, y);
     A.Action(t, x, z);
     VecAXPY(z, -1.0, y);
