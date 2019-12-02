@@ -32,7 +32,6 @@ class TsFsp: public OdeSolverBase {
   PetscInt fsp_stop_ = 0;
   Vec solution_tmp_;
 
-  bool jac_update = false;
   int njac = 0, nstep = 0;
 
   Mat J = nullptr;

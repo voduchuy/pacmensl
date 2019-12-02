@@ -406,6 +406,30 @@ PacmenslErrorCode FspSolverMultiSinks::SetInitialDistribution(const arma::Mat<In
   return 0;
 }
 
+PacmenslErrorCode FspSolverMultiSinks::SetInitialDistribution(DiscreteDistribution &init_dist)
+{
+  int ierr;
+  int n_states, n_species;
+  int* state_ptr;
+  PetscReal* prob_ptr;
+
+  ierr = init_dist.GetStateView(n_states, n_species, state_ptr);PACMENSLCHKERRQ(ierr);
+
+  init_states_ = arma::Mat<PetscInt>(state_ptr, n_species, n_states);
+
+  init_dist.GetProbView(n_states, prob_ptr);
+  init_probs_ = arma::Col<PetscReal>(prob_ptr, n_states);
+  init_dist.RestoreProbView(prob_ptr);
+
+  if (init_probs_.n_elem != init_states_.n_cols)
+  {
+    return -1;
+  }
+
+  return 0;
+}
+
+
 std::shared_ptr<const StateSetBase> FspSolverMultiSinks::GetStateSet()
 {
   return state_set_;
@@ -682,5 +706,6 @@ PacmenslErrorCode FspSolverMultiSinks::SetOdesPetscType(std::string ts_type)
   }
   return 0;
 }
+
 
 }

@@ -54,6 +54,8 @@ class FspSolverMultiSinks
 
   PacmenslErrorCode SetInitialDistribution(const arma::Mat<Int> &_init_states, const arma::Col<PetscReal> &_init_probs);
 
+  PacmenslErrorCode SetInitialDistribution(DiscreteDistribution& init_dist);
+
   PacmenslErrorCode SetUp();
 
   PacmenslErrorCode SetFromOptions();

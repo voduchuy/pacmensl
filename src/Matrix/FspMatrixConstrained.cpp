@@ -127,6 +127,8 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
 {
   PetscErrorCode ierr{0};
 
+  PetscInt own_start,own_end;
+
   auto *constrained_fss_ptr = dynamic_cast<const StateSetConstrained *>(&state_set);
   if (!constrained_fss_ptr) ierr = -1;
   PACMENSLCHKERRQ(ierr);
@@ -246,6 +248,17 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
     CHKERRQ(ierr);
     ierr = MatAssemblyEnd(ti_sinks_mat_,MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
+  }
+
+  // Update sinkmat_inz to use global indices
+  ierr = VecGetOwnershipRange(work_,&own_start,&own_end);
+  CHKERRQ(ierr);
+  for (auto i_reaction:enable_reactions_)
+  {
+    for (auto i_constr{0}; i_constr < n_constraints; i_constr++)
+    {
+      sinkmat_inz.at(i_reaction * n_constraints + i_constr) += own_start;
+    }
   }
 
   // Local vectors for computing sink entries
@@ -372,6 +385,14 @@ int FspMatrixConstrained::CreateRHSJacobian(Mat *A)
       MPI_Reduce(&tmp[0],o_nz.memptr() + num_local_states,num_constraints_,MPIU_INT,MPIU_SUM,sinks_rank_,comm_);
   CHKERRMPI(ierr);
 
+  if (rank_ == sinks_rank_){
+    for (int i = 0; i < num_constraints_; ++i)
+    {
+      d_nz(num_local_states + i) = std::min(d_nz(num_local_states+i), num_rows_local_);
+      o_nz(num_local_states + i) = std::min(o_nz(num_local_states+i), num_rows_global_ - num_rows_local_);
+    }
+  }
+
   ierr = MatMPIAIJSetPreallocation(*A,PETSC_NULL,&d_nz[0],PETSC_NULL,&o_nz[0]);
   CHKERRQ(ierr);
 
@@ -399,7 +420,7 @@ int FspMatrixConstrained::CreateRHSJacobian(Mat *A)
       for (int j{0}; j < sinkmat_nnz(i_constr,i_reaction); j++)
       {
         itmp = num_rows_global_ - num_constraints_ + i_constr;
-        ierr = MatSetValue(*A,itmp,*(sinkmat_inz.at(i_reaction * num_constraints_ + i_constr).memptr() + j)+own_start,
+        ierr = MatSetValue(*A,itmp,*(sinkmat_inz.at(i_reaction * num_constraints_ + i_constr).memptr() + j),
                            0.0,INSERT_VALUES);
         CHKERRQ(ierr);
       }
@@ -416,12 +437,12 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A)
 {
   int      ierr = 0;
   PetscInt itmp,jtmp;
-  PetscInt own_start, own_end;
+  PetscInt own_start,own_end;
 
   ierr = FspMatrixBase::ComputeRHSJacobian(t,A);
   PACMENSLCHKERRQ(ierr);
 
-  ierr = VecGetOwnershipRange(work_, &own_start,&own_end);
+  ierr = VecGetOwnershipRange(work_,&own_start,&own_end);
   CHKERRQ(ierr);
 
   PetscReal atmp;
@@ -436,7 +457,7 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A)
         {
           itmp = num_rows_global_ - num_constraints_ + i_constr;
           atmp = time_coefficients_(i_reaction) * sinkmat_entries.at(i_reaction * num_constraints_ + i_constr)(j);
-          jtmp = sinkmat_inz.at(i_reaction * num_constraints_ + i_constr)(j) + own_start;
+          jtmp = sinkmat_inz.at(i_reaction * num_constraints_ + i_constr)(j);
 
           ierr = MatSetValue(A,itmp,jtmp,atmp,ADD_VALUES);
           CHKERRQ(ierr);
@@ -455,7 +476,7 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A)
         itmp = num_rows_global_ - num_constraints_ + i_constr;
         ierr = MatSetValues(A,1,&itmp,sinkmat_nnz(i_constr,i_reaction),
                             sinkmat_inz.at(i_reaction * num_constraints_ + i_constr).memptr(),
-                            sinkmat_entries.at(i_reaction * num_constraints_ + i_constr).memptr() + own_start,
+                            sinkmat_entries.at(i_reaction * num_constraints_ + i_constr).memptr(),
                             ADD_VALUES);
         CHKERRQ(ierr);
       }

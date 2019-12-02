@@ -27,6 +27,8 @@ PacmenslErrorCode pacmensl::TsFsp::SetUp()
   CHKERRQ(ierr);
   ierr = TSSetPostEvaluate(ts_,&TSCheckFspError);
   CHKERRQ(ierr);
+  ierr = TSSetMaxSteps(ts_,100000);
+  CHKERRQ(ierr);
   ierr = TSSetFromOptions(ts_);
   CHKERRQ(ierr);
 
@@ -68,8 +70,6 @@ PetscInt pacmensl::TsFsp::Solve()
   petsc_err = TSSetTime(ts_,t_now_);
   CHKERRQ(petsc_err);
   petsc_err = TSSetMaxTime(ts_,t_final_);
-  CHKERRQ(petsc_err);
-  petsc_err = TSSetTimeStep(ts_,0.01 * (t_final_ - t_now_));
   CHKERRQ(petsc_err);
   petsc_err = TSSetSolution(ts_,solution_tmp_);
   CHKERRQ(petsc_err);
@@ -123,13 +123,29 @@ int pacmensl::TsFsp::TSCheckFspError(TS ts)
   // Check that the temporary solution_ satisfies Fsp tolerance
   if (tsfsp_ctx->stop_check_ != nullptr)
   {
-    tsfsp_ctx->fsp_stop_ = 1;
     ierr = tsfsp_ctx->stop_check_(t_now_tmp,solution_tmp_,err,tsfsp_ctx->stop_data_);
     PACMENSLCHKERRQ(ierr);
     if (err > 0.0)
     {
-      ierr = TSInterpolate(ts,tsfsp_ctx->t_now_,solution_tmp_);
-      CHKERRQ(ierr);
+      tsfsp_ctx->fsp_stop_ = 1;
+      PetscReal err2{1.0};
+      PetscInt ntrial{0};
+      while (ntrial < 10 && err2 > 0.0){
+        // Try halving the stepsize
+        t_now_tmp = tsfsp_ctx->t_now_ + 0.5*(t_now_tmp - tsfsp_ctx->t_now_);
+        ierr = TSInterpolate(ts, t_now_tmp,solution_tmp_);
+        CHKERRQ(ierr);
+        ierr = tsfsp_ctx->stop_check_(t_now_tmp,solution_tmp_,err2,tsfsp_ctx->stop_data_);
+        PACMENSLCHKERRQ(ierr);
+        ntrial+=1;
+      }
+      if (ntrial >= 10){
+        ierr = TSInterpolate(ts, tsfsp_ctx->t_now_,solution_tmp_);
+        CHKERRQ(ierr);
+      }
+      else{
+        tsfsp_ctx->t_now_ = t_now_tmp;
+      }
       ierr = TSSetConvergedReason(ts,TS_CONVERGED_USER);
       CHKERRQ(ierr);
       return 0;

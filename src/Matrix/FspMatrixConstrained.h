@@ -27,7 +27,7 @@ class FspMatrixConstrained : public FspMatrixBase
   int Action(PetscReal t, Vec x, Vec y) override;
 
   int CreateRHSJacobian(Mat* A) override;
-  int ComputeRHSJacobian(PetscReal t,Mat A,bool update_mode) override;
+  int ComputeRHSJacobian(PetscReal t,Mat A) override;
 
   ~FspMatrixConstrained() override;
 
