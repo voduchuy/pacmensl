@@ -367,8 +367,8 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
         break;
       case KRYLOV:ode_solver_ = std::make_shared<KrylovFsp>(comm_);
         break;
-      case EPIC:ode_solver_ = std::make_shared<EpicFsp>(comm_, model_.stoichiometry_matrix_.n_cols);
-        break;
+//      case EPIC:ode_solver_ = std::make_shared<EpicFsp>(comm_, model_.stoichiometry_matrix_.n_cols);
+//        break;
       default:ode_solver_ = std::make_shared<TsFsp>(comm_);
         if (custom_ts_type) ((TsFsp*) ode_solver_.get())->SetTsType(ts_type_.c_str());
     }

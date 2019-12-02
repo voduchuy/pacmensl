@@ -3,7 +3,7 @@ set(SOLVER_LIBS
         CvodeFsp
         KrylovFsp
         TsFsp
-        EpicFsp
+#        EpicFsp
         )
 
 set(epic_headers
