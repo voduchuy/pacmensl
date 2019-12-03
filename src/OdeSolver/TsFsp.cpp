@@ -31,7 +31,8 @@ PacmenslErrorCode pacmensl::TsFsp::SetUp()
   CHKERRQ(ierr);
   ierr = TSSetFromOptions(ts_);
   CHKERRQ(ierr);
-
+  ierr = TSSetMaxSNESFailures(ts_, -1);
+  CHKERRQ(ierr);
   ierr = TSGetType(ts_, &ts_type);
   CHKERRQ(ierr);
 
