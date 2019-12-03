@@ -89,7 +89,7 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
     CHKERRQ(petsc_err);
     anorm = avnorm / beta;
     double fact = pow((m_ + 1) / exp(1.0), m_ + 1) * sqrt(2 * (3.1416) * (m_ + 1));
-    t_step_next_ = (1.0 / anorm) * pow((fact * tol_) / (4.0 * beta * anorm), xm);
+    t_step_next_ = (1.0 / anorm) * pow((fact * abs_tol_) / (4.0 * beta * anorm), xm);
     t_step_set_  = true;
   }
 
@@ -136,12 +136,12 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
       }
     }
 
-    if (err_loc <= delta_ * t_step_ * tol_ / t_final_)
+    if (err_loc <= delta_ * t_step_ * abs_tol_ / t_final_)
     {
       break;
     } else
     {
-      t_step_ = gamma_ * t_step_ * pow(t_step_ * tol_ / (t_final_ * err_loc), xm);
+      t_step_ = gamma_ * t_step_ * pow(t_step_ * abs_tol_ / (t_final_ * err_loc), xm);
       s       = pow(10.0, floor(log10(t_step_)) - 1);
       t_step_ = ceil(t_step_ / s) * s;
       if (ireject == max_reject_)
@@ -167,7 +167,7 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
   CHKERRQ(petsc_err);
 
   t_now_tmp_   = t_now_tmp_ + t_step_;
-  t_step_next_ = gamma_ * t_step_ * pow(t_step_ * tol_ / (t_final_ * err_loc), xm);
+  t_step_next_ = gamma_ * t_step_ * pow(t_step_ * abs_tol_ / (t_final_ * err_loc), xm);
   s            = pow(10.0, floor(log10(t_step_next_)) - 1.0);
   t_step_next_ = ceil(t_step_next_ / s) * s;
 
@@ -199,7 +199,9 @@ int pacmensl::KrylovFsp::GenerateBasis(const Vec &v, int m)
     ierr = rhs_(0.0, Vm[j], Vm[j + 1]);
     PACMENSLCHKERRQ(ierr);
     /* Orthogonalization */
-    istart = (j - q_iop + 1 >= 0) ? j - q_iop + 1 : 0;
+    if (q_iop > 0){
+      istart = (j - q_iop + 1 >= 0) ? j - q_iop + 1 : 0;
+    }
 
     for (int iorth = 0; iorth < 1; ++iorth)
     {
@@ -354,8 +356,9 @@ int pacmensl::KrylovFsp::SetUp()
   return 0;
 }
 
-PacmenslErrorCode pacmensl::KrylovFsp::SetTolerance(PetscReal tol)
+PacmenslErrorCode pacmensl::KrylovFsp::SetOrthLength(int q)
 {
-  tol_ = tol;
+  q_iop = q;
   return 0;
 }
+

@@ -17,7 +17,7 @@ class KrylovFsp : public OdeSolverBase {
 
   PetscInt Solve() override;
 
-  PacmenslErrorCode SetTolerance(PetscReal tol);
+  PacmenslErrorCode SetOrthLength(int q);
 
   int FreeWorkspace() override;
 
@@ -29,7 +29,7 @@ class KrylovFsp : public OdeSolverBase {
   PetscReal delta_ = 1.2, gamma_ = 0.9; ///< Safety factors
 
   int m_ = 30;
-  int q_iop = 32;
+  int q_iop = -1;
 
   int k1 = 2;
   int mb, mx;
@@ -46,8 +46,7 @@ class KrylovFsp : public OdeSolverBase {
   PetscReal t_step_next_ = 0.0;
   bool t_step_set_ = false;
 
-  PetscReal tol_ = 1.0e-8;
-  PetscReal btol_ = 1.0e-9;
+  PetscReal btol_ = 1.0e-14;
 
   int krylov_stat_ = 0;
 

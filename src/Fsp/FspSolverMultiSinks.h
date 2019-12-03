@@ -70,6 +70,8 @@ class FspSolverMultiSinks
 
   PacmenslErrorCode SetOdesPetscType(std::string ts_type);
 
+  PacmenslErrorCode SetKrylovOrthLength(int q);
+
   std::shared_ptr<const StateSetBase> GetStateSet();
 
   std::shared_ptr<OdeSolverBase> GetOdeSolver();
@@ -147,8 +149,12 @@ class FspSolverMultiSinks
   PetscLogEvent SettingUp;
   PetscLogEvent Solving;
 
+  // Cache options for ODE solvers
   bool custom_ts_type = false;
   std::string ts_type_ = "";
+
+  bool custom_krylov = false;
+  int q_iop = -1;
 
  public:
   PacmenslErrorCode SetOdeTolerances(PetscReal rel_tol, PetscReal abs_tol);
