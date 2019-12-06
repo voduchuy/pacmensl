@@ -74,6 +74,10 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
 
   PetscReal s, xm, err_loc;
 
+  xm = 1.0/double(m_);
+  err_loc = 0.0;
+  s = 1.0;
+
   k1 = 2;
   mb = m_;
 
@@ -227,7 +231,7 @@ int pacmensl::KrylovFsp::GenerateBasis(const Vec &v, int m)
     if (s < btol_)
     {
       k1 = 0;
-      mb = j;
+      mb = j+1;
       if (print_intermediate) PetscPrintf(comm_, "Happy breakdown!\n");
       t_step_ = t_final_ - t_now_tmp_;
       break;
