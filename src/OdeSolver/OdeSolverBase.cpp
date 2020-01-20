@@ -39,7 +39,8 @@ int OdeSolverBase::SetInitialSolution(Vec *_sol) {
   return 0;
 }
 
-int OdeSolverBase::SetRhs(std::function<int(PetscReal, Vec, Vec)> _rhs) {
+PacmenslErrorCode OdeSolverBase::SetRhs(std::function<PacmenslErrorCode(PetscReal,Vec,Vec)> _rhs)
+{
   int ierr{0};
   try{
     rhs_ = std::move(_rhs);
@@ -48,6 +49,7 @@ int OdeSolverBase::SetRhs(std::function<int(PetscReal, Vec, Vec)> _rhs) {
     ierr = -1;
   }
   PACMENSLCHKERRQ(ierr);
+
   return 0;
 }
 

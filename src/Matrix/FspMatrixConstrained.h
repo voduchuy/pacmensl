@@ -29,6 +29,8 @@ class FspMatrixConstrained : public FspMatrixBase
   int CreateRHSJacobian(Mat* A) override;
   int ComputeRHSJacobian(PetscReal t,Mat A) override;
 
+  PacmenslErrorCode GetLocalMVFlops(PetscInt* nflops) override;
+
   ~FspMatrixConstrained() override;
 
  protected:

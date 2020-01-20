@@ -155,6 +155,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetExpansionFactors(expansion_factors);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol, 0);
+
   std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_custom_constr = fss->GetShapeBounds();
   if (fsp_log_events) {

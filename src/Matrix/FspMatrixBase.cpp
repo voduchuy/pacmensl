@@ -68,7 +68,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
 
   t_fun_      = new_prop_t;
   t_fun_args_ = prop_t_args;
-  tv_mats_.resize(num_reactions_);
+
   enable_reactions_ = enable_reactions;
   if (enable_reactions_.empty())
   {
@@ -88,6 +88,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
       ti_reactions_.push_back(ir);
     }
   }
+  tv_mats_.resize(tv_reactions_.size());
 
   // Find the nnz per row of diagonal and off-diagonal matrices
   offdiag_col_idxs_.set_size(n_local_states,num_reactions_);
@@ -434,6 +435,22 @@ int FspMatrixBase::ComputeRHSJacobian(PetscReal t,Mat A)
   PACMENSLCHKERRQ(ierr);
   ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
   PACMENSLCHKERRQ(ierr);
+  return 0;
+}
+
+PacmenslErrorCode FspMatrixBase::GetLocalMVFlops(PetscInt *nflops)
+{
+  PetscInt ierr;
+  MatInfo minfo;
+
+  ierr = MatGetInfo(ti_mat_, MAT_LOCAL, &minfo); CHKERRQ(ierr);
+  *nflops = 2*((PetscInt) minfo.nz_used);
+
+  for (int j{0}; j < tv_mats_.size(); ++j){
+    ierr = MatGetInfo(tv_mats_[j], MAT_LOCAL,&minfo); CHKERRQ(ierr);
+    *nflops += 2*((PetscInt) minfo.nz_used) + num_rows_local_;
+  }
+
   return 0;
 }
 

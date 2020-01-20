@@ -48,8 +48,9 @@ class FspMatrixBase {
 
   virtual PacmenslErrorCode Action(PetscReal t, Vec x, Vec y);
 
-  virtual int CreateRHSJacobian(Mat* A);
-  virtual int ComputeRHSJacobian(PetscReal t,Mat A);
+  virtual PacmenslErrorCode CreateRHSJacobian(Mat* A);
+  virtual PacmenslErrorCode ComputeRHSJacobian(PetscReal t,Mat A);
+  virtual PacmenslErrorCode GetLocalMVFlops(PetscInt *nflops);
 
   int GetNumLocalRows() const { return num_rows_local_; };
 

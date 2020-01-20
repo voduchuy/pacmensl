@@ -14,6 +14,7 @@
 #include "Sys.h"
 #include "StateSetConstrained.h"
 #include "FspMatrixBase.h"
+#include "FspMatrixConstrained.h"
 
 namespace pacmensl {
 enum ODESolverType { KRYLOV, CVODE, PETSC, EPIC };
@@ -36,7 +37,7 @@ class OdeSolverBase {
 
   PacmenslErrorCode SetFspMatPtr(FspMatrixBase* mat);
 
-  PacmenslErrorCode SetRhs(std::function<PacmenslErrorCode (PetscReal, Vec, Vec)> _rhs);
+  PacmenslErrorCode SetRhs(std::function<PacmenslErrorCode(PetscReal,Vec,Vec)> _rhs);
 
   int SetTolerances(PetscReal _r_tol, PetscReal _abs_tol);
 
@@ -67,6 +68,7 @@ class OdeSolverBase {
 
   Vec *solution_ = nullptr;
   std::function<int (PetscReal t, Vec x, Vec y)> rhs_;
+  int rhs_cost_loc_ = 0;
 
   FspMatrixBase* fspmat_;
 
@@ -87,6 +89,9 @@ class OdeSolverBase {
   FiniteProblemSolverPerfInfo perf_info;
   PetscReal                   rel_tol_ = 1.0e-6;
   PetscReal                   abs_tol_ = 1.0e-14;
+
+  friend PacmenslErrorCode FspMatrixBase::GetLocalMVFlops(PetscInt * nflops);
+  friend PacmenslErrorCode FspMatrixConstrained::GetLocalMVFlops(PetscInt *nflops);
 };
 }
 

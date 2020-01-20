@@ -69,51 +69,58 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
 {
   if (logging_enabled) CHKERRABORT(comm_, PetscLogEventBegin(event_advance_one_step_, 0, 0, 0, 0));
 
-  PetscErrorCode petsc_err;
-  int            ierr;
+  PetscErrorCode ierr;
+  PetscBool      happy_breakdown, success_step, bsize_changed;
+  PetscReal s, xm, err_loc, omega, omega_old, kappa, order, t_step_old, t_step_suggest;
+  PetscInt ireject, m_old, m_start, m_suggest, cost_tchange, cost_mchange;
 
-  PetscReal s, xm, err_loc;
 
-  xm = 1.0/double(m_);
   err_loc = 0.0;
-  s = 1.0;
+  success_step = PETSC_FALSE;
+  bsize_changed = PETSC_FALSE;
+  ireject = 0;
 
-  k1 = 2;
-  mb = m_;
+  m_start = 0;
+  kappa = 2.0;
+  order = m_/4.0;
 
-  petsc_err = VecNorm(v, NORM_2, &beta);
-  CHKERRQ(petsc_err);
+  while (!success_step && ireject <= max_reject_){
+    m_ = std::min(m_max_, std::max(m_min_, m_next_));
+    ierr = GenerateBasis(v, m_start, &happy_breakdown);
+    PACMENSLCHKERRQ(ierr);
 
-  if (!t_step_set_)
-  {
-    PetscReal anorm;
-    xm = 1.0 / double(m_);
-    rhs_(0.0, v, av);
-    petsc_err = VecNorm(av, NORM_2, &avnorm);
-    CHKERRQ(petsc_err);
-    anorm = avnorm / beta;
-    double fact = pow((m_ + 1) / exp(1.0), m_ + 1) * sqrt(2 * (3.1416) * (m_ + 1));
-    t_step_next_ = (1.0 / anorm) * pow((fact * abs_tol_) / (4.0 * beta * anorm), xm);
-    t_step_set_  = true;
-  }
+    if (happy_breakdown){
+      if (print_intermediate) PetscPrintf(comm_, "Happy breakdown!\n");
+      t_step_ = t_final_ - t_now_tmp_;
+      t_step_next_ = t_step_;
+      t_step_set_ = true;
+    }
 
-  t_step_ = std::min(t_final_ - t_now_tmp_, t_step_next_);
-  Hm      = arma::zeros(m_ + 2, m_ + 2);
+    if (!t_step_set_)
+    {
+      PetscReal anorm;
+      xm = 1.0 / double(m_);
+      rhs_(0.0, v, av);
+      ierr = VecNorm(av,NORM_2,&avnorm);
+      CHKERRQ(ierr);
+      anorm = avnorm / beta;
+      double fact = pow((m_ + 1) / exp(1.0), m_ + 1) * sqrt(2 * (3.1416) * (m_ + 1));
+      t_step_next_ = (1.0 / anorm) * pow((fact * abs_tol_) / (4.0 * beta * anorm), xm);
+      t_step_set_  = true;
+    }
 
-  ierr = GenerateBasis(v, m_);
-  PACMENSLCHKERRQ(ierr);
+    t_step_ = std::min(t_final_ - t_now_tmp_, t_step_next_);
 
-  if (k1 != 0)
-  {
-    Hm(m_ + 1, m_) = 1.0;
-    rhs_(0.0, Vm[m_], av);
-    petsc_err = VecNorm(av, NORM_2, &avnorm);
-    CHKERRQ(petsc_err);
-  }
+    /* Find the norm of A*V[m_] needed for error estimation */
+    if (k1 != 0)
+    {
+      Hm(m_ + 1, m_) = 1.0;
+      rhs_(0.0, Vm[m_], av);
+      ierr = VecNorm(av,NORM_2,&avnorm);
+      CHKERRQ(ierr);
+    }
 
-  int ireject{0};
-  while (ireject < max_reject_)
-  {
+    /* Estimate local error when stepping with stepsize t_step_ */
     mx = mb + k1;
     F  = expmat(t_step_ * Hm);
     if (k1 == 0)
@@ -128,26 +135,64 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
       if (phi1 > phi2 * 10.0)
       {
         err_loc = phi2;
-        xm      = 1.0 / double(m_);
       } else if (phi1 > phi2)
       {
         err_loc = (phi1 * phi2) / (phi1 - phi2);
-        xm      = 1.0 / double(m_);
       } else
       {
         err_loc = phi1;
-        xm      = 1.0 / double(m_ - 1);
       }
     }
 
-    if (err_loc <= delta_ * t_step_ * abs_tol_ / t_final_)
+    omega_old = omega;
+    omega = err_loc*t_final_/(abs_tol_* t_step_);
+
+    /* Estimate the parameters kappa and omega needed for stepsize and dimension selection */
+    if (bsize_changed && ireject > 0){
+      kappa = std::max(1.1E0, std::pow(omega/omega_old, 1.0/(m_old - m_)));
+    }
+    else if(ireject > 0){
+      order = std::max(1.0, std::log(omega/omega_old)/std::log(t_step_/t_step_old));
+    }
+
+    /* Compute the suggestions for next stepsize and next Krylov dimension*/
+    t_step_suggest = gamma_ * t_step_ * pow(t_step_ * abs_tol_ / (t_final_ * err_loc), order);
+    s       = pow(10.0, floor(log10(t_step_suggest)) - 1);
+    t_step_suggest = ceil(t_step_suggest / s) * s;
+    t_step_suggest = std::min(5.0*t_step_, std::max(0.2*t_step_, t_step_suggest));
+    t_step_suggest = std::min(t_final_ - t_now_tmp_, t_step_suggest);
+
+    m_suggest = m_ + std::ceil(std::log(omega/gamma_)/std::log(kappa));
+    m_suggest = std::max(3*m_/4, std::min(4*m_/3+1, m_suggest));
+    m_suggest = std::max(m_min_, std::min(m_max_, m_suggest));
+
+    /* Compute the cost associated with each option: change dimension or change stepsize */
+    ierr = EstimateCost_(t_step_suggest, m_, &cost_tchange); CHKERRQ(ierr);
+    ierr = EstimateCost_(t_step_, m_suggest, &cost_mchange); CHKERRQ(ierr);
+
+    if (std::ceil((t_final_ - t_now_tmp_)/t_step_suggest)*cost_tchange <= std::ceil((t_final_-t_now_tmp_)/t_step_)*cost_mchange || m_suggest == m_){
+      t_step_next_ = t_step_suggest;
+      m_next_ = m_;
+      bsize_changed = PETSC_FALSE;
+    }
+    else{
+      t_step_next_ = t_step_;
+      m_next_ = m_suggest;
+      bsize_changed = PETSC_TRUE;
+    }
+
+    /* Check that the local error per unit step is below the tolerance */
+    if (omega <= delta_)
     {
-      break;
+      success_step = PETSC_TRUE;
     } else
     {
-      t_step_ = gamma_ * t_step_ * pow(t_step_ * abs_tol_ / (t_final_ * err_loc), xm);
-      s       = pow(10.0, floor(log10(t_step_)) - 1);
-      t_step_ = ceil(t_step_ / s) * s;
+      if (bsize_changed){
+        Hm(m_ + 1, m_) = 0.0;
+      }
+      if (print_intermediate){
+        PetscPrintf(comm_, "t_step = %.2e m = %d t_step_next = %.2e err_loc = %.2e \n", t_step_, m_, t_step_next_, err_loc);
+      }
       if (ireject == max_reject_)
       {
         // This part could be dangerous, what if one processor exits but the others continue
@@ -155,85 +200,79 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
         return -1;
       }
       ireject++;
+      t_step_old = t_step_;
+      m_old = m_;
+      m_start = m_old;
     }
   }
+  /* End of subspace and stepsize selection */
 
-  mx = mb + ( size_t ) std::max(0, ( int ) k1 - 1);
+  mx = mb + std::max(0, ( int ) k1 - 1);
   arma::Col<double> F0(mx);
   for (size_t       ii{0}; ii < mx; ++ii)
   {
     F0(ii) = beta * F(ii, 0);
   }
 
-  petsc_err = VecScale(v, 0.0);
-  CHKERRQ(petsc_err);
-  petsc_err = VecMAXPY(v, mx, &F0[0], Vm.data());
-  CHKERRQ(petsc_err);
+  ierr = VecScale(v,0.0); CHKERRQ(ierr);
+  ierr = VecMAXPY(v,mx,&F0[0],Vm.data()); CHKERRQ(ierr);
 
   t_now_tmp_   = t_now_tmp_ + t_step_;
-  t_step_next_ = gamma_ * t_step_ * pow(t_step_ * abs_tol_ / (t_final_ * err_loc), xm);
-  s            = pow(10.0, floor(log10(t_step_next_)) - 1.0);
-  t_step_next_ = ceil(t_step_next_ / s) * s;
 
   if (print_intermediate){
-    PetscPrintf(comm_, "t_step = %.2e t_step_next = %.2e err_loc = %.2e \n", t_step_, t_step_next_, err_loc);
+    PetscPrintf(comm_, "t_step = %.2e m = %d t_step_next = %.2e err_loc = %.2e \n", t_step_, m_, t_step_next_, err_loc);
   }
 
   if (logging_enabled) CHKERRQ(PetscLogEventEnd(event_advance_one_step_, 0, 0, 0, 0));
   return 0;
 }
 
-int pacmensl::KrylovFsp::GenerateBasis(const Vec &v, int m)
+int pacmensl::KrylovFsp::GenerateBasis(const Vec &v,int m_start,PetscBool *happy_breakdown)
 {
   if (logging_enabled) CHKERRQ(PetscLogEventBegin(event_generate_basis_, 0, 0, 0, 0));
 
-  int       petsc_error, ierr;
+  int       ierr, istart;
   PetscReal s;
 
-  petsc_error = VecCopy(v, Vm[0]);
-  CHKERRQ(petsc_error);
-  petsc_error = VecScale(Vm[0], 1.0 / beta);
-  CHKERRQ(petsc_error);
+  k1 = 2;
+  mb = m_;
 
-  int                  istart = 0;
-  arma::Col<PetscReal> htmp(m + 2);
-  /* Arnoldi loop */
-  for (int             j{0}; j < m; j++)
+  ierr = VecNorm(v, NORM_2, &beta); CHKERRQ(ierr);
+
+
+  ierr = VecCopy(v,Vm[0]); CHKERRQ(ierr);
+  ierr = VecScale(Vm[0],1.0 / beta); CHKERRQ(ierr);
+
+  istart = 0;
+  *happy_breakdown = PETSC_FALSE;
+
+  if (m_start == 0){
+    Hm.zeros();
+  }
+
+  /* Incomplete Orthogonalization Procedure */
+  for (int             j{m_start}; j < m_; j++)
   {
-    ierr = rhs_(0.0, Vm[j], Vm[j + 1]);
-    PACMENSLCHKERRQ(ierr);
+    ierr = rhs_(0.0, Vm[j], Vm[j + 1]); PACMENSLCHKERRQ(ierr);
     /* Orthogonalization */
     if (q_iop > 0){
       istart = (j - q_iop + 1 >= 0) ? j - q_iop + 1 : 0;
     }
 
-    for (int iorth = 0; iorth < 1; ++iorth)
-    {
-      petsc_error = VecMTDot(Vm[j + 1], j - istart + 1, Vm.data() + istart, &htmp[istart]);
-      CHKERRQ(petsc_error);
-      for (int i{istart}; i <= j; ++i)
-      {
-        htmp(i) = -1.0 * htmp(i);
-      }
-      petsc_error = VecMAXPY(Vm[j + 1], j - istart + 1, &htmp[istart], Vm.data() + istart);
-      CHKERRQ(petsc_error);
-      for (int i{istart}; i <= j; ++i)
-      {
-        Hm(i, j) -= htmp(i);
-      }
+    for (int i = istart; i <= j; ++i){
+      ierr = VecDot(Vm[j+1], Vm[i], &Hm(i, j)); CHKERRQ(ierr);
+      ierr = VecAXPY(Vm[j+1], -1.0*Hm(i,j), Vm[i]); CHKERRQ(ierr);
     }
-    petsc_error = VecNorm(Vm[j + 1], NORM_2, &s);
-    CHKERRQ(petsc_error);
-    petsc_error = VecScale(Vm[j + 1], 1.0 / s);
-    CHKERRQ(petsc_error);
+
+    ierr = VecNorm(Vm[j + 1],NORM_2,&s); CHKERRQ(ierr);
+    ierr = VecScale(Vm[j + 1],1.0 / s); CHKERRQ(ierr);
     Hm(j + 1, j) = s;
 
     if (s < btol_)
     {
       k1 = 0;
       mb = j+1;
-      if (print_intermediate) PetscPrintf(comm_, "Happy breakdown!\n");
-      t_step_ = t_final_ - t_now_tmp_;
+      *happy_breakdown = PETSC_TRUE;
       break;
     }
   }
@@ -252,8 +291,8 @@ int pacmensl::KrylovFsp::SetUpWorkSpace()
     return -1;
   }
   int ierr;
-  Vm.resize(m_ + 1);
-  for (int i{0}; i < m_ + 1; ++i)
+  Vm.resize(m_max_ + 1);
+  for (int i{0}; i < m_max_ + 1; ++i)
   {
     ierr = VecDuplicate(*solution_, &Vm[i]);
     CHKERRQ(ierr);
@@ -270,6 +309,10 @@ int pacmensl::KrylovFsp::SetUpWorkSpace()
   ierr = VecSetUp(solution_tmp_);
   CHKERRQ(ierr);
 
+  Hm      = arma::zeros(m_max_ + 2, m_max_ + 2);
+
+  ierr = fspmat_->GetLocalMVFlops(&rhs_cost_loc_); CHKERRQ(ierr);
+
   if (logging_enabled) CHKERRQ(PetscLogEventEnd(event_set_up_workspace_, 0, 0, 0, 0));
   return 0;
 }
@@ -284,6 +327,7 @@ int pacmensl::KrylovFsp::GetDky(PetscReal t, int deg, Vec p_vec)
                 "KrylovFsp::GetDky error: requested timepoint does not belong to the current time subinterval.\n");
     return -1;
   }
+
   deg = (deg < 0) ? 0 : deg;
   F   = expmat((t - t_now_) * Hm);
   mx  = mb + ( size_t ) std::max(0, ( int ) k1 - 1);
@@ -363,6 +407,29 @@ int pacmensl::KrylovFsp::SetUp()
 PacmenslErrorCode pacmensl::KrylovFsp::SetOrthLength(int q)
 {
   q_iop = q;
+  return 0;
+}
+
+int pacmensl::KrylovFsp::EstimateCost_(PetscReal tau_new, PetscInt m_new, PetscInt *cost)
+{
+  int ierr;
+  PetscReal hnorm = arma::norm(Hm, "inf");
+  int ns = std::ceil(hnorm*tau_new);
+  PetscInt cost_local;
+  PetscInt n_loc;
+  ierr = VecGetLocalSize(*solution_, &n_loc); CHKERRQ(ierr);
+
+  if (q_iop>0){
+    cost_local = (m_new + 1)*rhs_cost_loc_ +
+        (4*q_iop*m_new + 5*m_new + 2*q_iop - 2*q_iop*q_iop + 7)*n_loc + 2*std::ceil(25.0/3.0 + ns)*(m_new+2)*(m_new+2)*(m_new+2);
+  }
+  else{
+    cost_local = (m_new + 1)*rhs_cost_loc_ +
+        (4*m_new*m_new + 5*m_new + 2*m_new - 2*m_new*m_new + 7)*n_loc + 2*std::ceil(25.0/3.0 + ns)*(m_new+2)*(m_new+2)*(m_new+2);
+  }
+
+  ierr = MPI_Allreduce(&cost_local, cost, 1, MPIU_INT, MPIU_MAX, comm_); CHKERRQ(ierr);
+
   return 0;
 }
 

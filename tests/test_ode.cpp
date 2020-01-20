@@ -120,7 +120,7 @@ TEST_F(OdeTest, use_cvode_bdf) {
   CvodeFsp  cvode_solver(PETSC_COMM_WORLD, CV_BDF);
   ierr = cvode_solver.SetFinalTime(t_final); ASSERT_EQ(ierr, 0);
   ierr = cvode_solver.SetInitialSolution(&P); ASSERT_EQ(ierr, 0);
-  ierr = cvode_solver.SetRhs(AV); ASSERT_EQ(ierr, 0);
+  ierr = cvode_solver.SetRhs(AV); ASSERT_EQ(ierr,0);
   ierr = cvode_solver.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
   ierr = cvode_solver.SetUp(); ASSERT_EQ(ierr, 0);
   PetscInt solver_stat = cvode_solver.Solve();
@@ -185,7 +185,7 @@ TEST_F(OdeTest, cvode_handling_bad_mat_vec) {
   CvodeFsp  cvode_solver(PETSC_COMM_WORLD, CV_BDF);
   ierr = cvode_solver.SetFinalTime(t_final); ASSERT_EQ(ierr, 0);
   ierr = cvode_solver.SetInitialSolution(&P); ASSERT_EQ(ierr, 0);
-  ierr = cvode_solver.SetRhs(AV); ASSERT_EQ(ierr, 0);
+  ierr = cvode_solver.SetRhs(AV); ASSERT_EQ(ierr,0);
   ierr = cvode_solver.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
   ierr = cvode_solver.SetUp(); ASSERT_EQ(ierr, 0);
   PetscInt solver_stat = cvode_solver.Solve();
@@ -222,7 +222,9 @@ TEST_F(OdeTest, use_krylov) {
   ASSERT_EQ(ierr, 0);
   ierr = krylov_solver.SetRhs(AV);
   ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetStatusOutput(0);
+  ierr = krylov_solver.SetFspMatPtr(A);
+  ASSERT_EQ(ierr, 0);
+  ierr = krylov_solver.SetStatusOutput(2);
   ASSERT_EQ(ierr, 0);
   ierr = krylov_solver.SetUp();
   ASSERT_EQ(ierr, 0);
@@ -261,6 +263,8 @@ TEST_F(OdeTest, krylov_handling_bad_mat_vec) {
   ASSERT_EQ(ierr, 0);
   ierr = krylov_solver.SetRhs(AV);
   ASSERT_EQ(ierr, 0);
+  ierr = krylov_solver.SetFspMatPtr(A);
+  ASSERT_EQ(ierr, 0);
   ierr                 = krylov_solver.SetStatusOutput(0);
   ASSERT_EQ(ierr, 0);
   ierr = krylov_solver.SetUp();
@@ -291,7 +295,7 @@ TEST_F(OdeTest, use_petsc) {
   TsFsp  ts(PETSC_COMM_WORLD);
   ierr = ts.SetFinalTime(t_final); ASSERT_EQ(ierr, 0);
   ierr = ts.SetInitialSolution(&P); ASSERT_EQ(ierr, 0);
-  ierr = ts.SetRhs(AV); ASSERT_EQ(ierr, 0);
+  ierr = ts.SetRhs(AV); ASSERT_EQ(ierr,0);
   ierr = ts.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
   ierr = ts.SetFspMatPtr(A); ASSERT_EQ(ierr, 0);
   ierr = ts.SetStatusOutput(1); ASSERT_EQ(ierr, 0);

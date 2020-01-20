@@ -53,9 +53,9 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
   ode_solver_->SetFinalTime(t_final);
   ode_solver_->SetTolerances(ode_rtol_, ode_atol_);
 
+  ode_solver_->SetRhs(this->tmatvec_);
   if (fsp_tol_ > 0.0)
   {
-    ode_solver_->SetRhs(this->tmatvec_);
     auto error_checking_fp = [&](PetscReal t, Vec p, PetscReal &te, void *data) {
       return CheckFspTolerance_(t, p, te);
     };

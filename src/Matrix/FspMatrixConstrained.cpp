@@ -167,7 +167,7 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
   sinkmat_nnz.resize(n_constraints,num_reactions_);
   sinkmat_inz.resize(n_constraints * num_reactions_);
   sinkmat_entries.resize(n_constraints * num_reactions_);
-  tv_sinks_mat_.resize(num_reactions_);
+  tv_sinks_mat_.resize(tv_reactions_.size());
   for (auto i_reaction : enable_reactions_)
   {
     // Count nnz for rows that represent sink states_
@@ -485,6 +485,24 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t,Mat A)
 
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
+  return 0;
+}
+
+PacmenslErrorCode FspMatrixConstrained::GetLocalMVFlops(PetscInt *nflops)
+{
+  PetscInt ierr;
+  MatInfo minfo;
+
+  ierr = FspMatrixBase::GetLocalMVFlops(nflops); PACMENSLCHKERRQ(ierr);
+
+  ierr = MatGetInfo(ti_sinks_mat_, MAT_LOCAL, &minfo); CHKERRQ(ierr);
+  *nflops += 2*((PetscInt) minfo.nz_used);
+
+  for (int j{0}; j < tv_sinks_mat_.size(); ++j){
+    ierr = MatGetInfo(tv_sinks_mat_[j], MAT_LOCAL, &minfo); CHKERRQ(ierr);
+    *nflops += 2*((PetscInt) minfo.nz_used) + num_constraints_;
+  }
+
   return 0;
 }
 
