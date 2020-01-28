@@ -82,7 +82,7 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
 
   m_start = 0;
   kappa = 2.0;
-  order = m_/4.0;
+  order = m_/4;
 
   while (!success_step && ireject <= max_reject_){
     m_ = std::min(m_max_, std::max(m_min_, m_next_));
@@ -145,7 +145,7 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
     }
 
     omega_old = omega;
-    omega = err_loc*t_final_/(abs_tol_* t_step_);
+    omega = err_loc/(abs_tol_* t_step_);
 
     /* Estimate the parameters kappa and omega needed for stepsize and dimension selection */
     if (bsize_changed && ireject > 0){
@@ -156,7 +156,7 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
     }
 
     /* Compute the suggestions for next stepsize and next Krylov dimension*/
-    t_step_suggest = gamma_ * t_step_ * pow(t_step_ * abs_tol_ / (t_final_ * err_loc), order);
+    t_step_suggest =  t_step_ * pow(gamma_ / omega, order);
     s       = pow(10.0, floor(log10(t_step_suggest)) - 1);
     t_step_suggest = ceil(t_step_suggest / s) * s;
     t_step_suggest = std::min(5.0*t_step_, std::max(0.2*t_step_, t_step_suggest));
@@ -234,6 +234,12 @@ int pacmensl::KrylovFsp::GenerateBasis(const Vec &v,int m_start,PetscBool *happy
   int       ierr, istart;
   PetscReal s;
 
+  *happy_breakdown = PETSC_FALSE;
+
+  if (m_start >= m_){
+    return 0;
+  }
+
   k1 = 2;
   mb = m_;
 
@@ -244,7 +250,7 @@ int pacmensl::KrylovFsp::GenerateBasis(const Vec &v,int m_start,PetscBool *happy
   ierr = VecScale(Vm[0],1.0 / beta); CHKERRQ(ierr);
 
   istart = 0;
-  *happy_breakdown = PETSC_FALSE;
+
 
   if (m_start == 0){
     Hm.zeros();

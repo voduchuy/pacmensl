@@ -89,14 +89,20 @@ void output_time(MPI_Comm comm,
                  PartitioningType fsp_par_type,
                  PartitioningApproach fsp_repart_approach,
                  std::string constraint_type,
+                 ODESolverType ode_type,
                  FspSolverMultiSinks &fsp_solver);
 
 void output_performance(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type,
                         PartitioningApproach fsp_repart_approach, std::string constraint_type,
+                        ODESolverType ode_type,
                         FspSolverMultiSinks &fsp_solver);
 
-int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningApproach &fsp_repart_approach,
-                 PetscBool &output_marginal, PetscBool &fsp_log_events);
+int ParseOptions(MPI_Comm comm,
+                 PartitioningType &fsp_par_type,
+                 PartitioningApproach &fsp_repart_approach,
+                 PetscBool &output_marginal,
+                 PetscBool &fsp_log_events,
+                 ODESolverType &ode_solver);
 
 int main(int argc, char *argv[]) {
   Environment my_env(&argc, &argv, help);
@@ -138,10 +144,10 @@ int main(int argc, char *argv[]) {
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;
 
-  ierr = ParseOptions(comm, fsp_par_type, fsp_repart_approach, output_marginal, fsp_log_events);
+  ierr = ParseOptions(comm,fsp_par_type,fsp_repart_approach,output_marginal,fsp_log_events, fsp_odes_type);
   CHKERRQ(ierr);
 
-  FspSolverMultiSinks fsp_solver(comm, fsp_par_type, CVODE);
+  FspSolverMultiSinks fsp_solver(comm, fsp_par_type, fsp_odes_type);
   fsp_solver.SetFromOptions();
   fsp_solver.SetModel(repressilator_model);
   fsp_solver.SetInitialDistribution(X0, p0);
@@ -153,6 +159,7 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetConstraintFunctions(lhs_constr, nullptr);
   fsp_solver.SetInitialBounds(rhs_constr);
   fsp_solver.SetExpansionFactors(expansion_factors);
+  fsp_solver.SetOdeTolerances(1.0, 1.0e-14);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol, 0);
 
@@ -160,9 +167,9 @@ int main(int argc, char *argv[]) {
   arma::Row<int> final_custom_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_custom"),
-                fsp_solver);
+                fsp_odes_type, fsp_solver);
     output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("adaptive_custom"), fsp_solver);
+                       std::string("adaptive_custom"), fsp_odes_type, fsp_solver);
   }
   if (output_marginal) {
     output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
@@ -178,13 +185,14 @@ int main(int argc, char *argv[]) {
   // Solve using fixed custom constraints
   fsp_solver.SetConstraintFunctions(lhs_constr, nullptr);
   fsp_solver.SetInitialBounds(final_custom_constr);
+  fsp_solver.SetOdeTolerances(1.0, 1.0e-14);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_custom"),
-                fsp_solver);
+                fsp_odes_type, fsp_solver);
     output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("fixed_custom"), fsp_solver);
+                       std::string("fixed_custom"), fsp_odes_type, fsp_solver);
   }
   if (output_marginal) {
     output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
@@ -201,15 +209,16 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetInitialBounds(rhs_constr_hyperrec);
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
+  fsp_solver.SetOdeTolerances(1.0, 1.0e-14);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
     output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),
-                fsp_solver);
+                fsp_odes_type, fsp_solver);
     output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("adaptive_default"), fsp_solver);
+                       std::string("adaptive_default"), fsp_odes_type, fsp_solver);
   }
   if (output_marginal) {
     output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
@@ -226,13 +235,14 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetInitialBounds(final_hyperrec_constr);
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
+  fsp_solver.SetOdeTolerances(1.0, 1.0e-14);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   if (fsp_log_events) {
-    output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_default"),
+    output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_default"), fsp_odes_type,
                 fsp_solver);
     output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("fixed_default"), fsp_solver);
+                       std::string("fixed_default"), fsp_odes_type, fsp_solver);
   }
   if (output_marginal) {
     output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
@@ -243,8 +253,13 @@ int main(int argc, char *argv[]) {
   return ierr;
 }
 
-int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningApproach &fsp_repart_approach,
-                 PetscBool &output_marginal, PetscBool &fsp_log_events) {
+int ParseOptions(MPI_Comm comm,
+                 PartitioningType &fsp_par_type,
+                 PartitioningApproach &fsp_repart_approach,
+                 PetscBool &output_marginal,
+                 PetscBool &fsp_log_events,
+                 ODESolverType &ode_solver)
+{
   std::string part_type;
   std::string part_approach;
   part_type = part2str(fsp_par_type);
@@ -274,13 +289,23 @@ int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningAppr
     }
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set);
-  CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set); CHKERRQ(ierr);
   if (opt_set) {
     if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
       fsp_log_events = PETSC_TRUE;
     }
   }
+
+  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_use_solver", opt, 100, &opt_set); CHKERRQ(ierr);
+  if (opt_set){
+    if (strcmp(opt, "krylov") == 0){
+      ode_solver = KRYLOV;
+    }
+    else{
+      ode_solver = CVODE;
+    }
+  }
+
   PetscPrintf(comm, "Partitiniong option %s \n", part2str(fsp_par_type).c_str());
   PetscPrintf(comm, "Repartitoning option %s \n", partapproach2str(fsp_repart_approach).c_str());
   return 0;
@@ -288,10 +313,19 @@ int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningAppr
 
 void output_performance(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type,
                         PartitioningApproach fsp_repart_approach, std::string constraint_type,
+                        ODESolverType ode_type,
                         FspSolverMultiSinks &fsp_solver) {
   int myRank, num_procs;
   MPI_Comm_rank(comm, &myRank);
   MPI_Comm_size(comm, &num_procs);
+
+  std::string ode;
+  if (ode_type == KRYLOV){
+    ode = "krylov";
+  }
+  else{
+    ode = "cvode";
+  }
 
   std::string part_type;
   std::string part_approach;
@@ -304,7 +338,7 @@ void output_performance(MPI_Comm comm, std::string model_name, PartitioningType 
   if (myRank == 0) {
     std::string filename =
         model_name + "_time_breakdown_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach +
-            "_" + constraint_type + ".dat";
+            "_" + constraint_type + "_" + ode + ".dat";
     std::ofstream file;
     file.open(filename);
     file << "Component, Average processor time (sec), Percentage \n";
@@ -337,11 +371,13 @@ void output_time(MPI_Comm comm,
                  PartitioningType fsp_par_type,
                  PartitioningApproach fsp_repart_approach,
                  std::string constraint_type,
+                 ODESolverType ode_type,
                  FspSolverMultiSinks &fsp_solver) {
   int myRank, num_procs;
   MPI_Comm_rank(comm, &myRank);
   MPI_Comm_size(comm, &num_procs);
 
+  std::string ode;
   std::string part_type;
   std::string part_approach;
   part_type = part2str(fsp_par_type);
@@ -351,11 +387,18 @@ void output_time(MPI_Comm comm,
   FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
   double solver_time = timings.TotalTime;
 
+  if (ode_type == KRYLOV){
+    ode = "krylov";
+  }
+  else{
+    ode = "cvode";
+  }
+
   if (myRank == 0) {
     {
       std::string filename =
           model_name + "_time_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach + "_" +
-              constraint_type + ".dat";
+              constraint_type + "_" + ode + ".dat";
       std::ofstream file;
       file.open(filename, std::ios_base::app);
       file << solver_time << "\n";

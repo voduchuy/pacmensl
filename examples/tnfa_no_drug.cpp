@@ -121,8 +121,11 @@ void output_performance(MPI_Comm comm, std::string model_name, PartitioningType 
                         PartitioningApproach fsp_repart_approach, std::string constraint_type,
                         FspSolverMultiSinks &fsp_solver);
 
-int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningApproach &fsp_repart_approach,
-                 PetscBool &output_marginal, PetscBool &fsp_log_events);
+int ParseOptions(MPI_Comm comm,
+                 PartitioningType &fsp_par_type,
+                 PartitioningApproach &fsp_repart_approach,
+                 PetscBool &output_marginal,
+                 PetscBool &fsp_log_events);
 
 int main(int argc, char *argv[]) {
   Environment my_env(&argc, &argv, help);
@@ -151,7 +154,11 @@ int main(int argc, char *argv[]) {
   PetscBool output_marginal = PETSC_FALSE;
   PetscBool fsp_log_events = PETSC_FALSE;
 
-  ierr = ParseOptions(comm, fsp_par_type, fsp_repart_approach, output_marginal, fsp_log_events); CHKERRQ(ierr);
+  ierr = ParseOptions(comm,
+                      fsp_par_type,
+                      fsp_repart_approach,
+                      output_marginal,
+                      fsp_log_events); CHKERRQ(ierr);
 
   FspSolverMultiSinks fsp_solver(comm, fsp_par_type, CVODE);
   fsp_solver.SetModel(tnfa_model);
@@ -182,8 +189,12 @@ int main(int argc, char *argv[]) {
   return ierr;
 }
 
-int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningApproach &fsp_repart_approach,
-                 PetscBool &output_marginal, PetscBool &fsp_log_events) {
+int ParseOptions(MPI_Comm comm,
+                 PartitioningType &fsp_par_type,
+                 PartitioningApproach &fsp_repart_approach,
+                 PetscBool &output_marginal,
+                 PetscBool &fsp_log_events)
+{
   std::string part_type;
   std::string part_approach;
   part_type = part2str(fsp_par_type);

@@ -85,11 +85,9 @@ class FspMatrixBase {
   arma::Col<Int> ti_dblock_nz_, ti_oblock_nz_;
   // arrays of nonzero column indices
   arma::Mat<Int>       offdiag_col_idxs_;
-  // array o fmatrix values
+  // array of matrix values
   arma::Mat<PetscReal> offdiag_vals_;
   arma::Mat<PetscReal> diag_vals_;
-
-  // Data for computing the Jacobian in the form of MatShell
 };
 
 }
