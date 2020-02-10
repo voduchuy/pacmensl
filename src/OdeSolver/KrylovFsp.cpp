@@ -156,7 +156,7 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
     }
 
     /* Compute the suggestions for next stepsize and next Krylov dimension*/
-    t_step_suggest =  t_step_ * pow(gamma_ / omega, order);
+    t_step_suggest =  gamma_* t_step_ * pow( omega, -1.0/order);
     s       = pow(10.0, floor(log10(t_step_suggest)) - 1);
     t_step_suggest = ceil(t_step_suggest / s) * s;
     t_step_suggest = std::min(5.0*t_step_, std::max(0.2*t_step_, t_step_suggest));

@@ -96,7 +96,6 @@ PacmenslErrorCode pacmensl::SensFspMatrix<FspMatrixT>::GenerateValues(const pacm
       auto             first = model.dpropensity_ic_.begin() + model.dpropensity_rowptr_[i];
       auto             last  = model.dpropensity_ic_.begin() + model.dpropensity_rowptr_[i + 1];
       std::vector<int> enable_reactions(first, last);
-
       dA_.emplace_back(FspMatrixT(comm_));
       ierr                   = dA_[i].GenerateValues(state_set,
                                                      model.stoichiometry_matrix_,

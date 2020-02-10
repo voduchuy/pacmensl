@@ -21,11 +21,11 @@ int FspMatrixBase::Action(PetscReal t,Vec x,Vec y)
     ierr = t_fun_(t,num_reactions_,time_coefficients_.memptr(),t_fun_args_);
     PACMENSLCHKERRQ(ierr);
 
-    for (auto ir: tv_reactions_)
+    for (int ir{0}; ir < tv_mats_.size(); ++ir)
     {
       ierr = MatMult(tv_mats_[ir],x,work_);
       CHKERRQ(ierr);
-      ierr = VecAXPY(y,time_coefficients_[ir],work_);
+      ierr = VecAXPY(y,time_coefficients_[tv_reactions_[ir]],work_);
       CHKERRQ(ierr);
     }
   }
@@ -125,21 +125,22 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   ierr = VecGetOwnershipRange(work_,&own_start,&own_end);
   CHKERRQ(ierr);
   MatType   mtype;
-  for (auto i_reaction: tv_reactions_)
+  for (int i{0}; i < tv_reactions_.size(); ++i)
   {
-    ierr = MatCreate(comm_,tv_mats_[i_reaction].mem());
+    int i_reaction = tv_reactions_[i];
+    ierr = MatCreate(comm_,tv_mats_[i].mem());
     CHKERRQ(ierr);
-    ierr = MatSetType(tv_mats_[i_reaction],MATMPISELL);
+    ierr = MatSetType(tv_mats_[i],MATMPISELL);
     CHKERRQ(ierr);
-    ierr = MatSetFromOptions(tv_mats_[i_reaction]);
+    ierr = MatSetFromOptions(tv_mats_[i]);
     CHKERRQ(ierr);
-    ierr = MatSetSizes(tv_mats_[i_reaction],num_rows_local_,num_rows_local_,num_rows_global_,num_rows_global_);
+    ierr = MatSetSizes(tv_mats_[i],num_rows_local_,num_rows_local_,num_rows_global_,num_rows_global_);
     CHKERRQ(ierr);
-    ierr = MatGetType(tv_mats_[i_reaction],&mtype);
+    ierr = MatGetType(tv_mats_[i],&mtype);
     CHKERRQ(ierr);
     if ((strcmp(mtype,MATSELL) == 0) || (strcmp(mtype,MATMPISELL) == 0) || (strcmp(mtype,MATSEQSELL) == 0))
     {
-      ierr = MatMPISELLSetPreallocation(tv_mats_[i_reaction],
+      ierr = MatMPISELLSetPreallocation(tv_mats_[i],
                                         PETSC_NULL,
                                         dblock_nz_.colptr(i_reaction),
                                         PETSC_NULL,
@@ -147,33 +148,33 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
       CHKERRQ(ierr);
     } else if ((strcmp(mtype,MATAIJ) == 0) || (strcmp(mtype,MATMPIAIJ) == 0) || (strcmp(mtype,MATSEQAIJ) == 0))
     {
-      ierr = MatMPIAIJSetPreallocation(tv_mats_[i_reaction],
+      ierr = MatMPIAIJSetPreallocation(tv_mats_[i],
                                        PETSC_NULL,
                                        dblock_nz_.colptr(i_reaction),
                                        PETSC_NULL,
                                        oblock_nz_.colptr(i_reaction));
       CHKERRQ(ierr);
     }
-    MatSetUp(tv_mats_[i_reaction]);
+    MatSetUp(tv_mats_[i]);
 
     new_prop_x(i_reaction,n_species,n_local_states,&state_list[0],diag_vals_.colptr(i_reaction),prop_x_args);
     for (int i_state{0}; i_state < n_local_states; ++i_state)
     {
       // Set values for the diagonal block
-      ierr = MatSetValue(tv_mats_[i_reaction],
+      ierr = MatSetValue(tv_mats_[i],
                          own_start + i_state,
                          own_start + i_state,
                          -1.0 * diag_vals_(i_state,i_reaction),
                          INSERT_VALUES);
       CHKERRQ(ierr);
-      ierr = MatSetValue(tv_mats_[i_reaction],own_start + i_state,offdiag_col_idxs_(i_state,i_reaction),
+      ierr = MatSetValue(tv_mats_[i],own_start + i_state,offdiag_col_idxs_(i_state,i_reaction),
                          offdiag_vals_(i_state,i_reaction),INSERT_VALUES);
       CHKERRQ(ierr);
     }
 
-    ierr = MatAssemblyBegin(tv_mats_[i_reaction],MAT_FINAL_ASSEMBLY);
+    ierr = MatAssemblyBegin(tv_mats_[i],MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
-    ierr = MatAssemblyEnd(tv_mats_[i_reaction],MAT_FINAL_ASSEMBLY);
+    ierr = MatAssemblyEnd(tv_mats_[i],MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
   }
 
@@ -232,7 +233,6 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
     ierr = MatAssemblyEnd(ti_mat_,MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
   }
-
   return 0;
 }
 

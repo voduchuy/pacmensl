@@ -28,11 +28,11 @@ int FspMatrixConstrained::Action(PetscReal t,Vec x,Vec y)
   CHKERRQ(ierr);
   if (!tv_reactions_.empty())
   {
-    for (int i : tv_reactions_)
+    for (int i {0}; i < tv_reactions_.size(); ++i)
     {
       ierr = MatMult(tv_sinks_mat_[i],xx,sink_tmp);
       CHKERRQ(ierr);
-      ierr = VecAXPY(sink_entries_,time_coefficients_[i],sink_tmp);
+      ierr = VecAXPY(sink_entries_,time_coefficients_[tv_reactions_[i]],sink_tmp);
       CHKERRQ(ierr);
     }
   }
@@ -200,26 +200,27 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
   }
 
   // Fill values for the time varying matrix
-  for (auto i_reaction: tv_reactions_)
+  for (int i{0}; i < tv_reactions_.size(); ++i)
   {
-    ierr = MatCreate(PETSC_COMM_SELF,&tv_sinks_mat_[i_reaction]);
+    int i_reaction = tv_reactions_[i];
+    ierr = MatCreate(PETSC_COMM_SELF,&tv_sinks_mat_[i]);
     CHKERRQ(ierr);
-    ierr = MatSetType(tv_sinks_mat_[i_reaction],MATSEQAIJ);
+    ierr = MatSetType(tv_sinks_mat_[i],MATSEQAIJ);
     CHKERRQ(ierr);
-    ierr = MatSetSizes(tv_sinks_mat_[i_reaction],n_constraints,num_rows_local_,n_constraints,num_rows_local_);
+    ierr = MatSetSizes(tv_sinks_mat_[i],n_constraints,num_rows_local_,n_constraints,num_rows_local_);
     CHKERRQ(ierr);
-    ierr = MatSeqAIJSetPreallocation(tv_sinks_mat_[i_reaction],NULL,sinkmat_nnz.colptr(i_reaction));
+    ierr = MatSeqAIJSetPreallocation(tv_sinks_mat_[i],NULL,sinkmat_nnz.colptr(i_reaction));
     CHKERRQ(ierr);
     for (auto i_constr{0}; i_constr < n_constraints; i_constr++)
     {
-      ierr = MatSetValues(tv_sinks_mat_[i_reaction],1,&i_constr,sinkmat_nnz(i_constr,i_reaction),
+      ierr = MatSetValues(tv_sinks_mat_[i],1,&i_constr,sinkmat_nnz(i_constr,i_reaction),
                           sinkmat_inz.at(i_reaction * n_constraints + i_constr).memptr(),
                           sinkmat_entries.at(i_reaction * n_constraints + i_constr).memptr(),ADD_VALUES);
       CHKERRQ(ierr);
     }
-    ierr = MatAssemblyBegin(tv_sinks_mat_[i_reaction],MAT_FINAL_ASSEMBLY);
+    ierr = MatAssemblyBegin(tv_sinks_mat_[i],MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
-    ierr = MatAssemblyEnd(tv_sinks_mat_[i_reaction],MAT_FINAL_ASSEMBLY);
+    ierr = MatAssemblyEnd(tv_sinks_mat_[i],MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
   }
 
@@ -291,7 +292,6 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
   ierr = ISDestroy(&sink_is);
   CHKERRQ(ierr);
   delete[] sink_global_indices;
-
   return 0;
 }
 
