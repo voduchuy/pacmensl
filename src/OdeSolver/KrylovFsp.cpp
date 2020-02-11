@@ -315,6 +315,10 @@ int pacmensl::KrylovFsp::SetUpWorkSpace()
   ierr = VecSetUp(solution_tmp_);
   CHKERRQ(ierr);
 
+  t_step_set_ = false;
+
+  m_next_ = m_min_;
+
   Hm      = arma::zeros(m_max_ + 2, m_max_ + 2);
 
   ierr = fspmat_->GetLocalMVFlops(&rhs_cost_loc_); CHKERRQ(ierr);
