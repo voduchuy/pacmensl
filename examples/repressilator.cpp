@@ -128,7 +128,7 @@ int main(int argc,char *argv[])
   CHKERRQ(petsc_err);
 
   // Default problem
-  PetscReal           t_final    = 5.0;
+  PetscReal           t_final    = 10.0;
   PetscReal           fsp_tol    = 1.0e-4;
   std::string         model_name = "repressilator";
   Model               repressilator_model(SM,nullptr,propensity,nullptr,nullptr,std::vector<int>());
