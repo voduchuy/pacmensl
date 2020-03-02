@@ -377,10 +377,10 @@ void output_performance(MPI_Comm comm,std::string &model_name,PartitioningType f
         << sum_times.TotalTime/num_procs << ","
         << sum_times.MatrixGenerationTime/num_procs << ","
         << sum_times.ODESolveTime/num_procs << ","
-        << sum_times.StatePartitioningTime/num_procs << "\n"
+        << sum_times.StatePartitioningTime/num_procs
         << min_times.TotalFlops << ","
         << max_times.TotalFlops << ","
-        << sum_times.TotalFlops/num_procs
+        << sum_times.TotalFlops/num_procs << "\n"
         ;
     file.close();
   }
