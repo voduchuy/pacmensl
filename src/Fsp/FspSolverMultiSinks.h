@@ -76,7 +76,7 @@ class FspSolverMultiSinks
 
   std::shared_ptr<OdeSolverBase> GetOdeSolver();
 
-  FspSolverComponentTiming GetAvgComponentTiming();
+  FspSolverComponentTiming ReduceComponentTiming(char *op);
 
   FiniteProblemSolverPerfInfo GetSolverPerfInfo();
 

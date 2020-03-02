@@ -36,11 +36,24 @@ PetscInt pacmensl::KrylovFsp::Solve()
       ierr = stop_check_(t_now_tmp_, solution_tmp_, error_excess, stop_data_);
       CHKERRQ(ierr);
 
-      if (error_excess > 0.0)
+      PetscReal t_step_tmp = t_now_tmp_ - t_now_;
+      PetscInt nrej = 0;
+      while (error_excess > 0.0 && nrej < 10)
       {
-        stop         = 1;
-        krylov_stat_ = GetDky(t_now_, 0, solution_tmp_);
+        stop = 1;
+        nrej += 1;
+        if (nrej >= 10){
+          t_step_tmp = 0.0;
+        }
+        else{
+          t_step_tmp = 0.5*t_step_tmp;
+        }
+        krylov_stat_ = GetDky(t_now_ + t_step_tmp, 0, solution_tmp_);
         CHKERRQ(petsc_err);
+        t_now_tmp_ = t_now_ + t_step_tmp;
+      }
+
+      if (stop){
         break;
       }
     }

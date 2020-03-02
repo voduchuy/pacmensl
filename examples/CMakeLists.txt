@@ -2,11 +2,11 @@
 
 set(EXAMPLES
         repressilator
-        tnfa_no_drug
-        signal_activated_bursting
-#        hog1p
+#        tnfa_no_drug
+#        signal_activated_bursting
+        hog1p
 #        time_invariant_bursting
-#        transcr_reg_6d
+        transcr_reg_6d
 #        hog1p_matvec
 #        simple_petsc_program
         )

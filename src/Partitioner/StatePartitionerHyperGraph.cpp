@@ -7,6 +7,7 @@
     namespace pacmensl{
 
         void StatePartitionerHyperGraph::generate_data( ) {
+            PetscPrintf(comm_, "Generating data for Partitioner\n");
             auto num_reactions = ( int ) stoich_mat_ptr_->n_cols;
 
             arma::Mat< int > RX(( size_t ) num_species_,
@@ -63,6 +64,7 @@
                 }
             }
             edge_ptr[ num_local_states_ ] = num_reachable_states + num_local_states_;
+            PetscPrintf(comm_, "Done generating data for Partitioner\n");
         }
 
         void StatePartitionerHyperGraph::set_zoltan_parameters( ) {
@@ -75,7 +77,7 @@
             Zoltan_Set_Param( zoltan_lb_, "HYPERGRAPH_PACKAGE", "PHG" );
             Zoltan_Set_Param( zoltan_lb_, "PHG_CUT_OBJECTIVE", "CONNECTIVITY" );
             Zoltan_Set_Param( zoltan_lb_, "CHECK_HYPERGRAPH", "0" );
-            Zoltan_Set_Param( zoltan_lb_, "PHG_REPART_MULTIPLIER", "100" );
+            Zoltan_Set_Param( zoltan_lb_, "PHG_REPART_MULTIPLIER", "10" );
             Zoltan_Set_Param( zoltan_lb_, "OBJ_WEIGHT_DIM", "1" );
             Zoltan_Set_Param( zoltan_lb_, "EDGE_WEIGHT_DIM", "0" );
             Zoltan_Set_Param( zoltan_lb_, "PHG_EDGE_WEIGHT_OPERATION", "MAX" );

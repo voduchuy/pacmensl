@@ -251,7 +251,7 @@ void output_time(MPI_Comm comm,
   MPI_Comm_rank(comm, &myRank);
   MPI_Comm_size(comm, &num_procs);
 
-  FspSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming();
+  FspSolverComponentTiming timings = fsp_solver.ReduceComponentTiming(<#initializer#>);
   FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
   double solver_time = timings.TotalTime;
 
@@ -278,7 +278,7 @@ void output_performance(MPI_Comm comm,
   MPI_Comm_rank(comm, &myRank);
   MPI_Comm_size(comm, &num_procs);
 
-  FspSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming();
+  FspSolverComponentTiming timings = fsp_solver.ReduceComponentTiming(<#initializer#>);
   FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
   double solver_time = timings.TotalTime;
   if (myRank == 0) {

@@ -7,6 +7,7 @@ static char help[] = "Solve small CMEs to benchmark intranode performance.\n\n";
 #include <Sys.h>
 #include <armadillo>
 #include <cmath>
+#include <sys/stat.h>
 #include "FspSolverMultiSinks.h"
 
 namespace six_species_cme {
@@ -94,15 +95,9 @@ void output_marginals(MPI_Comm comm, std::string model_name, PartitioningType fs
                       PartitioningApproach fsp_repart_approach, std::string constraint_type,
                       DiscreteDistribution &solution, arma::Row<int> constraints);
 
-void output_time(MPI_Comm comm,
-                 std::string model_name,
-                 PartitioningType fsp_par_type,
-                 PartitioningApproach fsp_repart_approach,
-                 std::string constraint_type,
-                 FspSolverMultiSinks &fsp_solver);
-
-void output_performance(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type,
-                        PartitioningApproach fsp_repart_approach, std::string constraint_type,
+void output_performance(MPI_Comm comm,std::string &model_name,PartitioningType fsp_par_type,
+                        PartitioningApproach fsp_repart_approach,std::string constraint_type,
+                        ODESolverType ode_type,
                         FspSolverMultiSinks &fsp_solver);
 
 int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningApproach &fsp_repart_approach,
@@ -128,7 +123,7 @@ int main(int argc, char *argv[]) {
   std::string part_approach;
 
   std::string model_name = "transcr_reg_6d";
-  Model model(SM, t_fun, propensity, nullptr, nullptr);
+  Model model(SM, t_fun, propensity, nullptr, nullptr, {4, 6, 8});
 
   PetscReal t_final = 60.00 * 5;
   PetscReal fsp_tol = 1.0e-4;
@@ -165,10 +160,8 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<const StateSetConstrained> fss = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
   arma::Row<int> final_hyperrec_constr = fss->GetShapeBounds();
   if (fsp_log_events) {
-    output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("adaptive_default"),
-                fsp_solver);
     output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("adaptive_default"), fsp_solver);
+                       std::string("adaptive_default"), fsp_odes_type, fsp_solver);
   }
   if (output_marginal) {
     output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
@@ -186,10 +179,8 @@ int main(int argc, char *argv[]) {
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final, fsp_tol, 0);
   if (fsp_log_events) {
-    output_time(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach, std::string("fixed_default"),
-                fsp_solver);
     output_performance(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
-                       std::string("fixed_default"), fsp_solver);
+                       std::string("fixed_default"), fsp_odes_type, fsp_solver);
   }
   if (output_marginal) {
     output_marginals(PETSC_COMM_WORLD, model_name, fsp_par_type, fsp_repart_approach,
@@ -244,81 +235,79 @@ int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningAppr
   return 0;
 }
 
-void output_performance(MPI_Comm comm, std::string model_name, PartitioningType fsp_par_type,
-                        PartitioningApproach fsp_repart_approach, std::string constraint_type,
-                        FspSolverMultiSinks &fsp_solver) {
-  int myRank, num_procs;
-  MPI_Comm_rank(comm, &myRank);
-  MPI_Comm_size(comm, &num_procs);
+void output_performance(MPI_Comm comm,std::string &model_name,PartitioningType fsp_par_type,
+                        PartitioningApproach fsp_repart_approach,std::string constraint_type,
+                        ODESolverType ode_type,
+                        FspSolverMultiSinks &fsp_solver)
+{
+  int myRank,num_procs;
+  MPI_Comm_rank(comm,&myRank);
+  MPI_Comm_size(comm,&num_procs);
+
+  std::string ode;
+  if (ode_type == KRYLOV)
+  {
+    ode = "krylov";
+  } else
+  {
+    ode = "cvode";
+  }
 
   std::string part_type;
   std::string part_approach;
-  part_type = part2str(fsp_par_type);
+  part_type     = part2str(fsp_par_type);
   part_approach = partapproach2str(fsp_repart_approach);
 
-  FspSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming();
-  FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
-  double solver_time = timings.TotalTime;
-  if (myRank == 0) {
+  // Output time breakdowns
+  FspSolverComponentTiming    sum_times, min_times, max_times;
+  sum_times = fsp_solver.ReduceComponentTiming("sum");
+  min_times = fsp_solver.ReduceComponentTiming("min");
+  max_times = fsp_solver.ReduceComponentTiming("max");
+
+  if (myRank == 0)
+  {
+    struct stat buffer;
+    int fstat;
+
+    std::string   filename =
+                      model_name + "_time_breakdown.dat";
+
+    fstat = stat (filename.c_str(), &buffer);
+
+    std::ofstream file;
+    file.open(filename,std::ios_base::app);
+
+    if (fstat != 0){
+      file << "ncpu, partitioner, fsp_shape, ode_solver, min_cput, max_cput, avg_cput, mat_gen_time, ode_time, state_expand_time \n";
+    }
+
+    file << num_procs << ","
+         << part_type << ","
+         << constraint_type << ","
+         << ode << ","
+         << min_times.TotalTime << ","
+         << max_times.TotalTime << ","
+         << sum_times.TotalTime/num_procs << ","
+         << sum_times.MatrixGenerationTime/num_procs << ","
+         << sum_times.ODESolveTime/num_procs << ","
+         << sum_times.StatePartitioningTime/num_procs << "\n";
+    file.close();
+  }
+
+  FiniteProblemSolverPerfInfo perf_info   = fsp_solver.GetSolverPerfInfo();
+
+  if (myRank == 0){
     std::string filename =
-        model_name + "_time_breakdown_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach +
-            "_" + constraint_type + ".dat";
+                    model_name + "_perf_info_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach + "_" +
+                        constraint_type + ".dat";
     std::ofstream file;
     file.open(filename);
-    file << "Component, Average processor time (sec), Percentage \n";
-    file << "Finite State Subset," << std::scientific << std::setprecision(2) << timings.StatePartitioningTime
-         << "," << timings.StatePartitioningTime / solver_time * 100.0 << "\n" << "Matrix Generation,"
-         << std::scientific << std::setprecision(2) << timings.MatrixGenerationTime << ","
-         << timings.MatrixGenerationTime / solver_time * 100.0 << "\n" << "Matrix-vector multiplication,"
-         << std::scientific << std::setprecision(2) << timings.RHSEvalTime << ","
-         << timings.RHSEvalTime / solver_time * 100.0 << "\n" << "Others," << std::scientific
-         << std::setprecision(2)
-         << solver_time - timings.StatePartitioningTime - timings.MatrixGenerationTime - timings.RHSEvalTime << ","
-         << (solver_time - timings.StatePartitioningTime - timings.MatrixGenerationTime - timings.RHSEvalTime) /
-             solver_time * 100.0 << "\n" << "Total," << solver_time << "," << 100.0 << "\n";
-    file.close();
-
-    filename =
-        model_name + "_perf_info_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach + "_" +
-            constraint_type + ".dat";
-    file.open(filename);
     file << "Model time, ODEs size, Average processor time (sec) \n";
-    for (auto i{0}; i < perf_info.n_step; ++i) {
+    for (auto i{0}; i < perf_info.n_step; ++i)
+    {
       file << perf_info.model_time[i] << "," << perf_info.n_eqs[i] << "," << perf_info.cpu_time[i] << "\n";
     }
     file.close();
-  }
-}
-
-void output_time(MPI_Comm comm,
-                 std::string model_name,
-                 PartitioningType fsp_par_type,
-                 PartitioningApproach fsp_repart_approach,
-                 std::string constraint_type,
-                 FspSolverMultiSinks &fsp_solver) {
-  int myRank, num_procs;
-  MPI_Comm_rank(comm, &myRank);
-  MPI_Comm_size(comm, &num_procs);
-
-  std::string part_type;
-  std::string part_approach;
-  part_type = part2str(fsp_par_type);
-  part_approach = partapproach2str(fsp_repart_approach);
-
-  FspSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming();
-  FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
-  double solver_time = timings.TotalTime;
-
-  if (myRank == 0) {
-    {
-      std::string filename =
-          model_name + "_time_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach + "_" +
-              constraint_type + ".dat";
-      std::ofstream file;
-      file.open(filename, std::ios_base::app);
-      file << solver_time << "\n";
-      file.close();
-    }
   }
 }
 

@@ -244,7 +244,7 @@ void output_performance(MPI_Comm comm, std::string model_name, PartitioningType 
   part_type = part2str(fsp_par_type);
   part_approach = partapproach2str(fsp_repart_approach);
 
-  FspSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming();
+  FspSolverComponentTiming timings = fsp_solver.ReduceComponentTiming(<#initializer#>);
   FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
   double solver_time = timings.TotalTime;
   if (myRank == 0) {
@@ -293,7 +293,7 @@ void output_time(MPI_Comm comm,
   part_type = part2str(fsp_par_type);
   part_approach = partapproach2str(fsp_repart_approach);
 
-  FspSolverComponentTiming timings = fsp_solver.GetAvgComponentTiming();
+  FspSolverComponentTiming timings = fsp_solver.ReduceComponentTiming(<#initializer#>);
   FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
   double solver_time = timings.TotalTime;
 

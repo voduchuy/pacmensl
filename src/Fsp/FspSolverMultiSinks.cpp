@@ -442,30 +442,41 @@ PacmenslErrorCode FspSolverMultiSinks::SetLogging(PetscBool logging)
   return 0;
 }
 
-FspSolverComponentTiming FspSolverMultiSinks::GetAvgComponentTiming()
+FspSolverComponentTiming FspSolverMultiSinks::ReduceComponentTiming(char *op)
 {
   PetscMPIInt comm_size;
   MPI_Comm_size(comm_, &comm_size);
 
-  auto get_avg_timing = [&](PetscLogEvent event) {
+  MPI_Op opt;
+  if (strcmp(op, "sum")==0){
+    opt = MPIU_SUM;
+  }
+  else if (strcmp(op, "min")==0){
+    opt = MPIU_MIN;
+  }
+  else{
+    opt = MPIU_MAX;
+  }
+
+  auto reduce_timing = [&](PetscLogEvent event) {
     PetscReal          timing;
     PetscReal          tmp;
     PetscEventPerfInfo info;
     int                ierr = PetscLogEventGetPerfInfo(PETSC_DETERMINE, event, &info);
     CHKERRABORT(comm_, ierr);
     tmp = info.time;
-    MPI_Allreduce(&tmp, &timing, 1, MPIU_REAL, MPIU_SUM, comm_);
-    timing /= PetscReal(comm_size);
+
+    MPI_Allreduce(&tmp, &timing, 1, MPIU_REAL, opt, comm_);
     return timing;
   };
 
   FspSolverComponentTiming timings;
-  timings.MatrixGenerationTime  = get_avg_timing(MatrixGeneration);
-  timings.StatePartitioningTime = get_avg_timing(StateSetPartitioning);
-  timings.ODESolveTime          = get_avg_timing(ODESolve);
-  timings.RHSEvalTime           = get_avg_timing(RHSEvaluation);
-  timings.SolutionScatterTime   = get_avg_timing(SolutionScatter);
-  timings.TotalTime             = get_avg_timing(SettingUp) + get_avg_timing(Solving);
+  timings.MatrixGenerationTime  = reduce_timing(MatrixGeneration);
+  timings.StatePartitioningTime = reduce_timing(StateSetPartitioning);
+  timings.ODESolveTime          = reduce_timing(ODESolve);
+  timings.RHSEvalTime           = reduce_timing(RHSEvaluation);
+  timings.SolutionScatterTime   = reduce_timing(SolutionScatter);
+  timings.TotalTime             = reduce_timing(SettingUp) + reduce_timing(Solving);
   return timings;
 }
 
