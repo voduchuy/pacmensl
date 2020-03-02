@@ -2,7 +2,7 @@
 #define PACMENSL_UTIL_H
 
 #define ARMA_DONT_PRINT_ERRORS
-
+#define ARMA_DONT_USE_WRAPPER
 #include <armadillo>
 #include <petscmat.h>
 #include <petscvec.h>

@@ -31,6 +31,7 @@ struct FspSolverComponentTiming
   PetscReal SolutionScatterTime;
   PetscReal RHSEvalTime;
   PetscReal TotalTime;
+  PetscReal TotalFlops;
 };
 
 class FspSolverMultiSinks
