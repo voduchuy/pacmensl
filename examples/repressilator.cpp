@@ -365,7 +365,7 @@ void output_performance(MPI_Comm comm,std::string &model_name,PartitioningType f
     file.open(filename,std::ios_base::app);
 
     if (fstat != 0){
-      file << "ncpu, partitioner, fsp_shape, ode_solver, min_cput, max_cput, avg_cput, mat_gen_time, ode_time, state_expand_time \n";
+      file << "ncpu, partitioner, fsp_shape, ode_solver, min_cput, max_cput, avg_cput, mat_gen_time, ode_time, state_expand_time, min_flops, max_flops, avg_flops \n";
     }
 
     file << num_procs << ","
@@ -377,7 +377,11 @@ void output_performance(MPI_Comm comm,std::string &model_name,PartitioningType f
         << sum_times.TotalTime/num_procs << ","
         << sum_times.MatrixGenerationTime/num_procs << ","
         << sum_times.ODESolveTime/num_procs << ","
-        << sum_times.StatePartitioningTime/num_procs << "\n";
+        << sum_times.StatePartitioningTime/num_procs << "\n"
+        << min_times.TotalFlops << ","
+        << max_times.TotalFlops << ","
+        << sum_times.TotalFlops/num_procs
+        ;
     file.close();
   }
 

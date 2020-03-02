@@ -313,7 +313,7 @@ void output_performance(MPI_Comm comm,std::string &model_name,PartitioningType f
   part_approach = partapproach2str(fsp_repart_approach);
 
   // Output time breakdowns
-  FspSolverComponentTiming sum_times,min_times,max_times;
+  FspSolverComponentTiming    sum_times, min_times, max_times;
   sum_times = fsp_solver.ReduceComponentTiming("sum");
   min_times = fsp_solver.ReduceComponentTiming("min");
   max_times = fsp_solver.ReduceComponentTiming("max");
@@ -321,20 +321,18 @@ void output_performance(MPI_Comm comm,std::string &model_name,PartitioningType f
   if (myRank == 0)
   {
     struct stat buffer;
-    int         fstat;
+    int fstat;
 
-    std::string filename =
-                    model_name + "_time_breakdown.dat";
+    std::string   filename =
+                      model_name + "_time_breakdown.dat";
 
-    fstat = stat(filename.c_str(),&buffer);
+    fstat = stat (filename.c_str(), &buffer);
 
     std::ofstream file;
     file.open(filename,std::ios_base::app);
 
-    if (fstat != 0)
-    {
-      file
-          << "ncpu, partitioner, fsp_shape, ode_solver, min_cput, max_cput, avg_cput, mat_gen_time, ode_time, state_expand_time \n";
+    if (fstat != 0){
+      file << "ncpu, partitioner, fsp_shape, ode_solver, min_cput, max_cput, avg_cput, mat_gen_time, ode_time, state_expand_time, min_flops, max_flops, avg_flops \n";
     }
 
     file << num_procs << ","
@@ -343,21 +341,23 @@ void output_performance(MPI_Comm comm,std::string &model_name,PartitioningType f
          << ode << ","
          << min_times.TotalTime << ","
          << max_times.TotalTime << ","
-         << sum_times.TotalTime / num_procs << ","
-         << sum_times.MatrixGenerationTime / num_procs << ","
-         << sum_times.ODESolveTime / num_procs << ","
-         << sum_times.StatePartitioningTime / num_procs << "\n";
+         << sum_times.TotalTime/num_procs << ","
+         << sum_times.MatrixGenerationTime/num_procs << ","
+         << sum_times.ODESolveTime/num_procs << ","
+         << sum_times.StatePartitioningTime/num_procs << "\n"
+         << min_times.TotalFlops << ","
+         << max_times.TotalFlops << ","
+         << sum_times.TotalFlops/num_procs
+        ;
     file.close();
   }
 
-  FiniteProblemSolverPerfInfo perf_info = fsp_solver.GetSolverPerfInfo();
+  FiniteProblemSolverPerfInfo perf_info   = fsp_solver.GetSolverPerfInfo();
 
-  if (myRank == 0)
-  {
-    std::string   filename =
-                      model_name + "_perf_info_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach
-                          + "_" +
-                          constraint_type + ".dat";
+  if (myRank == 0){
+    std::string filename =
+                    model_name + "_perf_info_" + std::to_string(num_procs) + "_" + part_type + "_" + part_approach + "_" +
+                        constraint_type + ".dat";
     std::ofstream file;
     file.open(filename);
     file << "Model time, ODEs size, Average processor time (sec) \n";

@@ -470,6 +470,18 @@ FspSolverComponentTiming FspSolverMultiSinks::ReduceComponentTiming(char *op)
     return timing;
   };
 
+  auto reduce_flops = [&](PetscLogEvent event) {
+    PetscReal          nflops;
+    PetscReal          tmp;
+    PetscEventPerfInfo info;
+    int                ierr = PetscLogEventGetPerfInfo(PETSC_DETERMINE, event, &info);
+    CHKERRABORT(comm_, ierr);
+    tmp = info.flops;
+
+    MPI_Allreduce(&tmp, &nflops, 1, MPIU_REAL, opt, comm_);
+    return nflops;
+  };
+
   FspSolverComponentTiming timings;
   timings.MatrixGenerationTime  = reduce_timing(MatrixGeneration);
   timings.StatePartitioningTime = reduce_timing(StateSetPartitioning);
@@ -477,6 +489,7 @@ FspSolverComponentTiming FspSolverMultiSinks::ReduceComponentTiming(char *op)
   timings.RHSEvalTime           = reduce_timing(RHSEvaluation);
   timings.SolutionScatterTime   = reduce_timing(SolutionScatter);
   timings.TotalTime             = reduce_timing(SettingUp) + reduce_timing(Solving);
+  timings.TotalFlops  = reduce_flops(Solving);
   return timings;
 }
 
