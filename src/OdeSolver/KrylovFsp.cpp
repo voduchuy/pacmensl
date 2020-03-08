@@ -85,7 +85,8 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
   PetscErrorCode ierr;
   PetscBool      happy_breakdown, success_step, bsize_changed;
   PetscReal s, xm, err_loc, omega, omega_old, kappa, order, t_step_old, t_step_suggest;
-  PetscInt ireject, m_old, m_start, m_suggest, cost_tchange, cost_mchange;
+  PetscInt ireject, m_old, m_start, m_suggest;
+  PetscReal cost_tchange, cost_mchange;
 
 
   err_loc = 0.0;
@@ -95,7 +96,7 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
 
   m_start = 0;
   kappa = 2.0;
-  order = m_/4;
+  order = double(m_)/4;
 
   while (!success_step && ireject <= max_reject_){
     m_ = std::min(m_max_, std::max(m_min_, m_next_));
@@ -433,25 +434,25 @@ PacmenslErrorCode pacmensl::KrylovFsp::SetOrthLength(int q)
   return 0;
 }
 
-int pacmensl::KrylovFsp::EstimateCost_(PetscReal tau_new, PetscInt m_new, PetscInt *cost)
+int pacmensl::KrylovFsp::EstimateCost_(PetscReal tau_new, PetscInt m_new, PetscReal *cost)
 {
   int ierr;
   PetscReal hnorm = arma::norm(Hm, "inf");
   int ns = std::ceil(hnorm*tau_new);
-  PetscInt cost_local;
+  PetscReal cost_local;
   PetscInt n_loc;
   ierr = VecGetLocalSize(*solution_, &n_loc); CHKERRQ(ierr);
 
   if (q_iop>0){
-    cost_local = (m_new + 1)*rhs_cost_loc_ +
-        (4*q_iop*m_new + 5*m_new + 2*q_iop - 2*q_iop*q_iop + 7)*n_loc + 2*std::ceil(25.0/3.0 + ns)*(m_new+2)*(m_new+2)*(m_new+2);
+    cost_local = PetscReal(m_new + 1)*rhs_cost_loc_ +
+        PetscReal(4*q_iop*m_new + 5*m_new + 2*q_iop - 2*q_iop*q_iop + 7)*n_loc + 2.0*std::ceil(25.0/3.0 + ns)*PetscReal((m_new+2)*(m_new+2)*(m_new+2));
   }
   else{
     cost_local = (m_new + 1)*rhs_cost_loc_ +
         (4*m_new*m_new + 5*m_new + 2*m_new - 2*m_new*m_new + 7)*n_loc + 2*std::ceil(25.0/3.0 + ns)*(m_new+2)*(m_new+2)*(m_new+2);
   }
 
-  ierr = MPI_Allreduce(&cost_local, cost, 1, MPIU_INT, MPIU_MAX, comm_); CHKERRQ(ierr);
+  ierr = MPI_Allreduce(&cost_local, cost, 1, MPIU_REAL, MPIU_MAX, comm_); CHKERRQ(ierr);
 
   return 0;
 }

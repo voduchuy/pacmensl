@@ -28,9 +28,9 @@ class KrylovFsp : public OdeSolverBase {
   const int max_reject_ = 10000;
   PetscReal delta_ = 1.2, gamma_ = 0.9; ///< Safety factors
 
-  int m_min_ = 5, m_max_ = 100, m_next_ = 5;
+  int m_min_ = 25, m_max_ = 60, m_next_ = 25;
   int m_ = 30;
-  int q_iop = -1;
+  int q_iop = 2;
 
   int k1 = 2;
   int mb, mx;
@@ -59,7 +59,7 @@ class KrylovFsp : public OdeSolverBase {
 
   int GetDky(PetscReal t, int deg, Vec p_vec);
 
-  inline int EstimateCost_(PetscReal tau_new,PetscInt m_new, PetscInt *cost);
+  inline int EstimateCost_(PetscReal tau_new,PetscInt m_new, PetscReal *cost);
 
   // For logging events using PETSc LogEvent
   PetscLogEvent event_advance_one_step_;
