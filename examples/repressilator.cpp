@@ -159,7 +159,7 @@ int main(int argc,char *argv[])
   fsp_solver.SetConstraintFunctions(lhs_constr,nullptr);
   fsp_solver.SetInitialBounds(rhs_constr);
   fsp_solver.SetExpansionFactors(expansion_factors);
-  fsp_solver.SetOdeTolerances(1.0,1.0e-14);
+  fsp_solver.SetOdeTolerances(1.0e-4,1.0e-14);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final,fsp_tol,0);
 
@@ -186,7 +186,7 @@ int main(int argc,char *argv[])
   // Solve using fixed custom constraints
   fsp_solver.SetConstraintFunctions(lhs_constr,nullptr);
   fsp_solver.SetInitialBounds(final_custom_constr);
-  fsp_solver.SetOdeTolerances(1.0,1.0e-14);
+  fsp_solver.SetOdeTolerances(1.0e-4,1.0e-14);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final,fsp_tol,0);
   if (fsp_log_events)
@@ -210,7 +210,7 @@ int main(int argc,char *argv[])
   fsp_solver.SetInitialBounds(rhs_constr_hyperrec);
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
-  fsp_solver.SetOdeTolerances(1.0,1.0e-14);
+  fsp_solver.SetOdeTolerances(1.0e-4,1.0e-14);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final,fsp_tol,0);
   fss      = std::static_pointer_cast<const StateSetConstrained>(fsp_solver.GetStateSet());
@@ -236,7 +236,7 @@ int main(int argc,char *argv[])
   fsp_solver.SetInitialBounds(final_hyperrec_constr);
   fsp_solver.SetExpansionFactors(expansion_factors_hyperrec);
   fsp_solver.SetFromOptions();
-  fsp_solver.SetOdeTolerances(1.0,1.0e-14);
+  fsp_solver.SetOdeTolerances(1.0e-4,1.0e-14);
   fsp_solver.SetUp();
   solution = fsp_solver.Solve(t_final,fsp_tol,0);
   if (fsp_log_events)
