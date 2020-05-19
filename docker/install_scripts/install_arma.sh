@@ -1,6 +1,7 @@
 #!/bin/bash
+user=${USERNAME}
 
-cd /home/user/software/src
+cd /home/${user}/software/src
 wget http://sourceforge.net/projects/arma/files/armadillo-9.880.1.tar.xz -O arma.tar.xz
 tar -xvf arma.tar.xz
 mv armadillo-9.880.1 arma
@@ -14,6 +15,6 @@ make -j4
 sudo make install
 
 # clean up
-cd /home/user
+cd /home/${user}
 rm -rf software/src/arma
 rm -rf software/build/arma
