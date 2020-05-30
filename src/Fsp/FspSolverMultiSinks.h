@@ -151,11 +151,11 @@ class FspSolverMultiSinks
   PetscLogEvent Solving;
 
   // Cache options for ODE solvers
-  bool custom_ts_type = false;
+  bool custom_ts_type_ = false;
   std::string ts_type_ = "";
 
-  bool custom_krylov = false;
-  int q_iop = -1;
+  bool custom_krylov_ = false;
+  int q_iop_ = -1;
 
  public:
   PacmenslErrorCode SetOdeTolerances(PetscReal rel_tol, PetscReal abs_tol);
