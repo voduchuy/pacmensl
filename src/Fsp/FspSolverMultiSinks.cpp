@@ -366,7 +366,10 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
       case CVODE:ode_solver_ = std::make_shared<CvodeFsp>(comm_);
         break;
       case KRYLOV:ode_solver_ = std::make_shared<KrylovFsp>(comm_);
-        if (custom_krylov_) ((KrylovFsp*) ode_solver_.get())->SetOrthLength(q_iop_);
+        if (custom_krylov_){
+          ((KrylovFsp*) ode_solver_.get())->SetOrthLength(q_iop_);
+          ((KrylovFsp*) ode_solver_.get())->SetKrylovDimRange(m_min_,m_max_);
+        }
         break;
 //      case EPIC:ode_solver_ = std::make_shared<EpicFsp>(comm_, model_.stoichiometry_matrix_.n_cols);
 //        break;
@@ -744,6 +747,21 @@ PacmenslErrorCode FspSolverMultiSinks::SetKrylovOrthLength(int q)
   else{
     custom_krylov_ = true;
     q_iop_ = q;
+  }
+  return 0;
+}
+
+PacmenslErrorCode FspSolverMultiSinks::SetKrylovDimRange(int m_min, int m_max){
+  if (odes_type_ != KRYLOV){
+    return 0;
+  }
+  if (ode_solver_ != nullptr){
+    ((KrylovFsp*) ode_solver_.get())->SetKrylovDimRange(m_min, m_max);
+  }
+  else{
+    custom_krylov_ = true;
+    m_min_ = m_min;
+    m_max_ = m_max;
   }
   return 0;
 }

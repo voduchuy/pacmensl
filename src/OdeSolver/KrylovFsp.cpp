@@ -456,4 +456,10 @@ int pacmensl::KrylovFsp::EstimateCost_(PetscReal tau_new, PetscInt m_new, PetscR
 
   return 0;
 }
+PacmenslErrorCode pacmensl::KrylovFsp::SetKrylovDimRange(int m_min, int m_max) {
+  m_min_ = m_min;
+  m_max_ = m_max;
+  m_next_ = m_min;
+  return 0;
+}
 

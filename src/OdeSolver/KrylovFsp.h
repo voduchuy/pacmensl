@@ -19,6 +19,8 @@ class KrylovFsp : public OdeSolverBase {
 
   PacmenslErrorCode SetOrthLength(int q);
 
+  PacmenslErrorCode SetKrylovDimRange(int m_min, int m_max);
+
   int FreeWorkspace() override;
 
   ~KrylovFsp();

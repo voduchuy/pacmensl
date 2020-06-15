@@ -73,6 +73,8 @@ class FspSolverMultiSinks
 
   PacmenslErrorCode SetKrylovOrthLength(int q);
 
+  PacmenslErrorCode SetKrylovDimRange(int m_min, int m_max);
+
   std::shared_ptr<const StateSetBase> GetStateSet();
 
   std::shared_ptr<OdeSolverBase> GetOdeSolver();
@@ -156,6 +158,7 @@ class FspSolverMultiSinks
 
   bool custom_krylov_ = false;
   int q_iop_ = -1;
+  int m_min_ = 25, m_max_ = 60;
 
  public:
   PacmenslErrorCode SetOdeTolerances(PetscReal rel_tol, PetscReal abs_tol);

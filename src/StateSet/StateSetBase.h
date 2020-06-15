@@ -36,8 +36,7 @@ struct FiniteStateSubsetLogger {
  * @brief Base class for the Finite State Subset object.
  * @details The Finite State Subset object contains the data and methods related to the storage, management, and
  * parallel
- * distribution of the states included by the Finite State Projection algorithm. Our current implementation relies on
- * Zoltan's dynamic load-balancing tools for the parallel distribution of these states into the processors.
+ * distribution of the states included by the Finite State Projection algorithm.
  * */
 class StateSetBase {
  public: NOT_COPYABLE_NOT_MOVABLE(StateSetBase);
