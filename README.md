@@ -66,6 +66,10 @@ For a minimal build:
 ## Usage 
 To use the library, simply add the link flag ```-lpacmensl``` when compiling your program. See the in-source
  documentations and the example source codes in the folder ```examples``` for the syntax.
+
+## Python wrapper
+Python wrapper is available at https://github.com/voduchuy/pypacmensl.
+ 
 ## Contact
 
 Huy Vo (huydvo@colostate.edu).
