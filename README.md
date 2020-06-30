@@ -1,51 +1,57 @@
-# PACMENSL
-
-PACMENSL (pak-men) : Parallel extensible Chemical master equation Analysis Library.
+PACMENSL
+PACMENSL (pak-men) : Parallel Adaptive Numerical Solver Library for the Chemical Master Equation.
 
 This is a part of the SSIT project at Munsky Group.
 
-## Prerequisites
-Compilation and build tools:
-* CMake (3.10 or higher) (https://cmake.org/download/)
-* C, CXX compilers.
+Prerequisites
+Required:
 
+CMake (3.10 or higher) (https://cmake.org/download/)
+C, CXX compilers.
 An MPI implementation (OpenMPI, MPICH) already installed on your system. On MacOS you can install OpenMPI via Homebrew:
-```
 brew update
 brew install openmpi
-```
+Armadillo (http://arma.sourceforge.net/download.html)
+Zoltan (https://github.com/trilinos/Trilinos/tree/master/packages/zoltan)
+PETSc (https://www.mcs.anl.gov/petsc/download/)
+Sundials (https://computation.llnl.gov/projects/sundials/sundials-software)
+Optionally, if you want to use graph-partitioning methods for load-balancing:
 
-Python:
-* Python 3.6 or higher
-* wget (for using the dowload scripts)
+Metis (http://glaros.dtc.umn.edu/gkhome/metis/metis/download)
+Parmetis (http://glaros.dtc.umn.edu/gkhome/metis/parmetis/download)
+If you want to build the unit tests:
 
-
-Additional requirements:
-
-* Armadillo (http://arma.sourceforge.net/download.html)
-* Metis (http://glaros.dtc.umn.edu/gkhome/metis/metis/download)
-* Parmetis (http://glaros.dtc.umn.edu/gkhome/metis/parmetis/download)
-* Zoltan (https://github.com/trilinos/Trilinos/tree/master/packages/zoltan)
-* PETSc (https://www.mcs.anl.gov/petsc/download/)
-* Sundials (https://computation.llnl.gov/projects/sundials/sundials-software)
-
+GoogleTest.
 In addition, PETSc and Sundials must be built with double-precision scalar types. Sundials must be enabled with PETSc support.
 
-## Semi-automatic installation of the prerequisites
+Installation
+PACMENSL can be installed using CMake. You can add the following options to the cmake command to customize the build:
 
-You can run our interactive Python scripts in the folder 'ext' that automatically download, configure, build and install the required libraries above into a custom folder. In order to download and install third-party libraries with our scripts, follow these steps:
+-DBUILD_EXAMPLES
+Whether to build example programs (ON``) or not (OFF```).
+-DBUILD_TESTS
+Whether to build unit tests (ON``) or not (OFF```). You must have GoogleTest framework installed on your system. Otherwise, this option will be turned off.
+-DBUILD_SHARED_LIBS
+Build shared library (ON) or static library (OFF).
+-DENABLE_PARMETIS
+To enable interface to ParMetis (ON``) or not (OFF```).
+-DEXAMPLES_INSTALL_DIR
+Where to install the compiled examples.
+-DTESTS_INSTALL_DIR
+Where to install the compiled tests.
+-DCMAKE_INSTALL_PREFIX
+Path to installing the compiled library.
+For a minimal build:
 
-1. Create three separate directories for storing downloaded source files (e.g. 'src'), for writing configuration and build files (e.g. 'build'), and for installation (e.g. 'install').
-1. cd to the 'ext' directory within PACMENSL's folder.
-1. Type 'python get_ext_libraries.py' if you want to download and install all of the libraries. Otherwise, type 'python ext_<library>.py' to install the individual libraries. Replace 'python' with your preferred python binary.
-1. After installation, make sure to add the paths to the installed headers and library files to your environment variables. In Linux/MacOS you will need to set the following environment variables:
-  ```
-  export LD_LIBRARY_PATH=<path_to_your_install_dir>/lib:${LD_LIBRARY_PATH}
-  
-  export LIBRARY_PATH=<path_to_your_install_dir>/lib:${LIBRARY_PATH}
-  
-  export CPATH=<path_to_your_install_dir>/include:${CPATH}
-  
-  export PATH=<path_to_your_install_dir>/bin:${PATH}
-```
-## Installing PACMENSL
+Create a folder, say build. Make that the current working directory.
+Run the command
+cmake -DBUILD_EXAMPLES=ON -DBUILD_TESTS=OFF -DBUILD_SHARED_LIBS=ON -DENABLE_PARMETIS=OFF $(path_to_PACMENSL
+root_folder)
+Here, $(path_to_PACMENSL_root_folder) is the path to PACMENSL source directory.
+To build the library and examples: make -j4
+Install the library make install. On a Linux or MacOS system, this will install the compiled library to the default folder /usr/local/lib.
+Usage
+To use the library, simply add the link flag -lpacmensl when compiling your program. See the in-source documentations and the example source codes in the folder examples for the syntax.
+
+Contact
+Huy Vo (huydvo@colostate.edu).
