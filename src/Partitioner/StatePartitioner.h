@@ -16,7 +16,7 @@ namespace pacmensl {
 class StatePartitioner
 {
  private:
-  MPI_Comm             comm  = nullptr;
+  MPI_Comm             comm = MPI_COMM_NULL;
   StatePartitionerBase *data = nullptr;
  public:
   explicit StatePartitioner(MPI_Comm _comm) { comm = _comm; };
