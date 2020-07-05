@@ -90,7 +90,7 @@ void ind2sub_nd(intT num_dimensions, intT *nmax, intT num_indxs, intT_out *indx,
   int k;
   for (auto j{1}; j <= num_indxs; j++) {
     k = indx[j - 1];
-    for (auto i{1}; i <= num_dimensions; i++) {
+    for (intT i{1}; i <= num_dimensions; i++) {
       states[(j - 1) * num_dimensions + i - 1] = k % (nmax[i - 1] + 1);
       k = k / (nmax[i - 1] + 1);
     }
@@ -100,15 +100,15 @@ void ind2sub_nd(intT num_dimensions, intT *nmax, intT num_indxs, intT_out *indx,
 template<typename IntVecT1 = arma::Row<PetscInt>, typename IntVecT2 = arma::Row<PetscInt>, typename IntMatT = arma::Mat<
 PetscInt>>
 IntMatT ind2sub_nd(const IntVecT1 &nmax, const IntVecT2 &indx) {
-  auto N = nmax.size();
-  auto nst = indx.size();
+  int N = nmax.size();
+  int nst = indx.size();
 
   IntMatT X(N, nst);
 
   int k;
-  for (auto j{1}; j <= nst; j++) {
+  for (int j{1}; j <= nst; j++) {
     k = indx.at(j - 1);
-    for (auto i{1}; i <= N; i++) {
+    for (int i{1}; i <= N; i++) {
       X(i - 1, j - 1) = k % (nmax(i - 1) + 1);
       k = k / (nmax(i - 1) + 1);
     }
