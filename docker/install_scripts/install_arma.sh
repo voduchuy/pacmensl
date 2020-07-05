@@ -10,11 +10,8 @@ rm *.xz
 cd ../build
 mkdir arma
 cd arma
-cmake ../../src/arma
+cmake -DCMAKE_INSTALL_PREFIX=/home/${user}/software/install ../../src/arma
 make -j4
-sudo make install
+make install
 
-# clean up
-cd /home/${user}
-rm -rf software/src/arma
-rm -rf software/build/arma
+
