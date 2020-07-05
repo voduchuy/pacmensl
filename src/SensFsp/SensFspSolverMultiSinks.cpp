@@ -317,7 +317,7 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
     // Expand the FspSolverBase if the solver halted prematurely
     if (solver_stat == 1)
     {
-      for (auto           i{0}; i < to_expand_.n_elem; ++i)
+      for (int           i{0}; i < to_expand_.n_elem; ++i)
       {
         if (to_expand_(i) == 1)
         {
