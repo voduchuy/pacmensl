@@ -207,7 +207,7 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
 FspSolverMultiSinks::~FspSolverMultiSinks()
 {
   ClearState();
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 PacmenslErrorCode FspSolverMultiSinks::ClearState()

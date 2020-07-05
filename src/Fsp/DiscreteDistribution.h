@@ -13,7 +13,7 @@
 namespace pacmensl {
 
     struct DiscreteDistribution {
-        MPI_Comm comm_ = nullptr;
+        MPI_Comm comm_ = MPI_COMM_NULL;
         double t_ = 0.0;
         arma::Mat<int> states_;
         Vec p_ = nullptr;

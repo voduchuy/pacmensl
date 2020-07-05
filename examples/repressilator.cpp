@@ -428,7 +428,7 @@ void output_marginals(MPI_Comm comm,std::string model_name,PartitioningType fsp_
     for (PetscInt i{0}; i < marginals.size(); ++i)
     {
       std::string filename =
-                      model_name.append("_marginal_").append(std::to_string(i)).append("_").append(std::to_string(num_procs)).append("_").append(part_type + "_" + part_approach + "_" + constraint_type + ".dat");
+                      model_name + ("_marginal_").append(std::to_string(i)).append("_").append(std::to_string(num_procs)).append("_").append(part_type + "_" + part_approach + "_" + constraint_type + ".dat");
       marginals[i].save(filename,arma::raw_ascii);
     }
     std::string   filename =

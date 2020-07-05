@@ -256,7 +256,7 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::ClearState()
 pacmensl::SensFspSolverMultiSinks::~SensFspSolverMultiSinks()
 {
   ClearState();
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 int pacmensl::SensFspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p)

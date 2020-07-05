@@ -21,7 +21,7 @@ class StationaryMCSolver {
   int Clear();
   ~StationaryMCSolver();
  protected:
-  MPI_Comm comm_ = nullptr;
+  MPI_Comm comm_ = MPI_COMM_NULL;
   Vec* solution_ = nullptr;
   Vec* mat_diagonal_ = nullptr;
   TIMatvec matvec_ = nullptr;

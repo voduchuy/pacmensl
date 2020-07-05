@@ -77,7 +77,7 @@ int pacmensl::StationaryMCSolver::Clear() {
 
 pacmensl::StationaryMCSolver::~StationaryMCSolver() {
   Clear();
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 int pacmensl::StationaryMCSolver::Solve() {

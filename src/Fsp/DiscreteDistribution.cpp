@@ -11,7 +11,7 @@ pacmensl::DiscreteDistribution::~DiscreteDistribution() {
     CHKERRABORT(MPI_COMM_SELF, ierr);
   }
   p_    = nullptr;
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 pacmensl::DiscreteDistribution::DiscreteDistribution(const pacmensl::DiscreteDistribution &dist) {
@@ -36,7 +36,7 @@ pacmensl::DiscreteDistribution::DiscreteDistribution(pacmensl::DiscreteDistribut
   p_      = dist.p_;
 
   dist.p_    = nullptr;
-  dist.comm_ = nullptr;
+  dist.comm_ = MPI_COMM_NULL;
 }
 
 pacmensl::DiscreteDistribution &
@@ -71,7 +71,7 @@ pacmensl::DiscreteDistribution::operator=(pacmensl::DiscreteDistribution &&dist)
     states_ = std::move(dist.states_);
     p_      = dist.p_;
 
-    dist.comm_ = nullptr;
+    dist.comm_ = MPI_COMM_NULL;
     dist.p_    = nullptr;
     dist.states_.clear();
 

@@ -104,7 +104,7 @@ StateSetBase::~StateSetBase() {
   int ierr;
   ierr = Clear();
   CHKERRABORT(comm_, ierr);
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 /// Distribute the frontier states to all processors for state space exploration

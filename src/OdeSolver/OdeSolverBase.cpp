@@ -79,7 +79,7 @@ PetscInt OdeSolverBase::Solve() {
 }
 
 OdeSolverBase::~OdeSolverBase() {
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 int OdeSolverBase::EnableLogging() {

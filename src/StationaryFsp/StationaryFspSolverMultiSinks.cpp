@@ -214,7 +214,7 @@ int pacmensl::StationaryFspSolverMultiSinks::ClearState()
 pacmensl::StationaryFspSolverMultiSinks::~StationaryFspSolverMultiSinks()
 {
   ClearState();
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 PacmenslErrorCode pacmensl::StationaryFspSolverMultiSinks::MakeDiscreteDistribution_(DiscreteDistribution &dist)

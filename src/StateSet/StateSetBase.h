@@ -72,7 +72,7 @@ class StateSetBase {
 
   static const int hash_table_length_ = 1000000;
 
-  MPI_Comm comm_ = nullptr;
+  MPI_Comm comm_ = MPI_COMM_NULL;
 
   int set_up_ = 0;
   int stoich_set_ = 0;

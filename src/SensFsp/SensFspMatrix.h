@@ -35,7 +35,7 @@ class SensFspMatrix
 
   int GetNumLocalRows() const;
  protected:
-  MPI_Comm comm_ = nullptr;
+  MPI_Comm comm_ = MPI_COMM_NULL;
   int      rank_ = 0;
 
   int                     num_parameters_ = 0; ///< Number of sensitivity parameters
@@ -76,7 +76,7 @@ template<typename FspMatrixT>
 pacmensl::SensFspMatrix<FspMatrixT>::~SensFspMatrix()
 {
   Destroy();
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 template<typename FspMatrixT>

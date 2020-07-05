@@ -239,7 +239,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
 FspMatrixBase::~FspMatrixBase()
 {
   Destroy();
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 int FspMatrixBase::Destroy()

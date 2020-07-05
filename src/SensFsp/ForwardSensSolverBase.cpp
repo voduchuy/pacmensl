@@ -53,7 +53,7 @@ PacmenslErrorCode pacmensl::ForwardSensSolverBase::SetStopCondition(const std::f
 }
 
 pacmensl::ForwardSensSolverBase::~ForwardSensSolverBase() {
-  comm_ = nullptr;
+  comm_ = MPI_COMM_NULL;
 }
 
 PacmenslErrorCode pacmensl::ForwardSensSolverBase::FreeWorkspace() {

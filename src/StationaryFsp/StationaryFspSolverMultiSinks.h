@@ -38,7 +38,7 @@ class StationaryFspSolverMultiSinks
   ~StationaryFspSolverMultiSinks();
 
  protected:
-  MPI_Comm comm_ = nullptr;
+  MPI_Comm comm_ = MPI_COMM_NULL;
   int      my_rank_;
   int      comm_size_;
 
