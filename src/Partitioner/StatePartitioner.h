@@ -29,7 +29,7 @@ class StatePartitioner
   ~StatePartitioner()
   {
     delete data;
-    comm = nullptr;
+    comm = MPI_COMM_NULL;
   }
 };
 }
