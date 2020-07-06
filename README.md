@@ -8,7 +8,7 @@ This is a part of the SSIT project at Munsky Group.
 
 Required:
 * CMake (3.10 or higher) (https://cmake.org/download/)
-* C, CXX compilers.
+* C, CXX compilers, preferably GCC.
 * An MPI implementation (OpenMPI, MPICH) already installed on your system. On MacOS you can install OpenMPI via
  Homebrew:
 ```
