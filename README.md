@@ -6,7 +6,7 @@ This is a part of the SSIT project at Munsky Group.
 
 ## Contact
 
-Huy Vo would love to receive your feedbacks, questions, feature requests, and collaboration ideas. He can be reached at huydvo@colostate.edu.
+Huy Vo: huydvo@colostate.edu.
 
 ## Prerequisites
 
