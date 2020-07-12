@@ -107,4 +107,3 @@ if (ierr != 0) {\
 #endif //PACMENSL_SRC_SYS_ERRORHANDLING_H_
 
 
-//"The main difference between a BS vendor (Krugman) and a doer (Musk) is that a doer, necessarily, has scars." Nassim Taleb

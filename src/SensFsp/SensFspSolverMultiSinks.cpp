@@ -331,7 +331,7 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
         PetscPrintf(comm_, "\n ------------- \n");
         PetscPrintf(comm_, "At time t = %.2f expansion to new state_set_ size: \n",
                     sens_solver_->GetCurrentTime());
-        for (auto i{0}; i < fsp_bounds_.n_elem; ++i)
+        for (int i{0}; i < fsp_bounds_.n_elem; ++i)
         {
           PetscPrintf(comm_, "%d ", fsp_bounds_[i]);
         }
@@ -369,7 +369,7 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
         new_sinks_locations.set_size(sinks_.n_elem);
         Int i_end_new;
         i_end_new = state_set_->GetNumGlobalStates() + sinks_.n_elem;
-        for (auto i{0}; i < new_sinks_locations.n_elem; ++i)
+        for (int i{0}; i < new_sinks_locations.n_elem; ++i)
         {
           new_sinks_locations[i] = i_end_new - (( Int ) new_sinks_locations.n_elem) + i;
         }

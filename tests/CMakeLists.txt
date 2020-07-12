@@ -7,7 +7,7 @@ set(TEST_PROGRAMS
         test_sensmat
         test_sensfsp_solver
         test_petscwrap
-        test_stationaryfsp_solver
+#        test_stationaryfsp_solver
         )
 
 include_directories(${GTEST_INCLUDE_DIRS})
