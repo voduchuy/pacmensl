@@ -1,14 +1,18 @@
 # PACMENSL
 
-PACMENSL (pak-men) : Parallel Adaptive Numerical Solver Library for the Chemical Master Equation. The library implements the Finite State Projection algorithm to numerically solve the CME on high performance computing nodes using MPI. There are also objects that might be useful for developing parallel implementations for other flavors of the FSP for sensitivity analysis and stationary distribution.
+PACMENSL (pronounced "pak-men") : Parallel Adaptive Chemical Master EquatioN Solver Library. The library implements the Finite State Projection algorithm to numerically solve the CME on high performance computing nodes using MPI. There are also objects that might be useful for developing parallel implementations for other flavors of the FSP for sensitivity analysis and computing the stationary distribution.
 
 This is a part of the SSIT project at Munsky Group.
+
+## Contact
+
+Huy Vo: huydvo@colostate.edu.
 
 ## Prerequisites
 
 Required:
 * CMake (3.10 or higher) (https://cmake.org/download/)
-* C, CXX compilers.
+* C, CXX compilers, preferably those from the GNU Compiler Collections.
 * An MPI implementation (OpenMPI, MPICH) already installed on your system. On MacOS you can install OpenMPI via
  Homebrew:
 ```
@@ -68,8 +72,12 @@ To use the library, simply add the link flag ```-lpacmensl``` when compiling you
  documentations and the example source codes in the folder ```examples``` for the syntax.
 
 ## Python wrapper
-Python wrapper is available at https://github.com/voduchuy/pypacmensl.
- 
-## Contact
+Python wrapper is available at https://github.com/voduchuy/pypacmensl. This wrapper can be installed in the usual way by running, e.g, ```python setup.py install```. There are a few additional required packages on the Python side:
+* Python 3.6+.
+* mpi4py (https://mpi4py.readthedocs.io/en/stable/).
+* numpy 1.18.5+
+* cython
 
-Huy Vo (huydvo@colostate.edu).
+Note that these codes will not run with Python 2X. I personally use Anaconda (free individual edition at https://www.anaconda.com/products/individual) to install and manage these packages.
+ 
+
