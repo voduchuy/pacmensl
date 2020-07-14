@@ -4,6 +4,10 @@ PACMENSL (pronounced "pak-men") : PArallel Chemical Master EquatioN Solver Libra
 
 This is a part of the SSIT project at Munsky Group.
 
+## Reference
+
+Vo, H. D. and Munsky, B. E. "A Parallel Implementation of the Finite State Projection Algorithm for the Solution of the Chemical Master Equation". https://www.biorxiv.org/content/10.1101/2020.06.30.180273v2
+
 ## Contact
 
 Huy Vo: huydvo@colostate.edu.
