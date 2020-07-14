@@ -8,7 +8,7 @@ This is a part of the SSIT project at Munsky Group.
 
 Huy Vo: huydvo@colostate.edu.
 
-## Prerequisites
+## Dependencies
 
 Required:
 * CMake (3.10 or higher) (https://cmake.org/download/)
