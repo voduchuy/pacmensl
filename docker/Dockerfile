@@ -34,6 +34,7 @@ ENV PACKAGES="\
   wget \
   cmake \
   xz-utils \
+  git \
 "
 
 RUN sudo apt-get install -y ${PACKAGES} && sudo apt-get clean
@@ -44,28 +45,43 @@ RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib" >> /home/${USERNAME}/.bash
     mkdir /home/${USERNAME}/software/src && \
     mkdir /home/${USERNAME}/software/build
 
-COPY install_scripts ./
-
 # install open-mpi 4.0
+COPY install_scripts/install_mpi.sh ./
 RUN sudo chmod +x ./install*.sh && ./install_mpi.sh
 
 # install anaconda
-RUN ./install_conda.sh
+COPY install_scripts/install_conda.sh ./
+RUN sudo chmod +x ./install_conda.sh && ./install_conda.sh
 ENV PATH /home/${USERNAME}/anaconda/bin:${PATH}
 RUN conda update conda
 RUN conda init bash
 
 # install petsc
-RUN ./install_petsc.sh
-
-# install sundials
-RUN ./install_sundials.sh
+COPY install_scripts/install_petsc.sh ./
+RUN sudo chmod +x ./install_petsc.sh && ./install_petsc.sh
 
 # install metis
-RUN ./install_metis.sh
+COPY install_scripts/install_metis.sh ./
+RUN sudo chmod +x ./install_metis.sh && ./install_metis.sh
 
 # install Zoltan
-RUN ./install_zoltan.sh
+COPY install_scripts/install_zoltan.sh ./
+RUN sudo chmod +x ./install_zoltan.sh && ./install_zoltan.sh
 
 # install armadillo
-RUN ./install_arma.sh
+COPY install_scripts/install_arma.sh ./
+RUN sudo chmod +x ./install_arma.sh && ./install_arma.sh
+
+# install sundials
+COPY install_scripts/install_sundials.sh ./
+ENV PETSC_DIR=/home/${USERNAME}/software/install/petsc
+ENV PETSC_ARCH=linux-c-opt
+RUN sudo chmod +x ./install_sundials.sh && ./install_sundials.sh
+
+# install pacmensl
+COPY install_scripts/install_pacmensl.sh ./
+ENV CPATH=/home/${USERNAME}/software/install/include
+ENV LIBRARY_PATH=/home/${USERNAME}/software/install/lib
+RUN sudo chmod +x ./install_pacmensl.sh && ./install_pacmensl.sh
+
+

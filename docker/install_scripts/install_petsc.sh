@@ -17,3 +17,7 @@ make PETSC_DIR=/home/${user}/software/src/petsc PETSC_ARCH=linux-c-opt install
 # add petsc to environment variables
 echo "export PETSC_DIR=/home/${user}/software/install/petsc" >> /home/${user}/.bashrc
 echo "export PETSC_ARCH=linux-c-opt" >> /home/${user}/.bashrc
+echo "export LD_LIBRARY_PATH=home/${user}/software/install/petsc/lib:${LD_LIBRARY_PATH}" >> /home/${user}/.bashrc
+echo "export LIBRARY_PATH=home/${user}/software/install/petsc/lib:${LIBRARY_PATH}" >> /home/${user}/.bashrc
+
+

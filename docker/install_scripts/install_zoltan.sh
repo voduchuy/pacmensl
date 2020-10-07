@@ -1,6 +1,8 @@
 #!/bin/bash
 user=${USERNAME}
 
+
+
 cd /home/${user}/software/src
 git clone https://github.com/trilinos/Trilinos.git --depth 1 --branch master --single-branch
 cd ../build
