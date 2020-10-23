@@ -42,6 +42,8 @@ namespace pacmensl {
                                                                           void *args)> weight_func,
                                           void *wf_args);
 
+
+
         ~DiscreteDistribution();
     };
 

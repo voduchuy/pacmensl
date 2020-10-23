@@ -62,6 +62,32 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetInitialDistribution(cons
   return 0;
 }
 
+PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetInitialDistribution(SensDiscreteDistribution &init_dist) {
+  
+  PacmenslErrorCode ierr;
+  
+  int n_states, n_species, n_sensitivities;
+  int* states_ptr;
+  ierr = init_dist.GetStateView(n_states, n_species, states_ptr); PACMENSLCHKERRQ(ierr);
+  init_states_ = arma::Mat<int>(states_ptr, n_species, n_states);
+  
+  PetscReal* prob_ptr;
+  ierr = init_dist.GetProbView(n_states, prob_ptr); PACMENSLCHKERRQ(ierr);
+  init_probs_ = arma::Col<PetscReal>(prob_ptr, n_states);
+  ierr = init_dist.RestoreProbView(prob_ptr); PACMENSLCHKERRQ(ierr);
+  
+  n_sensitivities = init_dist.dp_.size();
+  init_sens_.reserve(n_sensitivities);
+  for (int i = 0; i < n_sensitivities; ++i)
+  {
+    ierr = init_dist.GetSensView(i, n_states, prob_ptr); PACMENSLCHKERRQ(ierr);
+    init_sens_.emplace_back(arma::Col<PetscReal>(prob_ptr, n_states));
+    ierr = init_dist.RestoreSensView(i, prob_ptr); PACMENSLCHKERRQ(ierr);
+  }
+  
+  return 0;
+}
+
 PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetLoadBalancingMethod(pacmensl::PartitioningType part_type)
 {
   partitioning_type_ = part_type;
@@ -427,3 +453,4 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::MakeSensDiscreteDistributio
   VecScatterDestroy(&scatter);
   return 0;
 }
+

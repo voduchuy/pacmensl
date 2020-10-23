@@ -24,6 +24,7 @@ add_subdirectory(OdeSolver)
 add_subdirectory(Fsp)
 add_subdirectory(SmFish)
 add_subdirectory(SensFsp)
+add_subdirectory(Pdo)
 #add_subdirectory(StationaryFsp)
 
 if (BUILD_SHARED_LIBS)

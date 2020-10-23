@@ -32,6 +32,8 @@ class SensFspSolverMultiSinks
   PacmenslErrorCode SetInitialDistribution(const arma::Mat<pacmensl::Int> &_init_states,
                                            const arma::Col<PetscReal> &_init_probs,
                                            const std::vector<arma::Col<PetscReal>> &_init_sens);
+  
+  PacmenslErrorCode SetInitialDistribution(SensDiscreteDistribution& init_sensdist);
 
   PacmenslErrorCode SetLoadBalancingMethod(PartitioningType part_type);
   PacmenslErrorCode SetOdesType(ForwardSensType odes_type);
