@@ -84,7 +84,6 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetInitialDistribution(Sens
     init_sens_.emplace_back(arma::Col<PetscReal>(prob_ptr, n_states));
     ierr = init_dist.RestoreSensView(i, prob_ptr); PACMENSLCHKERRQ(ierr);
   }
-  
   return 0;
 }
 
