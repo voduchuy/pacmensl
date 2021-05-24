@@ -1,6 +1,6 @@
 # PACMENSL
 
-PACMENSL (pronounced "pak-men") : PArallel Chemical Master EquatioN Solver Library. The library implements the Finite State Projection algorithm to numerically solve the CME on high performance computing nodes using MPI. There are also objects that might be useful for developing parallel implementations for other flavors of the FSP for sensitivity analysis and computing the stationary distribution.
+PACMENSL: PArallel Chemical Master EquatioN Solver Library. The library implements the Finite State Projection algorithm to numerically solve the CME on high performance computing nodes using MPI. There are also objects that might be useful for developing parallel implementations for other flavors of the FSP for sensitivity analysis and computing the stationary distribution.
 
 ## Reference
 
