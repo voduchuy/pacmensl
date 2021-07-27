@@ -42,7 +42,7 @@ int FspMatrixBase::Action(PetscReal t,Vec x,Vec y)
 
 PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
                                                 const arma::Mat<Int> &SM,
-                                                std::vector<int> time_vayring,
+                                                std::vector<int> time_varying,
                                                 const TcoefFun &new_prop_t,
                                                 const PropFun &new_prop_x,
                                                 const std::vector<int> &enable_reactions,
@@ -80,7 +80,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   }
   for (int             ir: enable_reactions_)
   {
-    if (std::find(time_vayring.begin(),time_vayring.end(),ir) != time_vayring.end())
+    if (std::find(time_varying.begin(), time_varying.end(), ir) != time_varying.end())
     {
       tv_reactions_.push_back(ir);
     } else
