@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2020 Huy Vo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #pragma once
 
 #include <iostream>
@@ -41,8 +65,8 @@ class FspMatrixBase {
    * @param fsp (in) The FSP-truncated state space from which the transition rate matrix is built.
    * @param SM (in) The stoichiometry matrix of the reaction network.
    * @param time_varying (in) List of reactions whose propensities are time-varying.
-   * @param new_prop_t (in) Function to evaluate the vector of time-varying coefficients $c_r(t,\theta)$ at time $t$.
-   * @param new_prop_x (in) Function to evaluate the time-independent component of the propensities.
+   * @param new_prop_t (in) Function pointer to evaluate the vector of time-varying coefficients $c_r(t,\theta)$ at time $t$.
+   * @param new_prop_x (in) Function pointer to evaluate the time-independent component of the propensities.
    * @param enable_reactions (in) Vector of reactions that are active. If left empty, we assume all reactions are active. Propensity functions of inactive reactions are not added to the data structure.
    * @param prop_t_args (in) Pointer to additional data for the evaluation of time-varying coefficients.
    * @param prop_x_args (in) Pointer to additional data for the evaluation of the time-independent components of the propensity functions.
@@ -65,9 +89,9 @@ class FspMatrixBase {
   /**
   * @brief Compute y = A*x.
   * @details __Collective__
-  * @param t time.
-  * @param x input vector.
-  * @param y output vector.
+  * @param t (in) time.
+  * @param x (in) input vector.
+  * @param y (out) output vector.
   * @return error code, 0 if successful.
   */
   virtual PacmenslErrorCode Action(PetscReal t, Vec x, Vec y);
@@ -110,13 +134,14 @@ class FspMatrixBase {
    */
   virtual ~FspMatrixBase();
  protected:
-  MPI_Comm comm_ = MPI_COMM_NULL;
-  int rank_;
-  int comm_size_;
+  MPI_Comm comm_ = MPI_COMM_NULL; ///< Communicator context
+  int rank_; ///< Rank of local process
+  int comm_size_; ///< Total number of processes that own this object
   
-  Int num_reactions_ = 0;
-  Int num_rows_global_ = 0;
-  Int num_rows_local_ = 0;
+  Int num_reactions_ = 0; ///< Number of reactions
+  Int num_rows_global_ = 0; ///< Global number of rows
+  Int num_rows_local_ = 0; ///< Number of matrix rows owned by this process
+  
   std::vector<int> enable_reactions_ = std::vector<int>();
   std::vector<int> tv_reactions_ = std::vector<int>();
   std::vector<int> ti_reactions_ = std::vector<int>();
@@ -128,8 +153,8 @@ class FspMatrixBase {
   // Data for computing the matrix action
   Petsc<Vec> work_; ///< Work vector for computing operator times vector
   
-  TcoefFun t_fun_ = nullptr;
-  void *t_fun_args_ = nullptr;
+  TcoefFun t_fun_ = nullptr;  ///< Pointer to external function that evaluates time-varying factors of reaction propensities.
+  void *t_fun_args_ = nullptr; ///< Pointer for extra data needed in \ref t_fun_ evaluation.
   arma::Row<Real> time_coefficients_; ///< Vector to store the time-varying factors of reaction propensities
   
   /**
