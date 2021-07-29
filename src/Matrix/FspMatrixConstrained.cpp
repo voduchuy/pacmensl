@@ -1,6 +1,26 @@
-//
-// Created by Huy Vo on 6/2/19.
-//
+/*
+MIT License
+
+Copyright (c) 2020 Huy Vo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 
 #include "FspMatrixConstrained.h"
 
@@ -9,13 +29,7 @@ FspMatrixConstrained::FspMatrixConstrained(MPI_Comm comm) : FspMatrixBase(comm)
 {
 }
 
-/**
- * @brief Compute y = A*x.
- * @param t time.
- * @param x input vector.
- * @param y output vector.
- * @return error code, 0 if successful.
- */
+
 int FspMatrixConstrained::Action(PetscReal t,Vec x,Vec y)
 {
   int ierr;
@@ -106,16 +120,7 @@ FspMatrixConstrained::~FspMatrixConstrained()
   Destroy();
 }
 
-/**
-* @brief Generate the local data structure for the FSP-truncated CME matrix with multiple sink states. This routine is collective.
-* @param state_set set of CME states included in the finite state projection. For this particular class of matrix, state_set must be an instance of StateSetConstrained class.
-* @param SM stoichiometry matrix
-* @param prop propensity function, passed as callable object with signature <int(const int, const int, const int, const int, const int*, double* , void* )>. See also: PropFun.
-* @param prop_args pointer to additional data for propensity function.
-* @param new_prop_t callable object for evaluating the time coefficients. See also TcoefFun.
-* @param prop_t_args pointer to additional data for time function.
-* @return error code, 0 if successful.
-*/
+
 PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state_set,
                                                        const arma::Mat<Int> &SM,
                                                        std::vector<int> time_vayring,
@@ -295,11 +300,6 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
   return 0;
 }
 
-/**
- * @brief
- * @param fsp
- * @return
- */
 PacmenslErrorCode FspMatrixConstrained::DetermineLayout_(const StateSetBase &fsp)
 {
   PetscErrorCode ierr;

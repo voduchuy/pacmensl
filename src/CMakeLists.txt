@@ -3,7 +3,6 @@ set(EXT_LIBRARIES
         -lsundials_cvodes
         -lsundials_nvecpetsc
         -lzoltan
-#        -lepic1.0.0
         ${PETSC_LIBRARIES}
         )
 
@@ -13,7 +12,6 @@ else()
     add_definitions(-DNUSEPARMETIS)
 endif()
 
-#
 add_subdirectory(Sys)
 add_subdirectory(PetscWrap)
 add_subdirectory(Models)
@@ -24,6 +22,7 @@ add_subdirectory(OdeSolver)
 add_subdirectory(Fsp)
 add_subdirectory(SmFish)
 add_subdirectory(SensFsp)
+add_subdirectory(Pdo)
 #add_subdirectory(StationaryFsp)
 
 if (BUILD_SHARED_LIBS)

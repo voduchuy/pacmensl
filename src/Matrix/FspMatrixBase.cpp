@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2020 Huy Vo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #include "Sys.h"
 #include "FspMatrixBase.h"
 
@@ -42,7 +66,7 @@ int FspMatrixBase::Action(PetscReal t,Vec x,Vec y)
 
 PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
                                                 const arma::Mat<Int> &SM,
-                                                std::vector<int> time_vayring,
+                                                std::vector<int> time_varying,
                                                 const TcoefFun &new_prop_t,
                                                 const PropFun &new_prop_x,
                                                 const std::vector<int> &enable_reactions,
@@ -80,7 +104,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
   }
   for (int             ir: enable_reactions_)
   {
-    if (std::find(time_vayring.begin(),time_vayring.end(),ir) != time_vayring.end())
+    if (std::find(time_varying.begin(), time_varying.end(), ir) != time_varying.end())
     {
       tv_reactions_.push_back(ir);
     } else

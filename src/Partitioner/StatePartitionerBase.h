@@ -1,7 +1,31 @@
-//
-// Created by Huy Vo on 5/27/19.
-//
+/*
+MIT License
 
+Copyright (c) 2020 Huy Vo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+/**
+ * \file StatePartitionerBase.h
+ */
+ 
 #ifndef PACMENSL_STATESETPARTITIONERBASE_H
 #define PACMENSL_STATESETPARTITIONERBASE_H
 
@@ -11,10 +35,11 @@
 #include "Sys.h"
 #include "string.h"
 
+ 
 namespace pacmensl {
-
 /**
- * Zoltan method to use in load-balancing routines.
+ * @enum pacmensl::PartitioningType
+ * @brief enum class to represents the Zoltan method to use in load-balancing routines.
  */
 enum class PartitioningType {
   BLOCK, ///< Use block method. Only object weights are considered. No communication cost is considered.
@@ -23,7 +48,10 @@ enum class PartitioningType {
   HIERARCHICAL ///< Hierarchical/hybrid method. Not yet supported.
 };
 
-/// Zoltan approach to use in load-balancing routines.
+/**
+ * @enum pacmensl::PartitioningApproach
+ * @brief enum class to represents the partitioning approach to use in load-balancing routines.
+ */
 enum class PartitioningApproach {
   FROMSCRATCH,  ///< Assume no redistribution cost.
   REPARTITION, ///< Minimize a trade-off of communication and data redistribution
@@ -32,14 +60,32 @@ enum class PartitioningApproach {
 
 /**
  * @brief Base class for state space partitioning.
- * This class defines the public interface and implements the common methods and attributes of all partitioner objects.
+ * @details This class defines the public interface and implements the common methods and attributes of all partitioner objects.
+ * @details It also implements a simple partitioning approach that assigns states equally to the processes without considering their topology.
  */
 class StatePartitionerBase {
  public:
+  /**
+   * @brief Constructor.
+   * @param _comm (in) Communicator context.
+   */
   explicit StatePartitionerBase(MPI_Comm _comm);
 
+  /**
+   * @brief Set the load-balancing approach.
+   * @param _approach (in) load-balancing approach.
+   */
   void set_lb_approach(PartitioningApproach _approach) { approach = _approach; };
 
+  /**
+   * @brief Partition a distributed set of states.
+   * @details This method is __collective__, meaning that it must be called by all owning processes.
+   * @param states (in/out) Set of states owned by the calling process, arranged column-wise. On return gives the re-distributed states.
+   * @param state_directory (in/out) Zoltan distributed directory of the states.
+   * @param stoich_mat (in) Stoichiometry matrix.
+   * @param layout (in/out) Array of number of states owned by each process.
+   * @return Error code: 0 if success, -1 otherwise.
+   */
   int partition(arma::Mat<int> &states, Zoltan_DD_Struct *state_directory, arma::Mat<int> &stoich_mat,
                 int *layout);
 
@@ -53,7 +99,6 @@ class StatePartitionerBase {
   arma::Mat<int>   *state_ptr_      = nullptr;
   arma::Mat<int>   *stoich_mat_ptr_ = nullptr;
   Zoltan_DD_Struct *state_dir_ptr_  = nullptr;
-  int              *layout_         = nullptr;
   int              *ind_starts      = nullptr;
 
   PartitioningType     type     = PartitioningType::BLOCK;
@@ -74,7 +119,7 @@ class StatePartitionerBase {
 
   void state2ordering(arma::Mat<PetscInt> &state, PetscInt *indx);
 
-/* Zoltan interface functions */
+  /* Zoltan interface functions */
   static int zoltan_num_obj(void *data, int *ierr);
 
   static void zoltan_obj_list(void *data, int num_gid_entries, int num_lid_entries,
@@ -99,6 +144,7 @@ class StatePartitionerBase {
                                    int *sizes, int *idx, char *buf, int *ierr);
 };
 
+/* Utitlity functions to convert a string description of the partitioning method or approach to its corresponding enum class value */
 std::string part2str(PartitioningType part);
 
 PartitioningType str2part(std::string str);
