@@ -13,25 +13,28 @@ Huy Vo: huydvo@colostate.edu.
 ## Dependencies
 
 Required:
-* CMake (3.10 or higher) (https://cmake.org/download/)
-* C, CXX compilers, preferably those from the GNU Compiler Collections.
+* [CMake](https://cmake.org/download/) (3.10 or higher) 
+* C, C++ compilers.
 * An MPI implementation (OpenMPI, MPICH) already installed on your system. On MacOS you can install OpenMPI via
  Homebrew:
 ```
 brew update
 brew install openmpi
 ```
-* Armadillo (http://arma.sourceforge.net/download.html)
-* Zoltan (https://github.com/trilinos/Trilinos/tree/master/packages/zoltan)
-* PETSc (https://www.mcs.anl.gov/petsc/download/)
-* Sundials (https://computation.llnl.gov/projects/sundials/sundials-software)
+* [Armadillo](http://arma.sourceforge.net/download.html)
+* [Zoltan](https://github.com/trilinos/Trilinos/tree/master/packages/zoltan)
+* [PETSc](https://www.mcs.anl.gov/petsc/download/)
+* [SUNDIALS](https://computation.llnl.gov/projects/sundials/sundials-software)
 
 Optionally, if you want to use graph-partitioning methods for load-balancing:
-* Metis (http://glaros.dtc.umn.edu/gkhome/metis/metis/download)
-* Parmetis (http://glaros.dtc.umn.edu/gkhome/metis/parmetis/download)
+* [Metis](http://glaros.dtc.umn.edu/gkhome/metis/metis/download)
+* [Parmetis](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/download)
 
 If you want to build the unit tests:
 * GoogleTest.
+
+To generate documentation:
+* [Doxygen](https://www.doxygen.nl/index.html).
 
 In addition, PETSc and Sundials must be built with double-precision scalar types. Sundials must be enabled with PETSc support.
 
@@ -68,6 +71,15 @@ For a minimal build:
     ```make -j4```
 * Install the library ```make install```. On a Linux or MacOS system, this will install the compiled library to the
  default folder ```/usr/local/lib```.
+
+## Documentation
+Documentation is provided as comments in the source code. It is also possible to generate seperate documentations using Doxygen. The subfolder 'docs' contains the configuration for Doxygen to generate documentations in HTML and LaTex formats. To generate the documentation, follow these steps:
+1. Change working directory to `docs`.
+2. Run Doxygen with the configuration file provided: 
+`
+doxygen doc_config
+`
+3. Doxygen will output documentations in HTML and LaTex formats. 
 
 ## Usage 
 To use the library, simply add the link flag ```-lpacmensl``` when compiling your program. See the in-source
