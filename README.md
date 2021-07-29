@@ -76,9 +76,9 @@ For a minimal build:
 Documentation is provided as comments in the source code. It is also possible to generate seperate documentations using Doxygen. The subfolder 'docs' contains the configuration for Doxygen to generate documentations in HTML and LaTex formats. To generate the documentation, follow these steps:
 1. Change working directory to `docs`.
 2. Run Doxygen with the configuration file provided: 
-`
+```
 doxygen doc_config
-`
+```
 3. Doxygen will output documentations in HTML and LaTex formats. 
 
 ## Usage 
