@@ -31,7 +31,7 @@ Optionally, if you want to use graph-partitioning methods for load-balancing:
 * [Parmetis](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/download)
 
 If you want to build the unit tests:
-* GoogleTest.
+* [GoogleTest](https://github.com/google/googletest).
 
 To generate documentation:
 * [Doxygen](https://www.doxygen.nl/index.html).
