@@ -29,6 +29,9 @@ SOFTWARE.
 
 
 namespace pacmensl {
+  /**
+   * @brief State space partitioner using the hyper-graph load-balancing model.
+   */
     class StatePartitionerHyperGraph : public StatePartitionerBase {
     protected:
         int *num_edges; ///< Number of states that share information with each local states

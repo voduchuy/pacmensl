@@ -28,21 +28,15 @@ SOFTWARE.
 #include "FspMatrixBase.h"
 
 namespace pacmensl {
+
+/**
+ * @brief FSP matrix corresponding to the FSP variant defined by inequality constraints.
+ */
 class FspMatrixConstrained : public FspMatrixBase
 {
  public:
   explicit FspMatrixConstrained(MPI_Comm comm);
   
-  /**
-  * @brief Generate the local data structure for the FSP-truncated CME matrix with multiple sink states. This routine is collective.
-  * @param state_set set of CME states included in the finite state projection. For this particular class of matrix, state_set must be an instance of StateSetConstrained class.
-  * @param SM stoichiometry matrix
-  * @param prop propensity function, passed as callable object with signature <int(const int, const int, const int, const int, const int*, double* , void* )>. See also: PropFun.
-  * @param prop_args pointer to additional data for propensity function.
-  * @param new_prop_t callable object for evaluating the time coefficients. See also TcoefFun.
-  * @param prop_t_args pointer to additional data for time function.
-  * @return error code, 0 if successful.
-  */
   PacmenslErrorCode GenerateValues(const StateSetBase &state_set,
                                    const arma::Mat<Int> &SM,
                                    std::vector<int> time_vayring,
@@ -54,13 +48,6 @@ class FspMatrixConstrained : public FspMatrixBase
 
   int Destroy() override;
   
-  /**
- * @brief Compute y = A*x.
- * @param t time.
- * @param x input vector.
- * @param y output vector.
- * @return error code, 0 if successful.
- */
   int Action(PetscReal t, Vec x, Vec y) override;
 
   int CreateRHSJacobian(Mat* A) override;

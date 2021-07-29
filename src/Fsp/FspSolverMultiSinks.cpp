@@ -25,7 +25,6 @@ SOFTWARE.
 #include <OdeSolver/TsFsp.h>
 #include <OdeSolver/CvodeFsp.h>
 #include "FspSolverMultiSinks.h"
-//#include "OdeSolverBase.h"
 
 namespace pacmensl {
 FspSolverMultiSinks::FspSolverMultiSinks(MPI_Comm _comm, PartitioningType _part_type, ODESolverType _solve_type)
@@ -40,9 +39,9 @@ FspSolverMultiSinks::FspSolverMultiSinks(MPI_Comm _comm, PartitioningType _part_
   odes_type_         = _solve_type;
 }
 
-PacmenslErrorCode FspSolverMultiSinks::SetInitialBounds(arma::Row<int> &_fsp_size)
+PacmenslErrorCode FspSolverMultiSinks::SetInitialBounds(arma::Row<int> &_bounds)
 {
-  fsp_bounds_ = _fsp_size;
+  fsp_bounds_ = _bounds;
   return 0;
 }
 
@@ -50,7 +49,7 @@ PacmenslErrorCode FspSolverMultiSinks::SetConstraintFunctions(const fsp_constr_m
 {
   fsp_constr_funs_         = lhs_constr;
   fsp_constr_args_         = args;
-  have_custom_constraints_ = true;
+  has_custom_constraints_ = true;
   return 0;
 }
 
@@ -111,7 +110,7 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
     if (logging_enabled) PACMENSLCHKERRTHROW(PetscLogEventEnd(ODESolve, 0, 0, 0, 0));
 
 
-    // Expand the FspSolverBase if the solver halted prematurely
+    // Expand the FSP state space if the solver halted prematurely
     if (solver_stat == 1)
     {
       for (auto           i{0}; i < to_expand_.n_elem; ++i)
@@ -241,8 +240,8 @@ PacmenslErrorCode FspSolverMultiSinks::ClearState()
   state_set_.reset();
   sinks_.clear();
   to_expand_.clear();
-
-  have_custom_constraints_ = false;
+  
+  has_custom_constraints_ = false;
   fsp_constr_args_ = nullptr;
   fsp_constr_funs_         = nullptr;
   tmatvec_                 = nullptr;
@@ -305,7 +304,7 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
   {
     state_set_ = std::make_shared<StateSetConstrained>(comm_);
     state_set_->SetStoichiometryMatrix(model_.stoichiometry_matrix_);
-    if (have_custom_constraints_)
+    if (has_custom_constraints_)
     {
       state_set_->SetShape(fsp_constr_funs_, fsp_bounds_, fsp_constr_args_);
     } else
@@ -383,16 +382,16 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
   {
     switch (odes_type_)
     {
-      case CVODE:ode_solver_ = std::make_shared<CvodeFsp>(comm_);
+      case CVODE:
+        ode_solver_ = std::make_shared<CvodeFsp>(comm_);
         break;
-      case KRYLOV:ode_solver_ = std::make_shared<KrylovFsp>(comm_);
+      case KRYLOV:
+        ode_solver_ = std::make_shared<KrylovFsp>(comm_);
         if (custom_krylov_){
           ((KrylovFsp*) ode_solver_.get())->SetOrthLength(q_iop_);
           ((KrylovFsp*) ode_solver_.get())->SetKrylovDimRange(m_min_,m_max_);
         }
         break;
-//      case EPIC:ode_solver_ = std::make_shared<EpicFsp>(comm_, model_.stoichiometry_matrix_.n_cols);
-//        break;
       default:ode_solver_ = std::make_shared<TsFsp>(comm_);
         if (custom_ts_type_) ((TsFsp*) ode_solver_.get())->SetTsType(ts_type_.c_str());
     }
@@ -578,8 +577,8 @@ PacmenslErrorCode FspSolverMultiSinks::CheckFspTolerance_(PetscReal t, Vec p, Pe
 {
   int ierr;
   tol_exceed = 0.0;
-//  if (fsp_tol_ < 0.0) return 0;
-  // Find the sink states_
+
+  // Find the sink states
   arma::Row<PetscReal> sinks_of_p(sinks_.n_elem);
   if (my_rank_ == comm_size_ - 1)
   {

@@ -3,7 +3,6 @@ set(EXT_LIBRARIES
         -lsundials_cvodes
         -lsundials_nvecpetsc
         -lzoltan
-#        -lepic1.0.0
         ${PETSC_LIBRARIES}
         )
 
@@ -13,7 +12,6 @@ else()
     add_definitions(-DNUSEPARMETIS)
 endif()
 
-#
 add_subdirectory(Sys)
 add_subdirectory(PetscWrap)
 add_subdirectory(Models)

@@ -46,19 +46,58 @@ struct FiniteProblemSolverPerfInfo {
   std::vector<PetscReal> model_time;
 };
 
+/**
+ * @brief Base class for the ODE solver.
+ * @details The ODE solver is used to integrate the finite-state system after the state space has been truncated by the FSP.
+ */
 class OdeSolverBase {
  public:
 
+  /**
+   * @brief Constructor.
+   * @param new_comm (in) communicator context.
+   */
   explicit OdeSolverBase(MPI_Comm new_comm);
 
+  /**
+   * @brief Set final time of the ODE integrator.
+   * @details The method is __collective__, meaning that it must be called by all processes that own this object.
+   * @attention All owning processes must give the same inputs.
+   * @param _t_final (in) final time.
+   * @return Error code: 0 (success), -1 (failure).
+   */
   PacmenslErrorCode SetFinalTime(PetscReal _t_final);
 
+  /**
+   * @brief Set the intial solution.
+   * @details The method is __collective__, meaning that it must be called by all processes that own this object.
+   * @param _sol (in) the initial solution.
+   * @return Error code: 0 (success), -1 (failure).
+   */
   PacmenslErrorCode SetInitialSolution(Vec *_sol);
 
+  /**
+   * @brief Set pointer to the FSP matrix.
+   * @param mat (in) pointer to the FSP matrix object.
+   * @return Error code: 0 (success), -1 (failure).
+   */
   PacmenslErrorCode SetFspMatPtr(FspMatrixBase* mat);
 
+  /**
+   * @brief Set function to evaluate ODE right-hand side.
+   * @param _rhs (in) RHS function.
+   * @return Error code: 0 (success), -1 (failure).
+   */
   PacmenslErrorCode SetRhs(std::function<PacmenslErrorCode(PetscReal,Vec,Vec)> _rhs);
 
+  /**
+   * @brief Set error tolerances.
+   * @details The method is __collective__, meaning that it must be called by all processes that own this object.
+   * @attention All owning processes must give the same inputs.
+   * @param _r_tol (in) relative tolerance.
+   * @param _abs_tol (in) absolute tolerance.
+   * @return Error code: 0 (success), -1 (failure).
+   */
   int SetTolerances(PetscReal _r_tol, PetscReal _abs_tol);
 
   PacmenslErrorCode SetCurrentTime(PetscReal t);
@@ -73,7 +112,7 @@ class OdeSolverBase {
 
   virtual PacmenslErrorCode SetUp() {return 0;};
 
-  virtual PetscInt Solve(); // Advance the solution_ toward final time. Return 0 if reaching final time, 1 if the Fsp criteria fails before reaching final time, -1 if fatal errors.
+  virtual PetscInt Solve(); ///< Advance the solution_ toward final time. Return 0 if reaching final time, 1 if the Fsp criteria fails before reaching final time, -1 if fatal errors.
 
   PetscReal GetCurrentTime() const;
 

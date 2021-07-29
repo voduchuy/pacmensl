@@ -48,7 +48,7 @@ using Int = PetscInt;
  * @brief Base class for the time-dependent FSP-truncated CME matrix.
  * @details We currently assume that the CME matrix could be decomposed into the form
  *  \f$ A(t) = \sum_{r=1}^{M}{c_r(t, \theta)A_r(\theta)} \f$
- * where c_r(t,\theta) are scalar-valued functions that depend on the time variable and parameters, while the matrices \f$ A_r(\theta) \f$ are time-independent.
+ * where \f$c_r(t,\theta)\f$ are scalar-valued functions that depend on the time variable and parameters, while the matrices \f$ A_r(\theta) \f$ are time-independent.
  **/
 class FspMatrixBase {
  public:
@@ -61,7 +61,7 @@ class FspMatrixBase {
   
   /**
    * @brief Populate the fields of the FSP matrix object.
-   * @details __Collective__
+   * This method is __collective__, meaning that it must be called by all processes that own this object.
    * @param fsp (in) The FSP-truncated state space from which the transition rate matrix is built.
    * @param SM (in) The stoichiometry matrix of the reaction network.
    * @param time_varying (in) List of reactions whose propensities are time-varying.
@@ -88,44 +88,44 @@ class FspMatrixBase {
   
   /**
   * @brief Compute y = A*x.
-  * @details __Collective__
+  * This method is __collective__, meaning that it must be called by all processes that own this object.
   * @param t (in) time.
   * @param x (in) input vector.
   * @param y (out) output vector.
-  * @return error code, 0 if successful.
+  * @return Error code: 0 (success) or -1 (failure)
   */
   virtual PacmenslErrorCode Action(PetscReal t, Vec x, Vec y);
   
   /**
-   * @brief Generate a PETSc Matrix object with the same sparsity structure as the FSP matrix. This serves as the Jacobian matrix required by ODEs solvers.
-   * @details __Collective__
+   * @brief Generate a PETSc Matrix object with the same sparsity structure as the FSP matrix. This serves as the Jacobian matrix required by ODE solvers.
+   * This method is __collective__, meaning that it must be called by all processes that own this object.
    * @param A (out) pointer to PETSc Mat object.
-   * @return Error code. 0 if successful, -1 otherwise.
+   * @return Error code. 0 (success) or -1 (failure)
    */
   virtual PacmenslErrorCode CreateRHSJacobian(Mat *A);
   
   /**
    * @brief Populate the values of a PETSc Mat object with the entries of the FSP matrix at any given time.
+   * This method is __collective__, meaning that it must be called by all processes that own this object.
+   * The sparsity structure of A must be generated first with \ref CreateRHSJacobian().
    * @param t (in) time
    * @param A (out) PETSc Mat object to write the entries to.
-   * @return Error code: 0 if successful, -1 otherwise.
-   * @details __Collective__.
-   *    The sparsity structure of A must be generated first with \ref CreateRHSJacobian().
+   * @return Error code: 0 (success) or -1 (failure)
    */
   virtual PacmenslErrorCode ComputeRHSJacobian(PetscReal t, Mat A);
   
   /**
    * @brief Get an estimate for the number of floating-point operations needed by the calling process per matrix-vector multiplication (i.e., per call to the \ref Action() method).
+   * This method is __local__, meaning that it can be called independently by the local process.
    * @param nflops (out) number of flops.
-   * @return Error code: 0 if successful, -1 otherwise.
-   * @details __Local__
+   * @return Error code: 0 (success) or -1 (failure)
    */
   virtual PacmenslErrorCode GetLocalMVFlops(PetscInt *nflops);
   
   /**
    * @brief Get the number of rows owned by the calling process.
+   * This method is __local__, meaning that it can be called independently by the local process.
    * @return Number of rows owned by the calling process.
-   * @details __Local__
    */
   int GetNumLocalRows() const { return num_rows_local_; };
   
@@ -159,9 +159,9 @@ class FspMatrixBase {
   
   /**
    * @brief Populate the data members with information about the inter-process layout of the object.
+   * This method is __collective__, meaning that it must be called by all processes that own this object.
    * @param fsp (in) FSP-truncated state space from which the matrix is based.
-   * @return Error code: 0 if successful, -1 otherwise.
-   * @details __Collective__
+   * @return Error code: 0 (success) or -1 (failure)
    * Modified fields: \ref num_rows_local_, \ref num_rows_global_, \ref work_.
    */
   virtual int DetermineLayout_(const StateSetBase &fsp);

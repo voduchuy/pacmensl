@@ -28,6 +28,9 @@ SOFTWARE.
 #include "StatePartitionerBase.h"
 
 namespace pacmensl {
+    /**
+     * @brief State space partitioner using the graph load-balancing model.
+     */
     class StatePartitionerGraph : public StatePartitionerBase {
     protected:
         int *num_edges; ///< Number of states that share information with each local states

@@ -300,11 +300,6 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
   return 0;
 }
 
-/**
- * @brief
- * @param fsp
- * @return
- */
 PacmenslErrorCode FspMatrixConstrained::DetermineLayout_(const StateSetBase &fsp)
 {
   PetscErrorCode ierr;
