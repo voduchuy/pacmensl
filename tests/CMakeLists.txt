@@ -7,10 +7,10 @@ set(TEST_PROGRAMS
         test_sensmat
         test_sensfsp_solver
         test_petscwrap
-#        test_stationaryfsp_solver
         )
 
 include_directories(${GTEST_INCLUDE_DIRS})
+message(${GTEST_LIBRARIES})
 foreach ( PROG ${TEST_PROGRAMS})
     add_executable(${PROG} ${PROG}.cpp)
     target_link_libraries(${PROG} PACMENSL ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES})

@@ -28,7 +28,6 @@ static char help[] = "Test interface to CVODE for solving the CME of the toggle 
 #include "FspMatrixConstrained.h"
 #include "CvodeFsp.h"
 #include "KrylovFsp.h"
-#include "EpicFsp.h"
 #include "TsFsp.h"
 #include"pacmensl_test_env.h"
 
