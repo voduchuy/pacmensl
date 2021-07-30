@@ -35,13 +35,12 @@ SOFTWARE.
 #include "StateSetConstrained.h"
 #include "Sys.h"
 
-
 namespace pacmensl {
 class CvodeFsp : public OdeSolverBase {
  public:
   explicit CvodeFsp(MPI_Comm _comm, int lmm = CV_BDF);
 
-  PacmenslErrorCode SetUp() override ;
+  PacmenslErrorCode SetUp() override;
 
   PetscInt Solve() override;
 

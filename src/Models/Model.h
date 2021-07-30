@@ -62,13 +62,12 @@ using TcoefFun = std::function<int(double t, int num_coefs, double *outputs, voi
  */
 class Model {
  public:
-  arma::Mat<int> stoichiometry_matrix_; ///< Stoichiometry matrix of the reaction network, each column corresponds to a reaction
-  TcoefFun       prop_t_; ///< Callable to evaluate the time-dependent coefficients of the propensity functions. \n
-                          ///< This function must have syntax `int(double t, int num_coefs, double *outputs, void *args)`
-  void           *prop_t_args_; ///< Pointer to extra data (if there is any) needed for the excution of \ref prop_t_
-  PropFun        prop_x_; ///< Function to evaluate the state-dependent coefficients of the propensity functions.\n
-                          ///< This function must have syntax `int (const int reaction, const int num_species, const int num_states, const int *states, double *outputs, void *args)`
-  void           *prop_x_args_; ///< Pointer to extra data (if there is any) needed for the excution of \ref prop_x_
+  arma::Mat<int>
+      stoichiometry_matrix_; ///< Stoichiometry matrix of the reaction network, each column corresponds to a reaction
+  TcoefFun prop_t_; ///< Callable to evaluate the time-dependent coefficients of the propensity functions. \n
+  void *prop_t_args_; ///< Pointer to extra data (if there is any) needed for the excution of \ref prop_t_
+  PropFun prop_x_; ///< Function to evaluate the state-dependent coefficients of the propensity functions.
+  void *prop_x_args_; ///< Pointer to extra data (if there is any) needed for the excution of \ref prop_x_
   std::vector<int> tv_reactions_; ///< List of reactions whose propensities are time-varying
 
   /**
