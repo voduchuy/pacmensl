@@ -38,6 +38,8 @@ int FspMatrixBase::Action(PetscReal t, Vec x, Vec y) {
   
   ierr = VecSet(y, 0.0);
   CHKERRQ(ierr);
+  if (has_values_ == PETSC_FALSE) return 0;
+
   if (!tv_reactions_.empty()) {
     ierr = t_fun_(t, num_reactions_, time_coefficients_.memptr(), t_fun_args_);
     PACMENSLCHKERRQ(ierr);
@@ -244,6 +246,7 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
     ierr = MatAssemblyEnd(ti_mat_, MAT_FINAL_ASSEMBLY);
     CHKERRQ(ierr);
   }
+  has_values_ = PETSC_TRUE;
   return 0;
 }
 
@@ -266,7 +269,7 @@ int FspMatrixBase::Destroy() {
     ierr = VecDestroy(work_.mem());
     CHKERRQ(ierr);
   }
-  
+  has_values_ = PETSC_FALSE;
   return 0;
 }
 

@@ -125,10 +125,6 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetUp()
   // Make sure all the necessary parameters have been set
   try
   {
-    if (model_.prop_t_ == nullptr)
-    {
-      throw std::runtime_error("Temporal signal was not set before calling FspSolver.SetUp().");
-    }
     if (model_.prop_x_ == nullptr)
     {
       throw std::runtime_error("Propensity was not set before calling FspSolver.SetUp().");
@@ -136,10 +132,6 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetUp()
     if (model_.stoichiometry_matrix_.n_elem == 0)
     {
       throw std::runtime_error("Empty stoichiometry matrix cannot be used for FspSolver.");
-    }
-    if (model_.dprop_x_.empty())
-    {
-      throw std::runtime_error("Empty sensitivity information.\n");
     }
     if (init_states_.n_elem == 0 || init_probs_.n_elem == 0)
     {
