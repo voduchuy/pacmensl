@@ -106,7 +106,7 @@ class StatePartitionerBase {
 
   int num_species_      = 0;
   int num_local_states_ = 0; ///< Number of local states held by the processor in the current partitioning
-
+  int *layout_ = nullptr;
   int *states_indices_; ///< one-dimensional indices of the states
   float
       *states_weights_; ///< Computational weights associated with each state, here we assign to these weights the number of FLOPs needed
