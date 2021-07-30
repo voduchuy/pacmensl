@@ -120,6 +120,17 @@ FspMatrixConstrained::~FspMatrixConstrained()
   Destroy();
 }
 
+PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &fsp, const Model &model) {
+  return FspMatrixConstrained::GenerateValues(fsp,
+                                              model.stoichiometry_matrix_,
+                                              model.tv_reactions_,
+                                              model.prop_t_,
+                                              model.prop_x_,
+                                              std::vector<int>(),
+                                              model.prop_t_args_,
+                                              model.prop_x_args_
+                                              );
+}
 
 PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state_set,
                                                        const arma::Mat<Int> &SM,
@@ -505,5 +516,6 @@ PacmenslErrorCode FspMatrixConstrained::GetLocalMVFlops(PetscInt *nflops)
 
   return 0;
 }
+
 
 }
