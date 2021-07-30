@@ -63,6 +63,17 @@ class FspMatrixBase {
    * @brief Populate the fields of the FSP matrix object.
    * This method is __collective__, meaning that it must be called by all processes that own this object.
    * @param fsp (in) The FSP-truncated state space from which the transition rate matrix is built.
+   * @param model (in) \ref Model object representing information about the stochastic reaction network.
+   * @return Error code: 0 (success), -1 (failure).
+   */
+  virtual PacmenslErrorCode
+  GenerateValues(const StateSetBase &fsp,
+                 const Model &model);
+  
+  /**
+   * @brief Populate the fields of the FSP matrix object.
+   * This method is __collective__, meaning that it must be called by all processes that own this object.
+   * @param fsp (in) The FSP-truncated state space from which the transition rate matrix is built.
    * @param SM (in) The stoichiometry matrix of the reaction network.
    * @param time_varying (in) List of reactions whose propensities are time-varying.
    * @param new_prop_t (in) Function pointer to evaluate the vector of time-varying coefficients $c_r(t,\theta)$ at time $t$.

@@ -37,6 +37,10 @@ class FspMatrixConstrained : public FspMatrixBase
  public:
   explicit FspMatrixConstrained(MPI_Comm comm);
   
+  PacmenslErrorCode
+  GenerateValues(const StateSetBase &fsp,
+                 const Model &model) override;
+  
   PacmenslErrorCode GenerateValues(const StateSetBase &state_set,
                                    const arma::Mat<Int> &SM,
                                    std::vector<int> time_vayring,

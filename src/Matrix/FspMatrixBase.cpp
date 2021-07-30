@@ -59,6 +59,18 @@ int FspMatrixBase::Action(PetscReal t, Vec x, Vec y) {
   return 0;
 }
 
+PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp, const Model &model) {
+  return GenerateValues(fsp,
+                        model.stoichiometry_matrix_,
+                        model.tv_reactions_,
+                        model.prop_t_,
+                        model.prop_x_,
+                        std::vector<int>(),
+                        model.prop_t_args_,
+                        model.prop_x_args_
+                        );
+}
+
 PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
                                                 const arma::Mat<Int> &SM,
                                                 std::vector<int> time_varying,
