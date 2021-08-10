@@ -82,8 +82,8 @@ doxygen doc_config
 3. Doxygen will output documentations in HTML and LaTex formats. 
 
 ## Usage 
-To use the library, simply add the link flag ```-lpacmensl``` when compiling your program. See the in-source
- documentations and the example source codes in the folder ```examples``` for the syntax.
+To use the library, simply add the link flag ```-lpacmensl``` when compiling your program. See the 
+ documentation and the examples in the folder ```examples``` for the syntax.
 
 ## Python wrapper
 Python wrapper is available at https://github.com/voduchuy/pypacmensl. 
