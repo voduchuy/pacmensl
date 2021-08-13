@@ -4,7 +4,7 @@ user=${USERNAME}
 
 cd /home/${user}/software/src
 
-wget http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-lite-3.13.1.tar.gz -O petsc.tar.gz
+wget https://gitlab.com/petsc/petsc/-/archive/v3.13.6/petsc-v3.13.6.tar.gz -O petsc.tar.gz
 tar -xvf petsc.tar.gz
 rm petsc.tar.gz
 mv petsc* petsc
