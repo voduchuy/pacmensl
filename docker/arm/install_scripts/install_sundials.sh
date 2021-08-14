@@ -1,7 +1,7 @@
 #!/bin/bash
 user=${USERNAME}
 
-sundials_link="https://computing.llnl.gov/projects/sundials/download/sundials-5.2.0.tar.gz"
+sundials_link="https://github.com/LLNL/sundials/releases/download/v5.7.0/sundials-5.7.0.tar.gz"
 
 source /home/${user}/.bashrc
 echo ${PETSC_DIR}
