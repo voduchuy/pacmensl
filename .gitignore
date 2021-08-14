@@ -1,3 +1,4 @@
+docs/*
 results
 .idea
 cmake-build-debug/*

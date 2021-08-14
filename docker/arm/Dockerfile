@@ -59,6 +59,7 @@ RUN sudo chmod +x ./install_cmake.sh && ./install_cmake.sh
 COPY install_scripts/install_metis.sh ./
 RUN sudo chmod +x ./install_metis.sh && ./install_metis.sh
 
+
 # install Zoltan
 COPY install_scripts/install_zoltan.sh ./
 RUN sudo chmod +x ./install_zoltan.sh && ./install_zoltan.sh
@@ -86,11 +87,11 @@ ENV PETSC_DIR=/home/${USERNAME}/software/install/petsc
 ENV PETSC_ARCH=linux-c-opt
 RUN sudo chmod +x ./install_sundials.sh && ./install_sundials.sh
 
-
 # install pacmensl
 COPY install_scripts/install_pacmensl.sh ./
 ENV CPATH=/home/${USERNAME}/software/install/include
 ENV LIBRARY_PATH=/home/${USERNAME}/software/install/lib
 RUN sudo chmod +x ./install_pacmensl.sh && ./install_pacmensl.sh
 
-
+# Set OMPI environment variable to prevent spurious printing, see issue 4948 openmpi github page
+ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
