@@ -121,6 +121,8 @@ RUN sudo apt update && \
 
 # Set OMPI environment variable to prevent spurious printing, see issue 4948 openmpi github page
 ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
+# We're using MPI so don't let OpenBLAS use multi-threading
+ENV OMP_NUM_THREADS=1
 
 COPY --from=builder /home/${USERNAME}/software/install/include/* /usr/local/include
 COPY --from=builder /home/${USERNAME}/software/install/lib/* /usr/local/lib
