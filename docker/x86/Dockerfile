@@ -69,7 +69,7 @@ RUN sudo chmod +x ./install_arma.sh && ./install_arma.sh
 # install anaconda
 COPY install_scripts/install_conda.sh ./
 ENV PATH /home/${USERNAME}/anaconda/bin:${PATH}
-RUN sudo chmod +x ./install_conda_arm.sh && ./install_conda_arm.sh  \
+RUN sudo chmod +x ./install_conda.sh && ./install_conda.sh  \
     && \
     conda update conda && \
     conda init bash
