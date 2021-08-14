@@ -1,15 +1,20 @@
 #!/bin/bash
 user=${USERNAME}
 
-
+trilinos_link=https://github.com/trilinos/Trilinos/archive/refs/tags/trilinos-release-13-0-1.tar.gz
 
 cd /home/${user}/software/src
-git clone https://github.com/trilinos/Trilinos.git --depth 1 --branch master --single-branch
+wget ${trilinos_link} -O trilinos.tar.gz
+tar -xf trilinos.tar.gz
+rm trilinos.tar.gz
+mv Trilinos* Trilinos
+
 cd ../build
 mkdir zoltan
 cd zoltan
 cmake \
 -DCMAKE_INSTALL_PREFIX=/home/${user}/software/install \
+-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 -DTPL_ENABLE_MPI=ON \
 -DTrilinos_ENABLE_Zoltan=ON \
 -DBUILD_SHARED_LIBS=ON \
@@ -20,6 +25,9 @@ cmake \
 ../../src/Trilinos
 make -j4
 make install
+
+# Cleanup
+rm -rf /home/${user}/software/src/Trilinos
 
 
 
