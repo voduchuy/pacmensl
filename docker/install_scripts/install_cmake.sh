@@ -12,3 +12,4 @@ sudo make install
 
 # Cleanup
 rm -rf /home/${user}/software/src/cmake-3.20.0
+sudo apt-get clean

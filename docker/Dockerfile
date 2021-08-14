@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:latest as builder
 MAINTAINER Huy Duc Vo
 
 ARG pacmensl_version=0.1.0
@@ -7,16 +7,16 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 
 RUN apt-get update && \
     apt-get -y install sudo && \
+    apt-get -y install dialog apt-utils && \
     apt-get clean
-RUN apt-get -y install dialog apt-utils
 
 # set environment variables
 ENV USERNAME user
 ENV PACMENSL_VERSION $pacmensl_version
 
-RUN adduser --disabled-password --gecos --create-home ${USERNAME}
-RUN adduser ${USERNAME} sudo
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+RUN adduser --disabled-password --gecos --create-home ${USERNAME} && \
+    adduser ${USERNAME} sudo && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 WORKDIR /home/${USERNAME}
 USER ${USERNAME}
@@ -48,55 +48,85 @@ RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib" >> /home/${USERNAME}/.bash
     mkdir /home/${USERNAME}/software && \
     mkdir /home/${USERNAME}/software/src && \
     mkdir /home/${USERNAME}/software/build
-#
-# install open-mpi 4.0
-COPY install_scripts/install_mpi.sh ./
-RUN sudo chmod +x ./install*.sh && ./install_mpi.sh
 
-# install CMake 3.20
-COPY install_scripts/install_cmake.sh ./
-RUN sudo chmod +x ./install_cmake.sh && ./install_cmake.sh
+# Copy install scripts
+COPY install_scripts/*.sh ./
 
-# install metis
-COPY install_scripts/install_metis.sh ./
-RUN sudo chmod +x ./install_metis.sh && ./install_metis.sh
+ENV CPATH=/home/${USERNAME}/software/install/include:${CPATH}
+ENV LIBRARY_PATH=/home/${USERNAME}/software/install/lib:${LIBRARY_PATH}
+ENV PATH /home/${USERNAME}/anaconda/bin:${PATH}
+ENV PETSC_DIR=/home/${USERNAME}/software/install/petsc
+ENV PETSC_ARCH=linux-c-opt
 
-# install Zoltan
-COPY install_scripts/install_zoltan.sh ./
-RUN sudo chmod +x ./install_zoltan.sh && ./install_zoltan.sh
-
-# install armadillo
-COPY install_scripts/install_arma.sh ./
-RUN sudo chmod +x ./install_arma.sh && ./install_arma.sh
+RUN sudo chmod +x ./install*.sh &&  \
+    # install open-mpi 4.0
+    ./install_mpi.sh &&  \
+     # install CMake 3.20
+    ./install_cmake.sh && \
+    # install metis
+    ./install_metis.sh && \
+    # install Zoltan
+    ./install_zoltan.sh && \
+    # install armadillo
+    ./install_arma.sh
 
 # install anaconda
-COPY install_scripts/install_conda.sh ./
-ENV PATH /home/${USERNAME}/anaconda/bin:${PATH}
 RUN sudo chmod +x ./install_conda.sh && ./install_conda.sh  \
     && \
     conda update conda && \
     conda init bash
 
 # install petsc
-COPY install_scripts/install_petsc.sh ./
-RUN sudo chmod +x ./install_petsc.sh && ./install_petsc.sh
-
-## install sundials
-COPY install_scripts/install_sundials.sh ./
-ENV PETSC_DIR=/home/${USERNAME}/software/install/petsc
-ENV PETSC_ARCH=linux-c-opt
-RUN sudo chmod +x ./install_sundials.sh && ./install_sundials.sh
+RUN ./install_petsc.sh && \
+    ## install sundials
+    ./install_sundials.sh
 
 # install pacmensl
-COPY install_scripts/install_pacmensl.sh ./
-ENV CPATH=/home/${USERNAME}/software/install/include
-ENV LIBRARY_PATH=/home/${USERNAME}/software/install/lib
 RUN sudo chmod +x ./install_pacmensl.sh && ./install_pacmensl.sh
-
-# Set OMPI environment variable to prevent spurious printing, see issue 4948 openmpi github page
-ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
 
 # Cleanup
 RUN sudo rm *.sh && \
     sudo rm -rf /home/${USERNAME}/software/build && \
     sudo rm -rf /home/${USERNAME}/software/src
+
+FROM ubuntu:latest
+
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+RUN apt-get update && \
+    apt-get -y install sudo && \
+    apt-get clean
+
+# set environment variables
+ENV USERNAME user
+
+RUN adduser --disabled-password --gecos --create-home ${USERNAME} && \
+    adduser ${USERNAME} sudo && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+WORKDIR /home/${USERNAME}
+USER ${USERNAME}
+RUN chmod a+rwx /home/${USERNAME}/
+
+# install GCC and other basic libraries
+ENV PACKAGES="\
+  libopenblas-base \
+  openmpi-bin \
+  openmpi-common \
+"
+
+RUN sudo apt update && \
+    sudo apt-get install -y ${PACKAGES} && \
+    sudo apt-get clean
+
+# Set OMPI environment variable to prevent spurious printing, see issue 4948 openmpi github page
+ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
+
+COPY --from=builder /home/${USERNAME}/software/install/include/* /usr/local/include
+COPY --from=builder /home/${USERNAME}/software/install/lib/* /usr/local/lib
+COPY --from=builder /home/${USERNAME}/software/install/petsc/include/* /usr/local/include
+COPY --from=builder /home/${USERNAME}/software/install/petsc/lib/* /usr/local/lib
+COPY --from=builder /home/${USERNAME}/software/install/examples .
+
+ENV LIBRARY_PATH=/usr/local/lib:${LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
