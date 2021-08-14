@@ -42,8 +42,7 @@ ENV PACKAGES="\
 RUN sudo apt-get install -y ${PACKAGES} && sudo apt-get clean
 
 
-RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}" >> /home/${USERNAME}/.bashrc && \
-    sudo echo "export LD_LIBRARY_PATH=/home/${USERNAME}/software/install/lib:${LD_LIBRARY_PATH}" >> /home/${USERNAME}/.bashrc && \
+RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib" >> /home/${USERNAME}/.bashrc && \
     mkdir /home/${USERNAME}/software && \
     mkdir /home/${USERNAME}/software/src && \
     mkdir /home/${USERNAME}/software/build
@@ -59,6 +58,7 @@ RUN sudo chmod +x ./install_cmake.sh && ./install_cmake.sh
 # install metis
 COPY install_scripts/install_metis.sh ./
 RUN sudo chmod +x ./install_metis.sh && ./install_metis.sh
+
 
 # install Zoltan
 COPY install_scripts/install_zoltan.sh ./
@@ -86,7 +86,6 @@ COPY install_scripts/install_sundials.sh ./
 ENV PETSC_DIR=/home/${USERNAME}/software/install/petsc
 ENV PETSC_ARCH=linux-c-opt
 RUN sudo chmod +x ./install_sundials.sh && ./install_sundials.sh
-
 
 # install pacmensl
 COPY install_scripts/install_pacmensl.sh ./
