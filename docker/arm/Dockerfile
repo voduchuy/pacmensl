@@ -42,7 +42,8 @@ ENV PACKAGES="\
 RUN sudo apt-get install -y ${PACKAGES} && sudo apt-get clean
 
 
-RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib" >> /home/${USERNAME}/.bashrc && \
+RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}" >> /home/${USERNAME}/.bashrc && \
+    sudo echo "export LD_LIBRARY_PATH=/home/${USERNAME}/software/install/lib:${LD_LIBRARY_PATH}" >> /home/${USERNAME}/.bashrc && \
     mkdir /home/${USERNAME}/software && \
     mkdir /home/${USERNAME}/software/src && \
     mkdir /home/${USERNAME}/software/build
