@@ -21,10 +21,10 @@ Required:
 brew update
 brew install openmpi
 ```
-* [Armadillo](http://arma.sourceforge.net/download.html)
-* [Zoltan](https://github.com/trilinos/Trilinos/tree/master/packages/zoltan)
-* [PETSc](https://www.mcs.anl.gov/petsc/download/)
-* [SUNDIALS](https://computation.llnl.gov/projects/sundials/sundials-software)
+* [Armadillo 9X](http://arma.sourceforge.net/download.html)
+* [Zoltan 1.0](https://github.com/trilinos/Trilinos/tree/master/packages/zoltan)
+* [PETSc 5X](https://www.mcs.anl.gov/petsc/download/)
+* [SUNDIALS 5X](https://computation.llnl.gov/projects/sundials/sundials-software)
 
 Optionally, if you want to use graph-partitioning methods for load-balancing:
 * [Metis](http://glaros.dtc.umn.edu/gkhome/metis/metis/download)
