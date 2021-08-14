@@ -17,6 +17,8 @@ make config prefix=/home/${user}/software/install shared=1
 make -j4
 make install
 
+# Cleanup
+rm -rf /home/${user}/software/src/*metis*
 
 
 

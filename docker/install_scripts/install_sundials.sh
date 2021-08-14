@@ -19,6 +19,9 @@ cd sundials
 echo ${PETSC_DIR}
 
 cmake -DCMAKE_INSTALL_PREFIX=/home/${user}/software/install -DPETSC_ENABLE=ON -DMPI_ENABLE=ON -DPETSC_LIBRARIES=${PETSC_DIR}/lib/libpetsc.so -DPETSC_INCLUDES=${PETSC_DIR}/include \
--DSUNDIALS_INDEX_SIZE=32 /home/${user}/software/src/sundials
+-DSUNDIALS_INDEX_SIZE=32 -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON /home/${user}/software/src/sundials
 make -j4
 make install
+
+# Cleanup
+rm -rf /home/${user}/software/src/sundials

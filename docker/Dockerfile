@@ -1,4 +1,5 @@
 FROM ubuntu:latest
+MAINTAINER Huy Duc Vo
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
@@ -35,17 +36,17 @@ ENV PACKAGES="\
   xz-utils \
   git \
   python3.8 \
+  make \
 "
 
 RUN sudo apt-get install -y ${PACKAGES} && sudo apt-get clean
 
 
-RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}" >> /home/${USERNAME}/.bashrc && \
-    sudo echo "export LD_LIBRARY_PATH=/home/${USERNAME}/software/install/lib:${LD_LIBRARY_PATH}" >> /home/${USERNAME}/.bashrc && \
+RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib" >> /home/${USERNAME}/.bashrc && \
     mkdir /home/${USERNAME}/software && \
     mkdir /home/${USERNAME}/software/src && \
     mkdir /home/${USERNAME}/software/build
-
+#
 # install open-mpi 4.0
 COPY install_scripts/install_mpi.sh ./
 RUN sudo chmod +x ./install*.sh && ./install_mpi.sh
@@ -73,26 +74,3 @@ RUN sudo chmod +x ./install_conda.sh && ./install_conda.sh  \
     && \
     conda update conda && \
     conda init bash
-
-
-# install petsc
-COPY install_scripts/install_petsc.sh ./
-RUN sudo chmod +x ./install_petsc.sh && ./install_petsc.sh
-
-
-
-# install sundials
-COPY install_scripts/install_sundials.sh ./
-ENV PETSC_DIR=/home/${USERNAME}/software/install/petsc
-ENV PETSC_ARCH=linux-c-opt
-RUN sudo chmod +x ./install_sundials.sh && ./install_sundials.sh
-
-# install pacmensl
-COPY install_scripts/install_pacmensl.sh ./
-ENV CPATH=/home/${USERNAME}/software/install/include
-ENV LIBRARY_PATH=/home/${USERNAME}/software/install/lib
-RUN sudo chmod +x ./install_pacmensl.sh && ./install_pacmensl.sh
-
-# Set OMPI environment variable to prevent spurious printing, see issue 4948 openmpi github page
-ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
-
