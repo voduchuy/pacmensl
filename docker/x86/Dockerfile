@@ -93,4 +93,6 @@ ENV CPATH=/home/${USERNAME}/software/install/include
 ENV LIBRARY_PATH=/home/${USERNAME}/software/install/lib
 RUN sudo chmod +x ./install_pacmensl.sh && ./install_pacmensl.sh
 
+# Set OMPI environment variable to prevent spurious printing, see issue 4948 openmpi github page
+ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
 
