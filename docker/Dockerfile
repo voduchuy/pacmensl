@@ -1,6 +1,8 @@
 FROM ubuntu:latest
 MAINTAINER Huy Duc Vo
 
+ARG pacmensl_version=0.1.0
+
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 RUN apt-get update && \
@@ -9,7 +11,8 @@ RUN apt-get update && \
 RUN apt-get -y install dialog apt-utils
 
 # set environment variables
-ENV USERNAME huy
+ENV USERNAME user
+ENV PACMENSL_VERSION $pacmensl_version
 
 RUN adduser --disabled-password --gecos --create-home ${USERNAME}
 RUN adduser ${USERNAME} sudo
@@ -40,7 +43,6 @@ ENV PACKAGES="\
 "
 
 RUN sudo apt-get install -y ${PACKAGES} && sudo apt-get clean
-
 
 RUN sudo echo "export LD_LIBRARY_PATH=/usr/local/lib" >> /home/${USERNAME}/.bashrc && \
     mkdir /home/${USERNAME}/software && \
@@ -74,3 +76,27 @@ RUN sudo chmod +x ./install_conda.sh && ./install_conda.sh  \
     && \
     conda update conda && \
     conda init bash
+
+# install petsc
+COPY install_scripts/install_petsc.sh ./
+RUN sudo chmod +x ./install_petsc.sh && ./install_petsc.sh
+
+## install sundials
+COPY install_scripts/install_sundials.sh ./
+ENV PETSC_DIR=/home/${USERNAME}/software/install/petsc
+ENV PETSC_ARCH=linux-c-opt
+RUN sudo chmod +x ./install_sundials.sh && ./install_sundials.sh
+
+# install pacmensl
+COPY install_scripts/install_pacmensl.sh ./
+ENV CPATH=/home/${USERNAME}/software/install/include
+ENV LIBRARY_PATH=/home/${USERNAME}/software/install/lib
+RUN sudo chmod +x ./install_pacmensl.sh && ./install_pacmensl.sh
+
+# Set OMPI environment variable to prevent spurious printing, see issue 4948 openmpi github page
+ENV OMPI_MCA_btl_vader_single_copy_mechanism=none
+
+# Cleanup
+RUN sudo rm *.sh && \
+    sudo rm -rf /home/${USERNAME}/software/build && \
+    sudo rm -rf /home/${USERNAME}/software/src

@@ -4,7 +4,10 @@ user=${USERNAME}
 export CPATH=${CPATH};/home/${user}/software/install/include
 
 cd /home/${user}/software/src
-git clone https://github.com/voduchuy/pacmensl pacmensl
+wget https://github.com/voduchuy/pacmensl/archive/refs/tags/v${PACMENSL_VERSION}.tar.gz -O pacmensl.tar.gz
+tar -xf pacmensl.tar.gz
+rm *.tar.gz
+mv pacmensl* pacmensl
 
 cd /home/${user}/software/build
 mkdir pacmensl
@@ -15,6 +18,3 @@ make -j4
 
 # Now install
 make install
-
-# Cleanup all redundant dependencies
-rm -rf /home/${user}/software/src
