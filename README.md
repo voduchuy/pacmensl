@@ -15,12 +15,7 @@ Huy Vo: huydvo@colostate.edu.
 Required:
 * [CMake](https://cmake.org/download/) (3.10 or higher) 
 * C, C++ compilers.
-* An MPI implementation (OpenMPI, MPICH) already installed on your system. On MacOS you can install OpenMPI via
- Homebrew:
-```
-brew update
-brew install openmpi
-```
+* An MPI implementation (OpenMPI, MPICH).
 * [Armadillo 9X](http://arma.sourceforge.net/download.html)
 * [Zoltan 1.0](https://github.com/trilinos/Trilinos/tree/master/packages/zoltan)
 * [PETSc 5X](https://www.mcs.anl.gov/petsc/download/)
