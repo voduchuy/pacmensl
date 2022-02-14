@@ -54,10 +54,10 @@ class ForwardSensCvodeFsp : public ForwardSensSolverBase {
   N_Vector              cvodes_solution_vec = nullptr;
   std::vector<N_Vector> cvodes_sens_vecs;
 
-  Vec cvodes_solution_vec_wrapper;
+  Vec cvodes_solution_vec_wrapper = nullptr;
   std::vector<Vec> cvodes_sens_vec_wrappers;
 
-  Vec workvec1, workvec2, workvec3, workvec4;
+  Vec workvec1 = nullptr, workvec2 = nullptr, workvec3 = nullptr, workvec4 = nullptr;
 
   PetscReal t_now_tmp_ = 0.0;
   PetscReal rel_tol    = 1.0e-6;

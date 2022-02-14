@@ -290,7 +290,7 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::FreeWorkspace() {
   int ierr;
   if (cvode_mem) CVodeFree(&cvode_mem);
   if (linear_solver != nullptr) SUNLinSolFree(linear_solver);
-  VecDestroy(&cvodes_solution_vec_wrapper);
+  if (cvodes_solution_vec_wrapper != nullptr) VecDestroy(&cvodes_solution_vec_wrapper);
   for (int i{0}; i < cvodes_sens_vec_wrappers.size(); ++i){
     VecDestroy(&cvodes_sens_vec_wrappers[i]);
   }
