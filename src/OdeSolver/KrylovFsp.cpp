@@ -123,12 +123,12 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
     ierr = GenerateBasis(v, m_start, &happy_breakdown);
     PACMENSLCHKERRQ(ierr);
 
-    if (happy_breakdown){
-      if (print_intermediate) PetscPrintf(comm_, "Happy breakdown!\n");
-      t_step_ = t_final_ - t_now_tmp_;
-      t_step_next_ = t_step_;
-      t_step_set_ = true;
-    }
+//    if (happy_breakdown){
+//      if (print_intermediate) PetscPrintf(comm_, "Happy breakdown!\n");
+//      t_step_ = t_final_ - t_now_tmp_;
+//      t_step_next_ = t_step_;
+//      t_step_set_ = true;
+//    }
 
     if (!t_step_set_)
     {
