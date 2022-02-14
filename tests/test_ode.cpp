@@ -243,7 +243,7 @@ TEST_F(OdeTest, use_krylov) {
   ASSERT_EQ(ierr, 0);
   ierr = krylov_solver.SetFspMatPtr(A);
   ASSERT_EQ(ierr, 0);
-  ierr = krylov_solver.SetStatusOutput(2);
+  ierr = krylov_solver.SetStatusOutput(0);
   ASSERT_EQ(ierr, 0);
   ierr = krylov_solver.SetUp();
   ASSERT_EQ(ierr, 0);
@@ -309,7 +309,7 @@ TEST_F(OdeTest, use_petsc) {
   VecAssemblyBegin(P);
   VecAssemblyEnd(P);
 
-  PetscReal fsp_tol = 1.0e-2, t_final = 100.0;
+  PetscReal t_final = 100.0;
 
   TsFsp  ts(PETSC_COMM_WORLD);
   ierr = ts.SetFinalTime(t_final); ASSERT_EQ(ierr, 0);
@@ -317,7 +317,7 @@ TEST_F(OdeTest, use_petsc) {
   ierr = ts.SetRhs(AV); ASSERT_EQ(ierr,0);
   ierr = ts.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
   ierr = ts.SetFspMatPtr(A); ASSERT_EQ(ierr, 0);
-  ierr = ts.SetStatusOutput(1); ASSERT_EQ(ierr, 0);
+  ierr = ts.SetStatusOutput(0); ASSERT_EQ(ierr, 0);
   ierr = ts.SetUp(); ASSERT_EQ(ierr, 0);
   PetscInt solver_stat = ts.Solve();
   ASSERT_FALSE(solver_stat);

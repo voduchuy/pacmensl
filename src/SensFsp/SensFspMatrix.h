@@ -80,6 +80,8 @@ pacmensl::SensFspMatrix<FspMatrixT>::SensFspMatrix(MPI_Comm comm) : A_(comm) {
 template<typename FspMatrixT>
 PacmenslErrorCode pacmensl::SensFspMatrix<FspMatrixT>::Destroy() {
   PacmenslErrorCode ierr;
+  ierr = VecDestroy(work_.mem());
+  PACMENSLCHKERRQ(ierr);
   ierr = A_.Destroy();
   PACMENSLCHKERRQ(ierr);
   for (int i{0}; i < num_parameters_; ++i) {

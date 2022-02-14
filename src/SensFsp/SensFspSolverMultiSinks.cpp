@@ -206,6 +206,7 @@ PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::SetUp()
 
   sinks_.set_size(state_set_->GetNumConstraints());
   to_expand_.set_size(sinks_.n_elem);
+  set_up_ = true;
   return ierr;
 }
 
@@ -283,10 +284,12 @@ std::vector<pacmensl::SensDiscreteDistribution> pacmensl::SensFspSolverMultiSink
 PacmenslErrorCode pacmensl::SensFspSolverMultiSinks::ClearState()
 {
   PacmenslErrorCode ierr;
-  ierr = VecDestroy(p_.mem()); CHKERRQ(ierr);
+  ierr = VecDestroy(p_.mem());
+  CHKERRQ(ierr);
   dp_.clear();
   state_set_.reset();
   A_.reset();
+  sens_solver_.reset();
   return 0;
 }
 
@@ -331,7 +334,6 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
 {
   PetscErrorCode ierr;
   PetscInt       solver_stat;
-  Vec            P_tmp;
 
   if (verbosity_ > 1) sens_solver_->SetStatusOutput(1);
 
@@ -339,18 +341,20 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
   sens_solver_->SetFinalTime(t_final);
 
   solver_stat = 1;
-  while (solver_stat)
+  while (solver_stat == 1)
   {
-
     ierr = sens_solver_->SetInitialSolution(p_); PACMENSLCHKERRTHROW(ierr);
     ierr = sens_solver_->SetInitialSensitivity(dp_); PACMENSLCHKERRTHROW(ierr);
     ierr = sens_solver_->SetCurrentTime(t_now_); PACMENSLCHKERRTHROW(ierr);
     ierr = sens_solver_->SetUp(); PACMENSLCHKERRTHROW(ierr);
 
     solver_stat = sens_solver_->Solve();
+
     if (solver_stat != 0 && solver_stat != 1) PACMENSLCHKERRTHROW(solver_stat);
+
     t_now_ = sens_solver_->GetCurrentTime();
     ierr   = sens_solver_->FreeWorkspace(); PACMENSLCHKERRTHROW(ierr);
+
     // Expand the FspSolverBase if the solver halted prematurely
     if (solver_stat == 1)
     {
@@ -363,29 +367,10 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
         }
       }
 
-      if (verbosity_ > 0)
-      {
-        PetscPrintf(comm_, "\n ------------- \n");
-        PetscPrintf(comm_, "At time t = %.2f expansion to new state_set_ size: \n",
-                    sens_solver_->GetCurrentTime());
-        for (int i{0}; i < fsp_bounds_.n_elem; ++i)
-        {
-          PetscPrintf(comm_, "%d ", fsp_bounds_[i]);
-        }
-        PetscPrintf(comm_, "\n ------------- \n");
-      }
-      // Get local states_ corresponding to the current solution_
+      // Get local states_ corresponding to the current solution
       arma::Mat<PetscInt> states_old = state_set_->CopyStatesOnProc();
-
       state_set_->SetShapeBounds(fsp_bounds_);
       state_set_->Expand();
-
-      if (verbosity_)
-      {
-        PetscPrintf(comm_, "\n ------------- \n");
-        PetscPrintf(comm_, "New Fsp number of states_: %d \n", state_set_->GetNumGlobalStates());
-        PetscPrintf(comm_, "\n ------------- \n");
-      }
 
       // free data of the ODE solver (they will be rebuilt at the beginning of the loop)
       A_->Destroy();
@@ -393,13 +378,7 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
 
       // Scatter from old vector to the expanded vector
       arma::Row<Int> new_states_locations;
-      try
-      {
-        new_states_locations = state_set_->State2Index(states_old);
-      }
-      catch (...)
-      { PACMENSLCHKERRTHROW(ierr);
-      };
+      new_states_locations = state_set_->State2Index(states_old);
       arma::Row<Int> new_sinks_locations;
       if (my_rank_ == comm_size_ - 1)
       {
@@ -420,6 +399,19 @@ pacmensl::SensDiscreteDistribution pacmensl::SensFspSolverMultiSinks::Advance_(P
       for (int i{0}; i < model_.num_parameters_; ++i)
       {
         ExpandVec(dp_[i], new_locations_vals, A_->GetNumLocalRows());
+      }
+
+      if (verbosity_ > 0)
+      {
+        PetscPrintf(comm_, "\n ------------- \n");
+        PetscPrintf(comm_, "At time t = %.2f expansion to new state_set_ size: \n",
+                    t_now_);
+        for (int i{0}; i < fsp_bounds_.n_elem; ++i)
+        {
+          PetscPrintf(comm_, "%d ", fsp_bounds_[i]);
+        }
+        PetscPrintf(comm_, "New Fsp number of states_: %d \n", state_set_->GetNumGlobalStates());
+        PetscPrintf(comm_, "\n ------------- \n");
       }
     }
   }

@@ -27,9 +27,9 @@ SOFTWARE.
 
 #include<sunlinsol/sunlinsol_spbcgs.h>
 #include<sunlinsol/sunlinsol_spgmr.h>
-#include<nvector/nvector_petsc.h>
 #include<cvodes/cvodes.h>
 #include <cvodes/cvodes_spils.h>
+#include<nvector/nvector_parallel.h>
 #include "ForwardSensSolverBase.h"
 
 
@@ -51,16 +51,26 @@ class ForwardSensCvodeFsp : public ForwardSensSolverBase {
   void            *cvode_mem    = nullptr;
   SUNLinearSolver linear_solver = nullptr;
 
-  N_Vector              solution_wrapper = nullptr;
-  std::vector<N_Vector> sens_vecs_wrapper;
+  N_Vector              cvodes_solution_vec = nullptr;
+  std::vector<N_Vector> cvodes_sens_vecs;
 
-  N_Vector solution_tmp = nullptr;
-  N_Vector *sens_vecs_tmp = nullptr;
+  Vec cvodes_solution_vec_wrapper = nullptr;
+  std::vector<Vec> cvodes_sens_vec_wrappers;
+
+  Vec workvec1 = nullptr, workvec2 = nullptr, workvec3 = nullptr, workvec4 = nullptr;
 
   PetscReal t_now_tmp_ = 0.0;
   PetscReal rel_tol    = 1.0e-6;
   PetscReal abs_tol    = 1.0e-14;
   int       cvode_stat = 0;
+
+  int eval_rhs_(double t, N_Vector u, N_Vector udot, void *data);
+  int eval_jac_(N_Vector v, N_Vector Jv, realtype t,
+                       N_Vector u, N_Vector fu,
+                       void *FPS_ptr, N_Vector tmp);
+  int eval_sens_rhs_(int Ns, PetscReal t, N_Vector y, N_Vector ydot, int iS, N_Vector yS, N_Vector ySdot,
+                        void *user_data, N_Vector tmp1, N_Vector tmp2);
+
   static int cvode_rhs(double t, N_Vector u, N_Vector udot, void *data);
   static int cvode_jac(N_Vector v, N_Vector Jv, realtype t,
                        N_Vector u, N_Vector fu,
