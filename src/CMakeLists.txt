@@ -1,7 +1,7 @@
 set(EXT_LIBRARIES
         -larmadillo
         -lsundials_cvodes
-        -lsundials_nvecpetsc
+        -lsundials_nvecparallel
         -lzoltan
         ${PETSC_LIBRARIES}
         )

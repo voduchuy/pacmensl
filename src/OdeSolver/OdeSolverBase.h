@@ -30,7 +30,6 @@ SOFTWARE.
 #include<sunlinsol/sunlinsol_spbcgs.h>
 #include<sunlinsol/sunlinsol_spgmr.h>
 #include<sundials/sundials_nvector.h>
-#include<nvector/nvector_petsc.h>
 #include "Sys.h"
 #include "StateSetConstrained.h"
 #include "FspMatrixBase.h"

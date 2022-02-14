@@ -265,6 +265,7 @@ int FspMatrixBase::Destroy() {
   }
   tv_reactions_.clear();
   ti_reactions_.clear();
+  // TODO: "tv" and "ti" are too close. Find more distinguishing names.
   if (work_ != nullptr) {
     ierr = VecDestroy(work_.mem());
     CHKERRQ(ierr);

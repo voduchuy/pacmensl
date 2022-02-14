@@ -67,7 +67,7 @@ class KrylovFsp : public OdeSolverBase {
   PetscReal t_now_tmp_ = 0.0;
   PetscReal t_step_ = 0.0;
   PetscReal t_step_next_ = 0.0;
-  bool t_step_set_ = false;
+  bool first_step_initialized_ = false;
 
   PetscReal btol_ = 1.0e-14;
 

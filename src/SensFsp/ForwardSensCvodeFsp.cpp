@@ -26,11 +26,19 @@ SOFTWARE.
 
 int pacmensl::ForwardSensCvodeFsp::cvode_rhs(double t, N_Vector u, N_Vector udot, void *data) {
   int ierr{0};
-  Vec udata    = N_VGetVector_Petsc(u);
-  Vec udotdata = N_VGetVector_Petsc(udot);
-  ierr = (( pacmensl::ForwardSensSolverBase * ) data)->EvaluateRHS(t, udata, udotdata);
+  auto solver_ptr = (pacmensl::ForwardSensCvodeFsp*) data;
+  return solver_ptr->eval_rhs_(t, u, udot, data);
+}
+
+int pacmensl::ForwardSensCvodeFsp::eval_rhs_(double t, N_Vector u, N_Vector udot, void *solver) {
+  int ierr{0};
+  VecPlaceArray(workvec1, N_VGetArrayPointer(u));
+  VecPlaceArray(workvec2, N_VGetArrayPointer(udot));
+  ierr = EvaluateRHS(t, workvec1, workvec2);
   PACMENSLCHKERRQ(ierr);
-  return 0;
+  VecResetArray(workvec1);
+  VecResetArray(workvec2);
+  return ierr;
 }
 
 int pacmensl::ForwardSensCvodeFsp::cvode_jac(N_Vector v,
@@ -40,11 +48,20 @@ int pacmensl::ForwardSensCvodeFsp::cvode_jac(N_Vector v,
                                              N_Vector fu,
                                              void *FPS_ptr,
                                              N_Vector tmp) {
+  auto solver_ptr = (pacmensl::ForwardSensCvodeFsp*) FPS_ptr;
+  return solver_ptr->eval_jac_(v, Jv, t, u, fu, FPS_ptr, tmp);
+}
+
+int
+pacmensl::ForwardSensCvodeFsp::eval_jac_(N_Vector v, N_Vector Jv, realtype t, N_Vector u, N_Vector fu, void *FPS_ptr,
+                    N_Vector tmp) {
   int ierr{0};
-  Vec vdata  = N_VGetVector_Petsc(v);
-  Vec Jvdata = N_VGetVector_Petsc(Jv);
-  ierr = (( pacmensl::ForwardSensSolverBase * ) FPS_ptr)->EvaluateRHS(t, vdata, Jvdata);
+  VecPlaceArray(workvec1, N_VGetArrayPointer(v));
+  VecPlaceArray(workvec2, N_VGetArrayPointer(Jv));
+  ierr = EvaluateRHS(t, workvec1, workvec2);
   PACMENSLCHKERRQ(ierr);
+  VecResetArray(workvec1);
+  VecResetArray(workvec2);
   return ierr;
 }
 
@@ -59,19 +76,49 @@ int pacmensl::ForwardSensCvodeFsp::cvsens_rhs(int Ns,
                                               N_Vector tmp1,
                                               N_Vector tmp2) {
   if (iS >= Ns) return -1;
+  auto my_solver = ( pacmensl::ForwardSensCvodeFsp * ) user_data;
+  return my_solver->eval_sens_rhs_(Ns, t, y, ydot, iS, yS, ySdot, user_data, tmp1, tmp2);
+}
+
+int pacmensl::ForwardSensCvodeFsp::eval_sens_rhs_(int Ns,
+                                                  PetscReal t,
+                                                  N_Vector y,
+                                                  N_Vector ydot,
+                                                  int iS,
+                                                  N_Vector yS,
+                                                  N_Vector ySdot,
+                                                  void *user_data,
+                                                  N_Vector tmp1,
+                                                  N_Vector tmp2) {
+  if (iS >= Ns) return -1;
   int  ierr{0};
-  auto my_solver = ( pacmensl::ForwardSensSolverBase * ) user_data;
-  ierr = my_solver->EvaluateRHS(t, N_VGetVector_Petsc(yS), N_VGetVector_Petsc(tmp1));
+
+  VecPlaceArray(workvec1, N_VGetArrayPointer(yS));
+  VecPlaceArray(workvec2, N_VGetArrayPointer(y));
+
+  // Set workvec3 = tmp1 and workvec4 = tmp2
+  VecPlaceArray(workvec3, N_VGetArrayPointer(tmp1));
+  VecPlaceArray(workvec4, N_VGetArrayPointer(tmp2));
+
+  ierr = EvaluateRHS(t, workvec1, workvec3);
   PACMENSLCHKERRQ(ierr);
-  ierr = my_solver->EvaluateSensRHS(iS, t, N_VGetVector_Petsc(y), N_VGetVector_Petsc(tmp2));
+  ierr = EvaluateSensRHS(iS, t, workvec2, workvec4);
   PACMENSLCHKERRQ(ierr);
 
-  ierr = VecSet(N_VGetVector_Petsc(ySdot), 0.0);
+  // Set workvec1 = ySdot
+  VecResetArray(workvec1);
+  VecPlaceArray(workvec1, N_VGetArrayPointer(ySdot));
+  ierr = VecSet(workvec1, 0.0);
   PACMENSLCHKERRQ(ierr);
-  ierr = VecAXPY(N_VGetVector_Petsc(ySdot), 1.0, N_VGetVector_Petsc(tmp1));
+  ierr = VecAXPY(workvec1, 1.0, workvec3);
   PACMENSLCHKERRQ(ierr);
-  ierr = VecAXPY(N_VGetVector_Petsc(ySdot), 1.0, N_VGetVector_Petsc(tmp2));
+  ierr = VecAXPY(workvec1, 1.0, workvec4);
   PACMENSLCHKERRQ(ierr);
+
+  VecResetArray(workvec1);
+  VecResetArray(workvec2);
+  VecResetArray(workvec3);
+  VecResetArray(workvec4);
   return 0;
 }
 
@@ -84,20 +131,50 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::SetUp() {
 
   PetscInt petsc_err;
 
-  // N_Vector wrapper for the solution_
-  solution_wrapper = N_VMake_Petsc(*solution_);
-  sens_vecs_wrapper.resize(num_parameters_);
+  // Allocate memory for CVODE solution vector
+  int local_length, global_length;
+  petsc_err = VecGetLocalSize(*solution_, &local_length);
+  CHKERRQ(petsc_err);
+  petsc_err = VecGetSize(*solution_, &global_length);
+  CHKERRQ(petsc_err);
+  cvodes_solution_vec = N_VNew_Parallel(comm_, local_length, global_length);
+  cvodes_sens_vecs.resize(num_parameters_);
   for (int i{0}; i < num_parameters_; ++i) {
-    sens_vecs_wrapper[i] = N_VMake_Petsc(*sens_vecs_[i]);
+    cvodes_sens_vecs[i] = N_VNew_Parallel(comm_, local_length, global_length);
   }
 
-  // Copy solution_ to the temporary solution_
-  solution_tmp = N_VClone_Petsc(solution_wrapper);
-  petsc_err    = VecCopy(*solution_, N_VGetVector_Petsc(solution_tmp));
+  // Create PETSc Vec wrapper for CVODE solution vector
+  PetscReal *cvode_vec_data = N_VGetArrayPointer(cvodes_solution_vec);
+  petsc_err =
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, cvode_vec_data, &cvodes_solution_vec_wrapper);
   CHKERRQ(petsc_err);
-  sens_vecs_tmp = N_VCloneVectorArray_Petsc(num_parameters_, solution_tmp);
+  cvodes_sens_vec_wrappers.resize(num_parameters_);
+  for (int i{0}; i < num_parameters_; ++i){
+    cvode_vec_data = N_VGetArrayPointer(cvodes_sens_vecs[i]);
+    petsc_err =
+        VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, cvode_vec_data, &cvodes_sens_vec_wrappers[i]);
+    CHKERRQ(petsc_err);
+  }
+
+  // Create empty PETSc Vecs to handle right-hand-side evaluations
+  petsc_err =
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, PETSC_NULL, &workvec1);
+  CHKERRQ(petsc_err);
+  petsc_err =
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, PETSC_NULL, &workvec2);
+  CHKERRQ(petsc_err);
+  petsc_err =
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, PETSC_NULL, &workvec3);
+  CHKERRQ(petsc_err);
+  petsc_err =
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, PETSC_NULL, &workvec4);
+  CHKERRQ(petsc_err);
+
+  // Copy solution_ to the temporary solution_
+  petsc_err = VecCopy(*solution_, cvodes_solution_vec_wrapper);
+  CHKERRQ(petsc_err);
   for (int i{0}; i < num_parameters_; ++i) {
-    petsc_err = VecCopy(*sens_vecs_[i], N_VGetVector_Petsc(sens_vecs_tmp[i]));
+    petsc_err = VecCopy(*sens_vecs_[i], cvodes_sens_vec_wrappers[i]);
     CHKERRQ(petsc_err);
   }
 
@@ -111,7 +188,7 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::SetUp() {
     return -1;
   }
 
-  cvode_stat = CVodeInit(cvode_mem, &cvode_rhs, t_now_tmp_, solution_tmp);
+  cvode_stat = CVodeInit(cvode_mem, &cvode_rhs, t_now_tmp_, cvodes_solution_vec);
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetUserData(cvode_mem, ( void * ) this);
   CVODECHKERRQ(cvode_stat);
@@ -126,8 +203,8 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::SetUp() {
 
 
   // Create the linear solver without preconditioning
-//  linear_solver = SUNSPBCGS(solution_tmp, PREC_NONE, 0);
-  linear_solver = SUNSPGMR(solution_tmp, PREC_NONE, 50);
+//  linear_solver = SUNSPBCGS(cvode_solution, PREC_NONE, 0);
+  linear_solver = SUNSPGMR(cvodes_solution_vec, PREC_NONE, 50);
   if (linear_solver == nullptr) {
     PetscPrintf(comm_, "CVODE failed to initialize memory.\n");
     return -1;
@@ -138,7 +215,7 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::SetUp() {
   CVODECHKERRQ(cvode_stat);
 
   // Define the sensitivity problem
-  cvode_stat = CVodeSensInit1(cvode_mem, num_parameters_, CV_STAGGERED1, cvsens_rhs, &sens_vecs_tmp[0]);
+  cvode_stat = CVodeSensInit1(cvode_mem, num_parameters_, CV_STAGGERED1, cvsens_rhs, &cvodes_sens_vecs[0]);
   CVODECHKERRQ(cvode_stat);
   cvode_stat = CVodeSetSensErrCon(cvode_mem, SUNTRUE);
   CVODECHKERRQ(cvode_stat);
@@ -153,61 +230,35 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::SetUp() {
   return 0;
 }
 
-PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::FreeWorkspace() {
-  int ierr;
-  if (cvode_mem) CVodeFree(&cvode_mem);
-  if (linear_solver != nullptr) SUNLinSolFree(linear_solver);
-  if (solution_wrapper != nullptr) N_VDestroy(solution_wrapper);
-  for (int i{0}; i < sens_vecs_wrapper.size(); ++i) {
-    N_VDestroy(sens_vecs_wrapper[i]);
-  }
-  sens_vecs_wrapper.clear();
-  if (solution_tmp != nullptr) N_VDestroy(solution_tmp);
-  N_VDestroyVectorArray_Petsc(sens_vecs_tmp, num_parameters_);
-
-  solution_wrapper = nullptr;
-  sens_vecs_tmp    = nullptr;
-  solution_tmp     = nullptr;
-  linear_solver    = nullptr;
-  num_parameters_  = 0;
-
-  set_up_ = false;
-  return ForwardSensSolverBase::FreeWorkspace();
-}
-
 PetscInt pacmensl::ForwardSensCvodeFsp::Solve() {
   if (!set_up_) SetUp();
   PetscErrorCode   petsc_err;
   // Advance the temporary solution_ until either reaching final time or Fsp error exceeding tolerance
   int              stop = 0;
-  std::vector<Vec> sens_vecs_tmp_dat(num_parameters_);
-  for (int         i{0}; i < sens_vecs_tmp_dat.size(); ++i) {
-    sens_vecs_tmp_dat[i] = N_VGetVector_Petsc(sens_vecs_tmp[i]);
-  }
   while (t_now_ < t_final_) {
-    cvode_stat = CVode(cvode_mem, t_final_, solution_tmp, &t_now_tmp_, CV_ONE_STEP);
+    cvode_stat = CVode(cvode_mem, t_final_, cvodes_solution_vec, &t_now_tmp_, CV_ONE_STEP);
     CVODECHKERRQ(cvode_stat);
     // Interpolate the solution_ if the last step went over the prescribed final time
     if (t_now_tmp_ > t_final_) {
-      cvode_stat = CVodeGetDky(cvode_mem, t_final_, 0, solution_tmp);
+      cvode_stat = CVodeGetDky(cvode_mem, t_final_, 0, cvodes_solution_vec);
       CVODECHKERRQ(cvode_stat);
       t_now_tmp_ = t_final_;
     }
-    cvode_stat = CVodeGetSensDky(cvode_mem, t_now_tmp_, 0, sens_vecs_tmp);
+    cvode_stat = CVodeGetSensDky(cvode_mem, t_now_tmp_, 0,cvodes_sens_vecs.data());
     CVODECHKERRQ(cvode_stat);
 
     // Check that the temporary solution_ satisfies Fsp tolerance
     if (stop_check_ != nullptr) {
       stop = stop_check_(t_now_tmp_,
-                         N_VGetVector_Petsc(solution_tmp),
+                         cvodes_solution_vec_wrapper,
                          num_parameters_,
-                         sens_vecs_tmp_dat.data(),
+                         cvodes_sens_vec_wrappers.data(),
                          stop_data_);
     }
     if (stop == 1) {
-      cvode_stat = CVodeGetDky(cvode_mem, t_now_, 0, solution_tmp);
+      cvode_stat = CVodeGetDky(cvode_mem, t_now_, 0, cvodes_solution_vec);
       CVODECHKERRQ(cvode_stat);
-      cvode_stat = CVodeGetSensDky(cvode_mem, t_now_, 0, sens_vecs_tmp);
+      cvode_stat = CVodeGetSensDky(cvode_mem, t_now_, 0, cvodes_sens_vecs.data());
       CVODECHKERRQ(cvode_stat);
       break;
     } else {
@@ -226,13 +277,40 @@ PetscInt pacmensl::ForwardSensCvodeFsp::Solve() {
     }
   }
   // Copy data from temporary vector to solution_ vector
-  petsc_err = VecCopy(N_VGetVector_Petsc(solution_tmp), *solution_);
+  petsc_err = VecCopy(cvodes_solution_vec_wrapper, *solution_);
   CHKERRQ(petsc_err);
   for (int i{0}; i < num_parameters_; ++i) {
-    petsc_err = VecCopy(N_VGetVector_Petsc(sens_vecs_tmp[i]), *sens_vecs_[i]);
+    petsc_err = VecCopy(cvodes_sens_vec_wrappers[i], *sens_vecs_[i]);
     CHKERRQ(petsc_err);
   }
   return stop;
+}
+
+PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::FreeWorkspace() {
+  int ierr;
+  if (cvode_mem) CVodeFree(&cvode_mem);
+  if (linear_solver != nullptr) SUNLinSolFree(linear_solver);
+  VecDestroy(&cvodes_solution_vec_wrapper);
+  for (int i{0}; i < cvodes_sens_vec_wrappers.size(); ++i){
+    VecDestroy(&cvodes_sens_vec_wrappers[i]);
+  }
+  cvodes_sens_vec_wrappers.clear();
+  if (cvodes_solution_vec != nullptr) N_VDestroy(cvodes_solution_vec);
+  for (int i{0}; i < cvodes_sens_vecs.size(); ++i) {
+    N_VDestroy(cvodes_sens_vecs[i]);
+  }
+  cvodes_sens_vecs.clear();
+  if (workvec1 != nullptr) VecDestroy(&workvec1);
+  if (workvec2 != nullptr) VecDestroy(&workvec2);
+  if (workvec3 != nullptr) VecDestroy(&workvec3);
+  if (workvec4 != nullptr) VecDestroy(&workvec4);
+
+  cvodes_solution_vec = nullptr;
+  linear_solver    = nullptr;
+  num_parameters_  = 0;
+
+  set_up_ = false;
+  return ForwardSensSolverBase::FreeWorkspace();
 }
 
 pacmensl::ForwardSensCvodeFsp::~ForwardSensCvodeFsp() {

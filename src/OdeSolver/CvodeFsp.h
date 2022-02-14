@@ -30,7 +30,7 @@ SOFTWARE.
 #include<sunlinsol/sunlinsol_spbcgs.h>
 #include<sunlinsol/sunlinsol_spgmr.h>
 #include<sundials/sundials_nvector.h>
-#include<nvector/nvector_petsc.h>
+#include<nvector/nvector_parallel.h>
 #include "OdeSolverBase.h"
 #include "StateSetConstrained.h"
 #include "Sys.h"
@@ -51,12 +51,21 @@ class CvodeFsp : public OdeSolverBase {
   int lmm_ = CV_BDF;
   void *cvode_mem = nullptr;
   SUNLinearSolver linear_solver = nullptr;
-  N_Vector solution_wrapper = nullptr;
-  N_Vector solution_tmp = nullptr;
-  N_Vector constr_vec_ = nullptr;
+
+  N_Vector cvode_solution = nullptr;
+  Vec cvode_solution_vec_wrapper = nullptr;
+  Vec workvec1, workvec2;
+
 
   PetscReal t_now_tmp = 0.0;
   int cvode_stat = 0;
+
+  int eval_rhs_(double t, N_Vector u, N_Vector udot, void *solver);
+  int eval_jac_(N_Vector v, N_Vector Jv, realtype t,
+                N_Vector u, N_Vector fu,
+                void *FPS_ptr, N_Vector tmp);
+
+  // Interface functions to CVODE
   static int cvode_rhs(double t, N_Vector u, N_Vector udot, void *solver);
   static int cvode_jac(N_Vector v, N_Vector Jv, realtype t,
                        N_Vector u, N_Vector fu,

@@ -127,10 +127,10 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
 //      if (print_intermediate) PetscPrintf(comm_, "Happy breakdown!\n");
 //      t_step_ = t_final_ - t_now_tmp_;
 //      t_step_next_ = t_step_;
-//      t_step_set_ = true;
+//      first_step_initialized_ = true;
 //    }
 
-    if (!t_step_set_)
+    if (!first_step_initialized_)
     {
       PetscReal anorm;
       xm = 1.0 / double(m_);
@@ -140,7 +140,7 @@ int pacmensl::KrylovFsp::AdvanceOneStep(const Vec &v)
       anorm = avnorm / beta;
       double fact = pow((m_ + 1) / exp(1.0), m_ + 1) * sqrt(2 * (3.1416) * (m_ + 1));
       t_step_next_ = (1.0 / anorm) * pow((fact * abs_tol_) / (4.0 * beta * anorm), xm);
-      t_step_set_  = true;
+      first_step_initialized_  = true;
     }
 
     t_step_ = std::min(t_final_ - t_now_tmp_, t_step_next_);
@@ -349,7 +349,7 @@ int pacmensl::KrylovFsp::SetUpWorkSpace()
   ierr = VecSetUp(solution_tmp_);
   CHKERRQ(ierr);
 
-  t_step_set_ = false;
+  first_step_initialized_ = false;
 
   m_next_ = m_min_;
 
