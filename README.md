@@ -31,7 +31,7 @@ If you want to build the unit tests:
 To generate documentation:
 * [Doxygen](https://www.doxygen.nl/index.html).
 
-In addition, PETSc and Sundials must be built with double-precision scalar types. SUNDIALS must be enabled with PETSc support.
+In addition, PETSc and Sundials must be built with double-precision scalar types.
 
 ## Installation
 
