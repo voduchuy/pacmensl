@@ -153,7 +153,7 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
                                          prop_args);
     PACMENSLCHKERRQ(ierr);
 
-    // Generate the extra blocks corresponding to sink states_
+    // Generate the extra blocks corresponding to sink states
     const arma::Mat<int> &state_list = constrained_fss_ptr->GetStatesRef();
     int n_local_states = constrained_fss_ptr->GetNumLocalStates();
     int n_constraints = constrained_fss_ptr->GetNumConstraints();
@@ -168,7 +168,7 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
     sinkmat_entries.resize(n_constraints * num_reactions_);
     tv_sinks_mat_.resize(tv_reactions_.size());
     for (auto i_reaction : enable_reactions_) {
-        // Count nnz for rows that represent sink states_
+        // Count nnz for rows that represent sink states
         can_reach_my_state = state_list + arma::repmat(SM.col(i_reaction), 1, state_list.n_cols);
         ierr = constrained_fss_ptr->CheckConstraints(n_local_states, can_reach_my_state.colptr(0),
                                                      constraints_satisfied.colptr(0));

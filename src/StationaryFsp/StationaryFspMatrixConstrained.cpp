@@ -150,6 +150,7 @@ int pacmensl::StationaryFspMatrixConstrained::Action(PetscReal t, Vec x, Vec y)
   int ierr;
   // Compute the 'usual' part of the matmult operation
   ierr = FspMatrixBase::Action(t, x, y); PACMENSLCHKERRQ(ierr);
+  
   // Compute the sinks and direct them to the designated state
   ierr = VecGetLocalVectorRead(x, xx); CHKERRQ(ierr);
   ierr = VecSet(sink_entries_, 0.0); CHKERRQ(ierr);
