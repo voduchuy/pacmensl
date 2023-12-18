@@ -39,5 +39,5 @@ SOFTWARE.
 #include "SensDiscreteDistribution.h"
 #include "SensFspMatrix.h"
 #include "SensFspSolverMultiSinks.h"
-//#include "StationaryFspSolverMultiSinks.h"
+#include "StationaryFspSolverMultiSinks.h"
 #endif //PACMENSL_ALL_H

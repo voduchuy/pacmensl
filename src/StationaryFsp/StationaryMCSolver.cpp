@@ -47,7 +47,7 @@ int pacmensl::StationaryMCSolver::SetMatVec(const TIMatvec &matvec) {
 
 /**
  * @brief Given the infinitesimal generator A of the discrete Markov process, compute the action
- * \f$ \left(A + \frac{2}{n} d q^T \right)v \f$
+ * \f$ \left(A +  d q^T \right)v \f$
  * where n is the number of rows of A, d = diag(A), q = (1,1,..,1)^T.
  * @details Collective.
  * @param A infinitesimal generator of the Markov chain.
@@ -62,7 +62,6 @@ int pacmensl::StationaryMCSolver::ModifiedMatrixAction(Mat A, Vec x, Vec y) {
   ierr = (ctx->matvec_)(x, y); PACMENSLCHKERRQ(ierr);
   PetscReal alpha;
   ierr = VecSum(x, &alpha); CHKERRQ(ierr);
-  alpha = alpha*2.0/ctx->n_global_;
   ierr = VecAXPY(y, alpha, *ctx->mat_diagonal_); CHKERRQ(ierr);
   return 0;
 }
