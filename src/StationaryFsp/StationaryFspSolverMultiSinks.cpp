@@ -195,7 +195,6 @@ pacmensl::DiscreteDistribution pacmensl::StationaryFspSolverMultiSinks::Solve(Pe
                                    model_.prop_x_args_); PACMENSLCHKERRTHROW(ierr);
 
     ExpandVec(solution_, new_states_locations, matrix_->GetNumLocalRows());
-    ierr = VecSet(solution_, 1.0); PACMENSLCHKERRTHROW(ierr);
   }
 
   pacmensl::DiscreteDistribution output;
