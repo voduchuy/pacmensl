@@ -1,0 +1,34 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  # add package specs to the `specs` list
+  specs:
+  - cmake
+  - sundials@5.8.0
+  - parmetis
+  - metis
+  - petsc
+  - armadillo
+  - trilinos +zoltan -ml
+  view: true
+  concretizer:
+    unify: when_possible
+  packages:
+    petsc:
+      require: ~fortran ~hypre
+  compilers:
+  - compiler:
+      spec: apple-clang@=12.0.5
+      paths:
+        cc: /usr/bin/clang
+        cxx: /usr/bin/clang++
+        f77: gfortran
+        fc: gfortran
+      flags: {}
+      operating_system: sonoma
+      target: aarch64
+      modules: []
+      environment: {}
+      extra_rpaths: []
