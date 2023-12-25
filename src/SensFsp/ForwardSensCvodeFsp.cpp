@@ -158,16 +158,16 @@ PacmenslErrorCode pacmensl::ForwardSensCvodeFsp::SetUp() {
 
   // Create empty PETSc Vecs to handle right-hand-side evaluations
   petsc_err =
-      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, PETSC_NULL, &workvec1);
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, NULL, &workvec1);
   CHKERRQ(petsc_err);
   petsc_err =
-      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, PETSC_NULL, &workvec2);
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, NULL, &workvec2);
   CHKERRQ(petsc_err);
   petsc_err =
-      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, PETSC_NULL, &workvec3);
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, NULL, &workvec3);
   CHKERRQ(petsc_err);
   petsc_err =
-      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, PETSC_NULL, &workvec4);
+      VecCreateMPIWithArray(comm_, 1, local_length, PETSC_DECIDE, NULL, &workvec4);
   CHKERRQ(petsc_err);
 
   // Copy solution_ to the temporary solution_

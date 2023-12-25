@@ -95,9 +95,9 @@ int FspMatrixConstrained::Destroy() {
         ierr = VecScatterDestroy(&sink_scatter_ctx_);
         CHKERRQ(ierr);
     }
-    sinkmat_nnz.clear();
-    sinkmat_inz.clear();
-    sinkmat_entries.clear();
+    sinkmat_nnz_.clear();
+    sinkmat_inz_.clear();
+    sinkmat_entries_.clear();
 
     return 0;
 }
@@ -163,9 +163,9 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
     // Workspace for checking constraints
     arma::Mat<PetscInt> constraints_satisfied(n_local_states, n_constraints);
 
-    sinkmat_nnz.resize(n_constraints, num_reactions_);
-    sinkmat_inz.resize(n_constraints * num_reactions_);
-    sinkmat_entries.resize(n_constraints * num_reactions_);
+    sinkmat_nnz_.resize(n_constraints, num_reactions_);
+    sinkmat_inz_.resize(n_constraints * num_reactions_);
+    sinkmat_entries_.resize(n_constraints * num_reactions_);
     tv_sinks_mat_.resize(tv_reactions_.size());
     for (auto i_reaction : enable_reactions_) {
         // Count nnz for rows that represent sink states
@@ -175,18 +175,18 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
         PACMENSLCHKERRQ(ierr);
 
         for (int i_constr = 0; i_constr < n_constraints; ++i_constr) {
-            sinkmat_nnz(i_constr, i_reaction) = n_local_states - arma::sum(constraints_satisfied.col(i_constr));
-            sinkmat_inz.at(n_constraints * i_reaction + i_constr).set_size(sinkmat_nnz(i_constr, i_reaction));
-            sinkmat_entries.at(n_constraints * i_reaction + i_constr).set_size(sinkmat_nnz(i_constr, i_reaction));
+            sinkmat_nnz_(i_constr, i_reaction) = n_local_states - arma::sum(constraints_satisfied.col(i_constr));
+            sinkmat_inz_.at(n_constraints * i_reaction + i_constr).set_size(sinkmat_nnz_(i_constr, i_reaction));
+            sinkmat_entries_.at(n_constraints * i_reaction + i_constr).set_size(sinkmat_nnz_(i_constr, i_reaction));
         }
         // Store the column indices and values of the nonzero entries on the sink rows
         for (int i_constr = 0; i_constr < n_constraints; ++i_constr) {
             int count = 0;
             for (int i_state = 0; i_state < n_local_states; ++i_state) {
                 if (constraints_satisfied(i_state, i_constr) == 0) {
-                    sinkmat_inz.at(n_constraints * i_reaction + i_constr).at(count) = i_state;
+                    sinkmat_inz_.at(n_constraints * i_reaction + i_constr).at(count) = i_state;
                     prop(i_reaction, state_list.n_rows, 1, state_list.colptr(i_state),
-                         &sinkmat_entries.at(n_constraints * i_reaction + i_constr)[count], prop_args);
+                         &sinkmat_entries_.at(n_constraints * i_reaction + i_constr)[count], prop_args);
                     count += 1;
                 }
             }
@@ -202,12 +202,12 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
         CHKERRQ(ierr);
         ierr = MatSetSizes(tv_sinks_mat_[i], n_constraints, num_rows_local_, n_constraints, num_rows_local_);
         CHKERRQ(ierr);
-        ierr = MatSeqAIJSetPreallocation(tv_sinks_mat_[i], NULL, sinkmat_nnz.colptr(i_reaction));
+        ierr = MatSeqAIJSetPreallocation(tv_sinks_mat_[i], NULL, sinkmat_nnz_.colptr(i_reaction));
         CHKERRQ(ierr);
         for (auto i_constr{0}; i_constr < n_constraints; i_constr++) {
-            ierr = MatSetValues(tv_sinks_mat_[i], 1, &i_constr, sinkmat_nnz(i_constr, i_reaction),
-                                sinkmat_inz.at(i_reaction * n_constraints + i_constr).memptr(),
-                                sinkmat_entries.at(i_reaction * n_constraints + i_constr).memptr(), ADD_VALUES);
+            ierr = MatSetValues(tv_sinks_mat_[i], 1, &i_constr, sinkmat_nnz_(i_constr, i_reaction),
+                                sinkmat_inz_.at(i_reaction * n_constraints + i_constr).memptr(),
+                                sinkmat_entries_.at(i_reaction * n_constraints + i_constr).memptr(), ADD_VALUES);
             CHKERRQ(ierr);
         }
         ierr = MatAssemblyBegin(tv_sinks_mat_[i], MAT_FINAL_ASSEMBLY);
@@ -228,9 +228,9 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
         CHKERRQ(ierr);
         for (auto i_reaction: ti_reactions_) {
             for (auto i_constr{0}; i_constr < n_constraints; i_constr++) {
-                ierr = MatSetValues(ti_sinks_mat_, 1, &i_constr, sinkmat_nnz(i_constr, i_reaction),
-                                    sinkmat_inz.at(i_reaction * n_constraints + i_constr).memptr(),
-                                    sinkmat_entries.at(i_reaction * n_constraints + i_constr).memptr(), ADD_VALUES);
+                ierr = MatSetValues(ti_sinks_mat_, 1, &i_constr, sinkmat_nnz_(i_constr, i_reaction),
+                                    sinkmat_inz_.at(i_reaction * n_constraints + i_constr).memptr(),
+                                    sinkmat_entries_.at(i_reaction * n_constraints + i_constr).memptr(), ADD_VALUES);
                 CHKERRQ(ierr);
             }
         }
@@ -245,7 +245,7 @@ PacmenslErrorCode FspMatrixConstrained::GenerateValues(const StateSetBase &state
     CHKERRQ(ierr);
     for (auto i_reaction:enable_reactions_) {
         for (auto i_constr{0}; i_constr < n_constraints; i_constr++) {
-            sinkmat_inz.at(i_reaction * n_constraints + i_constr) += own_start;
+            sinkmat_inz_.at(i_reaction * n_constraints + i_constr) += own_start;
         }
     }
 
@@ -342,12 +342,12 @@ int FspMatrixConstrained::CreateRHSJacobian(Mat *A) {
     if (rank_ == sinks_rank_) {
         for (auto ir: enable_reactions_) {
             for (int i = 0; i < num_constraints_; ++i) {
-                d_nz(num_local_states + i) += sinkmat_nnz(i, ir);
+                d_nz(num_local_states + i) += sinkmat_nnz_(i, ir);
             }
         }
     } else {
         for (auto ir: enable_reactions_) {
-            tmp += sinkmat_nnz.col(ir);
+            tmp += sinkmat_nnz_.col(ir);
         }
     }
 
@@ -362,7 +362,7 @@ int FspMatrixConstrained::CreateRHSJacobian(Mat *A) {
         }
     }
 
-    ierr = MatMPIAIJSetPreallocation(*A, PETSC_NULL, &d_nz[0], PETSC_NULL, &o_nz[0]);
+    ierr = MatMPIAIJSetPreallocation(*A, NULL, &d_nz[0], NULL, &o_nz[0]);
     CHKERRQ(ierr);
 
     ierr = VecGetOwnershipRange(work_, &own_start, &own_end);
@@ -381,9 +381,9 @@ int FspMatrixConstrained::CreateRHSJacobian(Mat *A) {
 
     for (auto i_reaction: enable_reactions_) {
         for (int i_constr{0}; i_constr < num_constraints_; i_constr++) {
-            for (int j{0}; j < sinkmat_nnz(i_constr, i_reaction); j++) {
+            for (int j{0}; j < sinkmat_nnz_(i_constr, i_reaction); j++) {
                 itmp = num_rows_global_ - num_constraints_ + i_constr;
-                ierr = MatSetValue(*A, itmp, *(sinkmat_inz.at(i_reaction * num_constraints_ + i_constr).memptr() + j),
+                ierr = MatSetValue(*A, itmp, *(sinkmat_inz_.at(i_reaction * num_constraints_ + i_constr).memptr() + j),
                                    0.0, INSERT_VALUES);
                 CHKERRQ(ierr);
             }
@@ -412,11 +412,11 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t, Mat A) {
         for (int i_reaction: tv_reactions_) {
             for (int i_constr{0}; i_constr < num_constraints_; i_constr++) {
 
-                for (int j{0}; j < sinkmat_nnz(i_constr, i_reaction); j++) {
+                for (int j{0}; j < sinkmat_nnz_(i_constr, i_reaction); j++) {
                     itmp = num_rows_global_ - num_constraints_ + i_constr;
                     atmp = time_coefficients_(i_reaction)
-                        * sinkmat_entries.at(i_reaction * num_constraints_ + i_constr)(j);
-                    jtmp = sinkmat_inz.at(i_reaction * num_constraints_ + i_constr)(j);
+                        * sinkmat_entries_.at(i_reaction * num_constraints_ + i_constr)(j);
+                    jtmp = sinkmat_inz_.at(i_reaction * num_constraints_ + i_constr)(j);
 
                     ierr = MatSetValue(A, itmp, jtmp, atmp, ADD_VALUES);
                     CHKERRQ(ierr);
@@ -430,9 +430,9 @@ int FspMatrixConstrained::ComputeRHSJacobian(PetscReal t, Mat A) {
         for (auto i_reaction: ti_reactions_) {
             for (auto i_constr{0}; i_constr < num_constraints_; i_constr++) {
                 itmp = num_rows_global_ - num_constraints_ + i_constr;
-                ierr = MatSetValues(A, 1, &itmp, sinkmat_nnz(i_constr, i_reaction),
-                                    sinkmat_inz.at(i_reaction * num_constraints_ + i_constr).memptr(),
-                                    sinkmat_entries.at(i_reaction * num_constraints_ + i_constr).memptr(),
+                ierr = MatSetValues(A, 1, &itmp, sinkmat_nnz_(i_constr, i_reaction),
+                                    sinkmat_inz_.at(i_reaction * num_constraints_ + i_constr).memptr(),
+                                    sinkmat_entries_.at(i_reaction * num_constraints_ + i_constr).memptr(),
                                     ADD_VALUES);
                 CHKERRQ(ierr);
             }

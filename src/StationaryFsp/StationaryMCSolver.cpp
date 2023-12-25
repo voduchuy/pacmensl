@@ -36,6 +36,7 @@ int pacmensl::StationaryMCSolver::SetUp() {
   ierr = KSPSetType(*ksp_, KSPGMRES); CHKERRQ(ierr);
   ierr = KSPSetInitialGuessNonzero(*ksp_, PETSC_TRUE); CHKERRQ(ierr);
   ierr = KSPSetFromOptions(*ksp_); CHKERRQ(ierr);
+  ierr = KSPSetTolerances(*ksp_, 1.0e-14, 1.0e-50, PETSC_DEFAULT, 100000); CHKERRQ(ierr);
   ierr = KSPSetUp(*ksp_); CHKERRQ(ierr);
   return 0;
 }
@@ -43,6 +44,12 @@ int pacmensl::StationaryMCSolver::SetUp() {
 int pacmensl::StationaryMCSolver::SetMatVec(const TIMatvec &matvec) {
   matvec_ = matvec;
   return 0;
+}
+
+int pacmensl::StationaryMCSolver::EnableStatusPrinting()
+{
+    print_status_ = true;
+    return 0;
 }
 
 /**
@@ -61,7 +68,7 @@ int pacmensl::StationaryMCSolver::ModifiedMatrixAction(Mat A, Vec x, Vec y) {
   ierr = MatShellGetContext(A, &ctx); CHKERRQ(ierr);
   ierr = (ctx->matvec_)(x, y); PACMENSLCHKERRQ(ierr);
   PetscReal alpha;
-  ierr = VecSum(x, &alpha); CHKERRQ(ierr);
+  ierr = VecSum(x, &alpha); CHKERRQ(ierr);  
   ierr = VecAXPY(y, alpha, *ctx->mat_diagonal_); CHKERRQ(ierr);
   return 0;
 }
@@ -82,7 +89,23 @@ pacmensl::StationaryMCSolver::~StationaryMCSolver() {
 int pacmensl::StationaryMCSolver::Solve() {
   int ierr;
   PetscReal alpha;
+
+  ierr = KSPSetInitialGuessNonzero(*ksp_, PETSC_TRUE); CHKERRQ(ierr);
   ierr = KSPSolve(*ksp_, *mat_diagonal_, *solution_); CHKERRQ(ierr);
+  KSPConvergedReason convergence_reason;
+  ierr = KSPGetConvergedReason(*ksp_, &convergence_reason); CHKERRQ(ierr);
+  if (print_status_){    
+    const char* conv_reason_str;
+    ierr = KSPGetConvergedReasonString(*ksp_, &conv_reason_str); CHKERRQ(ierr);
+    if (convergence_reason >= 0){
+      PetscPrintf(comm_, "KSP converged with reason: %s \n", conv_reason_str);
+    }
+    else 
+    {
+      PetscPrintf(comm_, "KSP failed to converge with reason: %s \n", conv_reason_str);
+    }
+  }
+  if (convergence_reason < 0) return -1;
   ierr = VecSum(*solution_, &alpha); CHKERRQ(ierr);
   ierr = VecScale(*solution_, 1.0/alpha); CHKERRQ(ierr);
   return 0;

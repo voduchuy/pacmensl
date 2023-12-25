@@ -76,7 +76,7 @@ class MatrixTest : public ::testing::Test {
     char             opt[100];
     PetscBool        opt_set;
     PartitioningType fsp_par_type = PartitioningType::GRAPH;
-    ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
+    ierr = PetscOptionsGetString(NULL, NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
     ASSERT_FALSE(ierr);
 
     arma::Mat<PetscInt> X0(1, 1);

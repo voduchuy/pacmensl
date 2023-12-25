@@ -162,16 +162,16 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
     CHKERRQ(ierr);
     if ((strcmp(mtype, MATSELL) == 0) || (strcmp(mtype, MATMPISELL) == 0) || (strcmp(mtype, MATSEQSELL) == 0)) {
       ierr = MatMPISELLSetPreallocation(tv_mats_[i],
-                                        PETSC_NULL,
+                                        NULL,
                                         dblock_nz_.colptr(i_reaction),
-                                        PETSC_NULL,
+                                        NULL,
                                         oblock_nz_.colptr(i_reaction));
       CHKERRQ(ierr);
     } else if ((strcmp(mtype, MATAIJ) == 0) || (strcmp(mtype, MATMPIAIJ) == 0) || (strcmp(mtype, MATSEQAIJ) == 0)) {
       ierr = MatMPIAIJSetPreallocation(tv_mats_[i],
-                                       PETSC_NULL,
+                                       NULL,
                                        dblock_nz_.colptr(i_reaction),
-                                       PETSC_NULL,
+                                       NULL,
                                        oblock_nz_.colptr(i_reaction));
       CHKERRQ(ierr);
     }
@@ -220,10 +220,10 @@ PacmenslErrorCode FspMatrixBase::GenerateValues(const StateSetBase &fsp,
     ierr = MatGetType(ti_mat_, &mtype);
     CHKERRQ(ierr);
     if ((strcmp(mtype, MATSELL) == 0) || (strcmp(mtype, MATMPISELL) == 0) || (strcmp(mtype, MATSEQSELL) == 0)) {
-      ierr = MatMPISELLSetPreallocation(ti_mat_, PETSC_NULL, &ti_dblock_nz_[0], PETSC_NULL, &ti_oblock_nz_[0]);
+      ierr = MatMPISELLSetPreallocation(ti_mat_, NULL, &ti_dblock_nz_[0], NULL, &ti_oblock_nz_[0]);
       CHKERRQ(ierr);
     } else if ((strcmp(mtype, MATAIJ) == 0) || (strcmp(mtype, MATMPIAIJ) == 0) || (strcmp(mtype, MATSEQAIJ) == 0)) {
-      ierr = MatMPIAIJSetPreallocation(ti_mat_, PETSC_NULL, &ti_dblock_nz_[0], PETSC_NULL, &ti_oblock_nz_[0]);
+      ierr = MatMPIAIJSetPreallocation(ti_mat_, NULL, &ti_dblock_nz_[0], NULL, &ti_oblock_nz_[0]);
       CHKERRQ(ierr);
     }
     MatSetUp(ti_mat_);
@@ -337,7 +337,7 @@ int FspMatrixBase::CreateRHSJacobian(Mat *A) {
     d_nz -= 1;
   }
   
-  MatMPIAIJSetPreallocation(*A, PETSC_NULL, &d_nz[0], PETSC_NULL, &o_nz[0]);
+  MatMPIAIJSetPreallocation(*A, NULL, &d_nz[0], NULL, &o_nz[0]);
   
   ierr = VecGetOwnershipRange(work_, &own_start, &own_end);
   CHKERRQ(ierr);

@@ -1,13 +1,19 @@
+find_library(ZOLTAN zoltan)
+find_library(ARMA armadillo)
+find_library(CVODES sundials_cvodes)
+find_library(NVEC sundials_nvecparallel)
+
 set(EXT_LIBRARIES
-        -larmadillo
-        -lsundials_cvodes
-        -lsundials_nvecparallel
-        -lzoltan
+        ${ARMA}
+        ${CVODES}
+        ${NVEC}        
+        ${ZOLTAN}
         ${PETSC_LIBRARIES}
         )
 
 if (ENABLE_PARMETIS)
-    list(APPEND EXT_LIBRARIES -lparmetis)
+    find_library(PARMETISLIB parmetis)
+    list(APPEND EXT_LIBRARIES ${PARMETISLIB})
 else()
     add_definitions(-DNUSEPARMETIS)
 endif()

@@ -50,10 +50,6 @@ PacmenslErrorCode pacmensl::StationaryFspSolverMultiSinks::SetUp()
   // Make sure all the necessary parameters have been set
   try
   {
-    if (model_.prop_t_ == nullptr)
-    {
-      throw std::runtime_error("Temporal signal was not set before calling FspSolver.SetUp().");
-    }
     if (model_.prop_x_ == nullptr)
     {
       throw std::runtime_error("Propensity was not set before calling FspSolver.SetUp().");
@@ -101,6 +97,9 @@ PacmenslErrorCode pacmensl::StationaryFspSolverMultiSinks::SetUp()
   solver_ = std::unique_ptr<StationaryMCSolver>(new StationaryMCSolver(comm_));
   ierr    = solver_->SetMatVec(matvec_); PACMENSLCHKERRQ(ierr);
   ierr = solver_->SetMatDiagonal(&matrix_->diagonal_); PACMENSLCHKERRQ(ierr);
+  if (verbosity_ >= 2){
+    solver_ -> EnableStatusPrinting();
+  }
 
   sinks_.set_size(state_set_->GetNumConstraints());
   to_expand_.set_size(state_set_->GetNumConstraints());
@@ -164,7 +163,7 @@ pacmensl::DiscreteDistribution pacmensl::StationaryFspSolverMultiSinks::Solve(Pe
       break;
     }
 
-    // Get local states_ corresponding to the current solution_
+    // Get local states_ corresponding to the current solution
     arma::Mat<PetscInt> states_old = state_set_->CopyStatesOnProc();
     state_set_->SetShapeBounds(fsp_bounds_);
     state_set_->Expand();
@@ -180,11 +179,17 @@ pacmensl::DiscreteDistribution pacmensl::StationaryFspSolverMultiSinks::Solve(Pe
     if (verbosity_)
     {
       PetscPrintf(comm_, "\n ------------- \n");
+      PetscPrintf(comm_, "New state space constraint bounds: \n");
+      for (auto i{0}; i < fsp_bounds_.n_elem; ++i)
+      {
+        PetscPrintf(comm_, "%d ", fsp_bounds_[i]);
+      }      
+      PetscPrintf(comm_, "\n ------------- \n");
       PetscPrintf(comm_, "New Fsp number of states_: %d \n", state_set_->GetNumGlobalStates());
       PetscPrintf(comm_, "\n ------------- \n");
     }
 
-    ierr = matrix_->Destroy(); PACMENSLCHKERRTHROW(ierr);
+    ierr = matrix_->Destroy(); PACMENSLCHKERRTHROW(ierr);    
     ierr = matrix_->GenerateValues(*state_set_,
                                    model_.stoichiometry_matrix_, 
                                    model_.tv_reactions_,
@@ -192,7 +197,7 @@ pacmensl::DiscreteDistribution pacmensl::StationaryFspSolverMultiSinks::Solve(Pe
                                    model_.prop_x_,
                                    std::vector<int>(),
                                    model_.prop_t_args_,
-                                   model_.prop_x_args_); PACMENSLCHKERRTHROW(ierr);
+                                   model_.prop_x_args_); PACMENSLCHKERRTHROW(ierr);    
 
     ExpandVec(solution_, new_states_locations, matrix_->GetNumLocalRows());
   }

@@ -52,6 +52,14 @@ class FspMatrixConstrained : public FspMatrixBase
 
   int Destroy() override;
   
+  /**
+  * @brief Compute y = A*x.
+  * This method is __collective__, meaning that it must be called by all processes that own this object.
+  * @param t (in) time.
+  * @param x (in) input vector.
+  * @param y (out) output vector.
+  * @return Error code: 0 (success) or -1 (failure)
+  */
   int Action(PetscReal t, Vec x, Vec y) override;
 
   int CreateRHSJacobian(Mat* A) override;
@@ -62,7 +70,7 @@ class FspMatrixConstrained : public FspMatrixBase
   ~FspMatrixConstrained() override;
 
  protected:
-  int              num_constraints_ = 0;
+  int              num_constraints_ = 0; ///< Number of constraints/sink states
   int              sinks_rank_      = 0; ///< rank of the processor that stores sink states
   std::vector<Mat> tv_sinks_mat_; ///< local matrix to evaluate sink states
   Mat              ti_sinks_mat_ = nullptr;
@@ -72,11 +80,14 @@ class FspMatrixConstrained : public FspMatrixBase
 
   Vec xx = nullptr;
 
-  PacmenslErrorCode DetermineLayout_(const StateSetBase &fsp) override;
+  /// @brief Determine the parallel layout of the matrix.
+  /// @param state_space State space.
+  /// @return Modified fields: num_local_rows_. Return 0 if success, -1 otherwise.
+  PacmenslErrorCode DetermineLayout_(const StateSetBase &state_space) override;
 
-  arma::Mat<int>                    sinkmat_nnz;
-  std::vector<arma::Row<int>>       sinkmat_inz;
-  std::vector<arma::Row<PetscReal>> sinkmat_entries;
+  arma::Mat<int>                    sinkmat_nnz_;
+  std::vector<arma::Row<int>>       sinkmat_inz_;
+  std::vector<arma::Row<PetscReal>> sinkmat_entries_;
 };
 }
 

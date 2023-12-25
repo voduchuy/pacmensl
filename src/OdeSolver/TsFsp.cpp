@@ -94,7 +94,7 @@ PetscInt pacmensl::TsFsp::Solve()
   CHKERRQ(petsc_err);
   petsc_err = TSSetSolution(ts_,solution_tmp_);
   CHKERRQ(petsc_err);
-  petsc_err = TSSolve(ts_,PETSC_NULL);
+  petsc_err = TSSolve(ts_,NULL);
   CHKERRQ(petsc_err);
 
   // Copy data from temporary vector to solution_ vector

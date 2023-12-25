@@ -270,21 +270,21 @@ int ParseOptions(MPI_Comm comm,
   char      opt[100];
   PetscBool opt_set;
   int       ierr;
-  ierr = PetscOptionsGetString(NULL,PETSC_NULL,"-fsp_partitioning_type",opt,100,&opt_set);
+  ierr = PetscOptionsGetString(NULL,NULL,"-fsp_partitioning_type",opt,100,&opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {
     fsp_par_type = str2part(std::string(opt));
   }
 
-  ierr = PetscOptionsGetString(NULL,PETSC_NULL,"-fsp_repart_approach",opt,100,&opt_set);
+  ierr = PetscOptionsGetString(NULL,NULL,"-fsp_repart_approach",opt,100,&opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {
     fsp_repart_approach = str2partapproach(std::string(opt));
   }
 
-  ierr = PetscOptionsGetString(NULL,PETSC_NULL,"-fsp_output_marginal",opt,100,&opt_set);
+  ierr = PetscOptionsGetString(NULL,NULL,"-fsp_output_marginal",opt,100,&opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {
@@ -294,7 +294,7 @@ int ParseOptions(MPI_Comm comm,
     }
   }
 
-  ierr = PetscOptionsGetString(NULL,PETSC_NULL,"-fsp_log_events",opt,100,&opt_set);
+  ierr = PetscOptionsGetString(NULL,NULL,"-fsp_log_events",opt,100,&opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {
@@ -304,7 +304,7 @@ int ParseOptions(MPI_Comm comm,
     }
   }
 
-  ierr = PetscOptionsGetString(NULL,PETSC_NULL,"-fsp_use_solver",opt,100,&opt_set);
+  ierr = PetscOptionsGetString(NULL,NULL,"-fsp_use_solver",opt,100,&opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {

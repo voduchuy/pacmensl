@@ -39,23 +39,25 @@ class BirthDeathTest : public ::testing::Test
   {
 
     auto propensity =
-             [&](int reaction, int num_species, int num_states, const int *state, PetscReal *output, void *args) {
-               if (reaction == 0)
+             [&](int reaction, int num_species, int num_states, const int *state, PetscReal *output, void *args) {               
+               switch (reaction)
                {
-                 for (int i{0}; i < num_states; ++i)
-                 {
-                   output[i] = 1.0;
-                 }
-                 return 0;
-               } else
-               {
-                 for (int i{0}; i < num_states; ++i)
-                 {
-                   output[i] = state[i];
-                 }
-                 return 0;
-               }
-             };
+                  case 0:
+                    for (int i{0}; i < num_states; ++i)
+                    {
+                      output[i] = 1.0;
+                    }
+                    break;
+                  case 1:
+                  for (int i{0}; i < num_states; ++i)
+                    {
+                      output[i] = state[i];
+                    }
+                  default:
+                    break;
+                }
+                return 0;
+            };
 
     auto t_fun = [&](double t, int num_coefs, double *outputs, void *args) {
       outputs[0] = lambda;
@@ -86,7 +88,7 @@ class BirthDeathTest : public ::testing::Test
   arma::Col<PetscReal> p0                = {1.0};
   arma::Row<int>       fsp_size          = {5};
   arma::Row<PetscReal> expansion_factors = {0.1};
-  PetscReal            fsp_tol{1.0e-18};
+  PetscReal            fsp_tol{1.0e-20};
 };
 
 TEST_F(BirthDeathTest, test_solve)

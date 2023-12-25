@@ -9,6 +9,7 @@
 namespace pacmensl
 {
 using TIMatvec=std::function<int(Vec x, Vec y)>;
+
 class StationaryMCSolver {
  public:
   NOT_COPYABLE_NOT_MOVABLE(StationaryMCSolver);
@@ -16,6 +17,7 @@ class StationaryMCSolver {
   int SetSolutionVec(Vec* vec);
   int SetMatDiagonal(Vec* diag);
   int SetMatVec(const TIMatvec &matvec);
+  int EnableStatusPrinting();
   int SetUp();
   int Solve();
   int Clear();
@@ -26,10 +28,13 @@ class StationaryMCSolver {
   Vec* mat_diagonal_ = nullptr;
   TIMatvec matvec_ = nullptr;
 
+  bool print_status_ = false;
+
   std::unique_ptr<Petsc<Mat>> inf_generator_;
   std::unique_ptr<Petsc<KSP>> ksp_;
   int n_local_, n_global_;
   static int ModifiedMatrixAction(Mat A, Vec x, Vec y);
 };
+
 }
 #endif //PACMENSL_SRC_STATIONARYFSP_STATIONARYMCSOLVER_H_

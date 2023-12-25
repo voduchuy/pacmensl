@@ -157,9 +157,8 @@ DiscreteDistribution FspSolverMultiSinks::Advance_(PetscReal t_final, PetscReal 
       if (logging_enabled)
       {
         PACMENSLCHKERRTHROW(PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
-      }
-      A_->GenerateValues(*state_set_, model_.stoichiometry_matrix_, model_.tv_reactions_, model_.prop_t_,
-                         model_.prop_x_, std::vector<int>(), model_.prop_t_args_, model_.prop_x_args_);
+      }      
+      A_->GenerateValues(*state_set_, model_);
       if (logging_enabled)
       {
         PACMENSLCHKERRTHROW(PetscLogEventEnd(MatrixGeneration, 0, 0, 0, 0));
@@ -334,14 +333,8 @@ PacmenslErrorCode FspSolverMultiSinks::SetUp()
     if (logging_enabled)
     {
       CHKERRQ(PetscLogEventBegin(MatrixGeneration, 0, 0, 0, 0));
-    }
-    ierr = A_
-        ->GenerateValues(*state_set_,
-                         model_.stoichiometry_matrix_, model_.tv_reactions_,
-                         model_.prop_t_,
-                         model_.prop_x_, std::vector<int>(),
-                         model_.prop_t_args_,
-                         model_.prop_x_args_);
+    }    
+    ierr = A_->GenerateValues(*state_set_, model_);
     PACMENSLCHKERRQ(ierr);
     if (logging_enabled)
     {
@@ -529,7 +522,7 @@ PacmenslErrorCode FspSolverMultiSinks::SetFromOptions()
 
   MPI_Comm_size(comm_, &num_procs);
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
+  ierr = PetscOptionsGetString(NULL, NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {
@@ -540,14 +533,14 @@ PacmenslErrorCode FspSolverMultiSinks::SetFromOptions()
     partitioning_type_ = PartitioningType::GRAPH;
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
+  ierr = PetscOptionsGetString(NULL, NULL, "-fsp_repart_approach", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {
     repart_approach_ = str2partapproach(std::string(opt));
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_verbosity", opt, 100, &opt_set);
+  ierr = PetscOptionsGetString(NULL, NULL, "-fsp_verbosity", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {
@@ -561,7 +554,7 @@ PacmenslErrorCode FspSolverMultiSinks::SetFromOptions()
     }
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set);
+  ierr = PetscOptionsGetString(NULL, NULL, "-fsp_log_events", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set)
   {

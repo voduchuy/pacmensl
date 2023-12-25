@@ -107,7 +107,17 @@ PacmenslErrorCode pacmensl::StationaryFspMatrixConstrained::GenerateValues(const
   ierr = VecSetUp(xx); CHKERRQ(ierr);
 
   // Generate the diagonal
-  ierr = new_t_fun(0.0, num_reactions_, &time_coefficients_[0], t_fun_args_); PACMENSLCHKERRQ(ierr);
+  if (!tv_reactions_.empty()){
+    ierr = new_t_fun(0.0, num_reactions_, &time_coefficients_[0], t_fun_args_); PACMENSLCHKERRQ(ierr);
+  }
+  else
+  {
+    for (auto i = 0; i < num_reactions_; i++)
+    {
+      time_coefficients_[i] = 1.0;
+    }   
+  }
+  
   ierr = VecCreate(comm_, &diagonal_); CHKERRQ(ierr);
   ierr = VecSetSizes(diagonal_, GetNumLocalRows(), PETSC_DECIDE); CHKERRQ(ierr);
   ierr = VecSetUp(diagonal_); CHKERRQ(ierr);
@@ -176,7 +186,17 @@ int pacmensl::StationaryFspMatrixConstrained::Action(PetscReal t, Vec x, Vec y)
 int pacmensl::StationaryFspMatrixConstrained::EvaluateOutflows(Vec sfsp_solution, arma::Row<PetscReal> &sinks)
 {
   int ierr;
-  ierr = t_fun_(0.0, num_reactions_, time_coefficients_.memptr(), t_fun_args_); PACMENSLCHKERRQ(ierr);
+  if (!tv_reactions_.empty())
+  {
+    ierr = t_fun_(0.0, num_reactions_, time_coefficients_.memptr(), t_fun_args_); PACMENSLCHKERRQ(ierr);    
+  } else 
+  {
+    for (size_t i = 0; i < num_reactions_; i++)
+    {
+      time_coefficients_[i] = 1.0;
+    }
+    
+  }
   ierr = VecGetLocalVector(sfsp_solution, xx); CHKERRQ(ierr);
   ierr = VecSet(sink_entries_, 0.0); CHKERRQ(ierr);
   for (int i : enable_reactions_)

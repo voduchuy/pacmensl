@@ -38,7 +38,7 @@ pacmensl::DiscreteDistribution::DiscreteDistribution(const pacmensl::DiscreteDis
   PetscErrorCode ierr;
   comm_ = dist.comm_;
   t_   = dist.t_;
-  if (p_ != PETSC_NULL) {
+  if (p_ != NULL) {
     ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
   }
   ierr = VecDuplicate(dist.p_, &p_); CHKERRABORT(comm_, ierr);
@@ -63,7 +63,7 @@ pacmensl::DiscreteDistribution &
 pacmensl::DiscreteDistribution::operator=(const pacmensl::DiscreteDistribution &dist) {
   PetscErrorCode ierr;
 
-  if (p_ != PETSC_NULL && p_ != nullptr) {
+  if (p_ != NULL && p_ != nullptr) {
     ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
   }
   states_.clear();
@@ -81,7 +81,7 @@ pacmensl::DiscreteDistribution::operator=(pacmensl::DiscreteDistribution &&dist)
   if (this != &dist) {
     PetscErrorCode ierr;
 
-    if (p_ != PETSC_NULL && p_ != nullptr) {
+    if (p_ != NULL && p_ != nullptr) {
       ierr = VecDestroy(&p_); CHKERRABORT(comm_, ierr);
     }
     states_.clear();

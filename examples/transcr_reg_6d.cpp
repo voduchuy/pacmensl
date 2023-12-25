@@ -203,19 +203,19 @@ int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningAppr
   char opt[100];
   PetscBool opt_set;
   int ierr;
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
+  ierr = PetscOptionsGetString(NULL, NULL, "-fsp_partitioning_type", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set) {
     fsp_par_type = str2part(std::string(opt));
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_repart_approach", opt, 100, &opt_set);
+  ierr = PetscOptionsGetString(NULL, NULL, "-fsp_repart_approach", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set) {
     fsp_repart_approach = str2partapproach(std::string(opt));
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_output_marginal", opt, 100, &opt_set);
+  ierr = PetscOptionsGetString(NULL, NULL, "-fsp_output_marginal", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set) {
     if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
@@ -223,7 +223,7 @@ int ParseOptions(MPI_Comm comm, PartitioningType &fsp_par_type, PartitioningAppr
     }
   }
 
-  ierr = PetscOptionsGetString(NULL, PETSC_NULL, "-fsp_log_events", opt, 100, &opt_set);
+  ierr = PetscOptionsGetString(NULL, NULL, "-fsp_log_events", opt, 100, &opt_set);
   CHKERRQ(ierr);
   if (opt_set) {
     if (strcmp(opt, "1") == 0 || strcmp(opt, "true") == 0) {
